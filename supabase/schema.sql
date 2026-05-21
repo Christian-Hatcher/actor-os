@@ -175,3 +175,128 @@ create trigger on_auth_user_created
 
 -- Auto-update updated_at
 -- (Manual: add to each table or use a generic trigger)
+
+-- ==========================================
+-- EMAIL INTEGRATION (v2)
+-- ==========================================
+
+-- Gmail OAuth tokens for each user
+-- Tokens encrypted at rest by Supabase row-level security
+-- Only user (and service role) can read their own tokens
+create table public.email_connections (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  provider text not null default 'gmail', -- gmail, custom_imap, etc.
+  email_address text not null,
+  display_name text,                       -- "Christian's Actor Gmail"
+  access_token text not null,              -- OAuth2 access token
+  refresh_token text not null,             -- OAuth2 refresh token
+  token_expires_at timestamp with time zone,-- When access_token expires
+  scopes text[] default array['https://www.googleapis.com/auth/gmail.readonly'],
+  is_active boolean default true,
+  last_synced_at timestamp with time zone, -- Last successful sync
+  sync_cursor text,                        -- Gmail historyId for incremental sync
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.email_connections enable row level security;
+create policy "Users can only manage their own email connections"
+  on public.email_connections for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Raw casting emails fetched from user's mailbox
+create table public.casting_emails (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  connection_id uuid references public.email_connections(id) on delete cascade not null,
+  gmail_message_id text not null,          -- Gmail API message id
+  thread_id text,
+  from_address text not null,              -- sender email
+  from_name text,                          -- "Yamazaki Group Casting"
+  to_address text not null,                -- user's actor email
+  subject text not null,
+  body_text text,                          -- Plain text body
+  body_html text,                          -- HTML body (stripped later)
+  received_at timestamp with time zone not null,
+  is_casting_email boolean default false,  -- Flag after AI/pattern detection
+  processing_status text default 'pending' not null,
+    -- pending -> parsing -> parsed -> audition_created -> skipped -> error
+  parsing_error text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, gmail_message_id)
+);
+
+-- Index for fast scanning + dedupe during sync
+
+create index idx_casting_emails_user_sync on public.casting_emails(user_id, received_at desc);
+create index idx_casting_emails_status on public.casting_emails(processing_status);
+
+alter table public.casting_emails enable row level security;
+create policy "Users can only see their own casting emails"
+  on public.casting_emails for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Parsed audition data extracted from casting emails
+-- 1:1 or 1:many with casting_emails (one email may have multiple auditions)
+create table public.parsed_auditions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  email_id uuid references public.casting_emails(id) on delete cascade not null,
+  source_email_id uuid references public.casting_emails(id) on delete set null, -- backward ref
+  audition_id uuid references public.auditions(id) on delete set null,         -- once converted
+  confidence_score integer default 0,       -- 0-100, AI confidence
+  parser_version text default 'v1',          -- Which parser/extractor version
+  extracted_fields jsonb default '{}',     -- { project_name: "...", role: "...", deadline: "..." }
+  raw_snippets text[],                     -- Array of text snippets used
+  needs_review boolean default true,        -- Human verification required
+  review_reason text,                      -- Why it needs review
+  reviewed_by_user boolean default false,
+  reviewed_at timestamp with time zone,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.parsed_auditions enable row level security;
+create policy "Users can only see their own parsed auditions"
+  on public.parsed_auditions for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- ==========================================
+-- PARSER PATTERNS (shared reference data)
+-- ==========================================
+
+-- Known casting agency email patterns for auto-detection
+create table public.casting_agency_patterns (
+  id uuid default gen_random_uuid() primary key,
+  domain_pattern text not null,            -- e.g. "@bay-side.biz", "@lilianamodels.com"
+  agency_name text not null,
+  display_name text,
+  country text default 'JP',
+  email_signatures text[],                 -- Common footer phrases
+  role_keywords text[],                    -- Keywords that indicate casting emails
+  is_verified boolean default false,
+  match_priority integer default 100,      -- Higher = checked first
+  created_by uuid references public.profiles(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(domain_pattern)
+);
+
+-- Seed with your known agencies
+insert into public.casting_agency_patterns (domain_pattern, agency_name, display_name, country, role_keywords, match_priority)
+values
+  ('@bay-side.biz', 'BAYSIDE', 'BAYSIDE Co., Ltd.', 'JP', array['audition','casting','self-tape','callback','shoot'], 100),
+  ('@lilianamodels.com', 'Liliana Models', 'Liliana Model Agency', 'JP', array['modeling','audition','fitting','commercial'], 90),
+  ('@horipro.co.jp', 'Horipro', 'Horipro Inc.', 'JP', array['audition','role','casting','schedule'], 95)
+on conflict (domain_pattern) do nothing;
+
+-- Anyone can read agency patterns (no user_id link)
+alter table public.casting_agency_patterns enable row level security;
+create policy "Agency patterns are readable by all authenticated users"
+  on public.casting_agency_patterns for select
+  using (auth.role() = 'authenticated');
