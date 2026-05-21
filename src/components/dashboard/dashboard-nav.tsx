@@ -2,15 +2,16 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
+  Film,
   Video,
   FileText,
   Users,
   Settings,
   Clapperboard,
   GraduationCap,
+  Mail,
 } from "lucide-react"
 
 const navItems = [
@@ -33,6 +34,11 @@ const navItems = [
     title: "Contracts",
     href: "/dashboard/contracts",
     icon: FileText,
+  },
+  {
+    title: "Emails",
+    href: "/dashboard/emails",
+    icon: Mail,
   },
   {
     title: "Outreach",

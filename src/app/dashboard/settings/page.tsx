@@ -1,19 +1,116 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { CreditCard, Building2, Mail, ExternalLink } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import {
+  Mail,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  ExternalLink,
+  Trash2,
+} from "lucide-react"
+
+interface EmailConnection {
+  id: string
+  email_address: string
+  display_name: string
+  is_active: boolean
+  last_synced_at: string
+  scopes: string[]
+}
 
 export default function SettingsPage() {
-  const [agencyName, setAgencyName] = useState("BAYSIDE / Liliana Models")
-  const [agencyEmail, setAgencyEmail] = useState("info@bay-side.biz")
-  const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const emailError = searchParams.get("email_error")
+  const emailConnected = searchParams.get("email_connected")
+
+  const [connections, setConnections] = useState<EmailConnection[]>([])
+  const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<any | null>(null)
+
+  // Fetch connections on mount
+  useEffect(() => {
+    fetchConnections()
+  }, [])
+
+  async function fetchConnections() {
+    const { data, error } = await supabase
+      .from("email_connections")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    if (!error && data) {
+      setConnections(data as EmailConnection[])
+    }
+    setLoading(false)
+  }
+
+  async function handleConnectGmail() {
+    // Get current user for state parameter
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      alert("Please log in first")
+      return
+    }
+
+    // Encode user_id as base64 for state parameter
+    const state = Buffer.from(session.user.id).toString("base64url")
+
+    // Call auth endpoint
+    const res = await fetch("/api/gmail/auth")
+    const { url } = await res.json()
+
+    // Add state to URL
+    const authUrl = new URL(url)
+    authUrl.searchParams.set("state", state)
+
+    window.location.href = authUrl.toString()
+  }
+
+  async function handleSync(connectionId?: string) {
+    setSyncing(true)
+    setSyncResult(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch("/api/gmail/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: session?.user?.id,
+          connection_id: connectionId,
+        }),
+      })
+
+      const data = await res.json()
+      setSyncResult(data)
+
+      // Refresh connections
+      fetchConnections()
+    } catch (err: any) {
+      setSyncResult({ error: err.message })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Remove this Gmail connection? Emails will not be deleted.")) return
+
+    await supabase.from("email_connections").delete().eq("id", id)
+    fetchConnections()
+  }
 
   const subscription = {
     tier: "monthly",
@@ -22,68 +119,125 @@ export default function SettingsPage() {
     price: "$5",
   }
 
-  async function handleUpdateProfile() {
-    setLoading(true)
-    // TODO: Supabase update
-    setTimeout(() => setLoading(false), 500)
-  }
-
   return (
     <DashboardShell>
       <DashboardHeader
         heading="Settings"
-        text="Manage your profile, agency info, and subscription."
+        text="Manage your Gmail connections, profile, and subscription."
       />
 
-      <div className="grid gap-6 max-w-2xl">
-        {/* Profile */}
+      <div className="grid gap-6 max-w-3xl">
+        {/* Gmail Connection */}
         <Card>
           <CardHeader>
-            <CardTitle>Profile</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>Gmail Connection</CardTitle>
+              </div>
+              <Badge variant="outline">
+                {connections.filter((c) => c.is_active).length} connected
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Full Name</label>
-              <Input value="Christian Hatcher" disabled />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Email</label>
-              <Input value="hatcher.actor@gmail.com" disabled />
-            </div>
-          </CardContent>
-        </Card>
+            {emailError && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                <AlertTriangle className="h-4 w-4" />
+                Connection failed: {emailError}
+              </div>
+            )}
 
-        {/* Agency */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Agency Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Agency Name</label>
-              <div className="relative">
-                <Building2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-8"
-                  value={agencyName}
-                  onChange={(e) => setAgencyName(e.target.value)}
-                />
+            {emailConnected && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                <CheckCircle className="h-4 w-4" />
+                Successfully connected {emailConnected}
               </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Agency Email</label>
-              <div className="relative">
-                <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  className="pl-8"
-                  value={agencyEmail}
-                  onChange={(e) => setAgencyEmail(e.target.value)}
-                />
+            )}
+
+            {syncResult && (
+              <div
+                className={`rounded-lg p-3 text-sm ${
+                  syncResult.error
+                    ? "bg-red-50 text-red-700"
+                    : "bg-blue-50 text-blue-700"
+                }`}
+              >
+                {syncResult.error
+                  ? `Sync error: ${syncResult.error}`
+                  : syncResult.results?.[0]
+                  ? `Synced ${syncResult.results[0].emails_inserted} emails, skipped ${syncResult.results[0].emails_skipped}`
+                  : "Sync complete"}
               </div>
+            )}
+
+            <div className="space-y-2">
+              {connections.map((conn) => (
+                <div
+                  key={conn.id}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        conn.is_active ? "bg-green-500" : "bg-gray-400"
+                      }`}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{conn.email_address}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {conn.is_active ? "Active" : "Disconnected"}
+                        {conn.last_synced_at
+                          ? ` • Last sync ${new Date(
+                              conn.last_synced_at
+                            ).toLocaleDateString()}`
+                          : " • Never synced"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSync(conn.id)}
+                      disabled={syncing || !conn.is_active}
+                    >
+                      <RefreshCw
+                        className={`h-3 w-3 mr-1 ${
+                          syncing ? "animate-spin" : ""
+                        }`}
+                      />
+                      Sync
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDelete(conn.id)}
+                    >
+                      <Trash2 className="h-3 w-3 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {connections.length === 0 && !loading && (
+                <p className="text-sm text-muted-foreground">
+                  No Gmail accounts connected. Connect your actor email to
+                  auto-import casting emails.
+                </p>
+              )}
             </div>
-            <Button onClick={handleUpdateProfile} disabled={loading}>
-              {loading ? "Saving..." : "Save Changes"}
+
+            <Button onClick={handleConnectGmail} className="w-full">
+              <Mail className="mr-2 h-4 w-4" />
+              Connect Gmail Account
             </Button>
+
+            <p className="text-xs text-muted-foreground">
+              Actor OS needs read-only access to your Gmail to scan for
+              audition and self-tape emails. We never send emails or
+              delete anything.
+            </p>
           </CardContent>
         </Card>
 
@@ -106,7 +260,9 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Actor OS {subscription.tier}</p>
+                <p className="font-medium">
+                  Actor OS {subscription.tier}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   Renews on {subscription.currentPeriodEnd}
                 </p>
@@ -116,19 +272,11 @@ export default function SettingsPage() {
 
             <Separator />
 
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1">
-                <CreditCard className="mr-2 h-4 w-4" />
-                Update Payment
-              </Button>
-              <Button variant="outline" className="flex-1">
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/api/portal" target="_blank">
                 <ExternalLink className="mr-2 h-4 w-4" />
-                Billing Portal
-              </Button>
-            </div>
-
-            <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50">
-              Cancel Subscription
+                Open Billing Portal
+              </Link>
             </Button>
           </CardContent>
         </Card>
