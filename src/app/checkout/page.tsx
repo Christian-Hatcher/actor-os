@@ -1,17 +1,18 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Check, ArrowLeft, Loader2 } from "lucide-react"
+import Link from "next/link"
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
-  const plan = searchParams.get("plan") || "monthly"
+  const plan = (searchParams.get("plan") || "monthly") as "monthly" | "annual"
 
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   const planDetails = {
     monthly: {
@@ -38,20 +39,38 @@ export default function CheckoutPage() {
     },
   }
 
-  const selected = planDetails[plan as keyof typeof planDetails] || planDetails.monthly
+  const selected = planDetails[plan]
 
-  const handleCheckout = async () => {
+  async function handleCheckout() {
     setLoading(true)
-    // TODO: Create Stripe Checkout Session
-    // const response = await fetch('/api/checkout', { method: 'POST', body: JSON.stringify({ plan }) })
-    // const { url } = await response.json()
-    // window.location.href = url
+    setError("")
 
-    // Mock for now
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan,
+          email: "demo@actor-os.com", // TODO: use auth user email
+          name: "Demo User",
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Checkout failed")
+      }
+
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        throw new Error("No checkout URL returned")
+      }
+    } catch (err: any) {
+      setError(err.message)
       setLoading(false)
-      alert("Stripe checkout would open here. This is a demo.")
-    }, 1500)
+    }
   }
 
   return (
@@ -69,7 +88,7 @@ export default function CheckoutPage() {
           <CardHeader className="text-center">
             <CardTitle>Complete your subscription</CardTitle>
             <p className="text-sm text-muted-foreground">
-              You're subscribing to the {selected.name} plan.
+              You&apos;re subscribing to the {selected.name} plan.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -89,6 +108,10 @@ export default function CheckoutPage() {
               ))}
             </ul>
 
+            {error && (
+              <p className="text-sm text-red-600 text-center">{error}</p>
+            )}
+
             <Button
               className="w-full"
               size="lg"
@@ -106,7 +129,7 @@ export default function CheckoutPage() {
             </Button>
 
             <p className="text-center text-xs text-muted-foreground">
-              Secure payment via Stripe. Cancel anytime.
+              Secure payment via Stripe. 14-day free trial. Cancel anytime.
             </p>
           </CardContent>
         </Card>

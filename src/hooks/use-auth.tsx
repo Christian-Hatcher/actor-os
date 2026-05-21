@@ -3,37 +3,47 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
+import type { Database } from "@/types/database"
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 
 interface AuthContextType {
   user: User | null
-  profile: any | null
+  profile: Profile | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
-  signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
+  signUp: (email: string, password: string, metadata?: { full_name?: string }) => Promise<{ error: any }>
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<any | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function initAuth() {
+      const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
+      if (session?.user) {
+        await fetchProfile(session.user.id)
+      }
       setLoading(false)
-    })
+    }
 
-    // Listen for auth changes
+    initAuth()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setUser(session?.user ?? null)
-        if (session?.user) fetchProfile(session.user.id)
-        else setProfile(null)
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+        } else {
+          setProfile(null)
+        }
       }
     )
 
@@ -46,7 +56,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("*")
       .eq("id", userId)
       .single()
-    setProfile(data)
+    if (data) setProfile(data)
+  }
+
+  async function refreshProfile() {
+    if (user?.id) await fetchProfile(user.id)
   }
 
   async function signIn(email: string, password: string) {
@@ -54,7 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error }
   }
 
-  async function signUp(email: string, password: string, metadata = {}) {
+  async function signUp(
+    email: string,
+    password: string,
+    metadata?: { full_name?: string }
+  ) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -68,16 +86,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
+  const ctx = useContext(AuthContext)
+  if (ctx === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
-  return context
+  return ctx
 }

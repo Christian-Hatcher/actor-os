@@ -1,40 +1,45 @@
-import { NextRequest, NextResponse } from "next/server"
-import Stripe from "stripe"
+"use server"
 
-const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-03-31.basil",
-})
+import { NextResponse } from "next/server"
 
-const PRICE_IDS = {
-  monthly: process.env.STRIPE_MONTHLY_PRICE_ID!,
-  annual: process.env.STRIPE_ANNUAL_PRICE_ID!,
-}
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
 
-export async function createCheckoutSession(plan: "monthly" | "annual", customerEmail: string) {
-  const session = await stripeClient.checkout.sessions.create({
-    customer_email: customerEmail,
-    line_items: [
-      {
-        price: PRICE_IDS[plan],
-        quantity: 1,
+export async function POST(request: Request) {
+  try {
+    const { plan, email, name } = await request.json()
+
+    if (!plan || !email) {
+      return NextResponse.json({ error: "Missing plan or email" }, { status: 400 })
+    }
+
+    // Find or create customer
+    const existing = await stripe.customers.list({ email, limit: 1 })
+    const customer = existing.data[0] || await stripe.customers.create({ email, name })
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customer.id,
+      line_items: [
+        {
+          price:
+            plan === "annual"
+              ? process.env.STRIPE_ANNUAL_PRICE_ID
+              : process.env.STRIPE_MONTHLY_PRICE_ID,
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout?plan=${plan}&canceled=true`,
+      subscription_data: {
+        trial_period_days: 14,
+        metadata: { plan },
       },
-    ],
-    mode: "subscription",
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout?plan=${plan}&canceled=true`,
-    subscription_data: {
-      trial_period_days: 14,
-    },
-  })
+      allow_promotion_codes: true,
+    })
 
-  return { url: session.url }
-}
-
-export async function createPortalSession(customerId: string) {
-  const session = await stripeClient.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings`,
-  })
-
-  return { url: session.url }
+    return NextResponse.json({ url: session.url })
+  } catch (err: any) {
+    console.error("Checkout error:", err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
 }

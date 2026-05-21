@@ -1,4 +1,4 @@
--- Actor OS Database Schema
+-- Actor OS Database Schema + Auth Triggers
 
 -- Users (managed by Supabase Auth, extended with profile data)
 create table public.profiles (
@@ -8,7 +8,7 @@ create table public.profiles (
   avatar_url text,
   agency_name text,
   agency_email text,
-  subscription_tier text default 'free', -- free, monthly, yearly
+  subscription_tier text default 'free',
   subscription_status text default 'inactive',
   stripe_customer_id text,
   stripe_subscription_id text,
@@ -24,7 +24,7 @@ create table public.auditions (
   role_name text,
   casting_director text,
   agency text,
-  status text default 'submitted' not null, -- submitted, callback, pinned, booked, passed, archived
+  status text default 'submitted' not null,
   submitted_date date,
   callback_date date,
   shoot_date date,
@@ -61,7 +61,7 @@ create table public.contacts (
   name text not null,
   email text,
   phone text,
-  role text, -- casting director, agent, manager, coach
+  role text,
   company text,
   last_contact_date date,
   notes text,
@@ -73,7 +73,7 @@ create table public.outreach_logs (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
   contact_id uuid references public.contacts(id) on delete cascade,
-  type text not null, -- email, call, meeting, audition, follow_up
+  type text not null,
   notes text,
   date date not null default current_date,
   follow_up_date date,
@@ -86,7 +86,7 @@ create table public.contracts (
   user_id uuid references public.profiles(id) on delete cascade not null,
   title text not null,
   file_url text not null,
-  status text default 'uploaded', -- uploaded, analyzing, reviewed, signed
+  status text default 'uploaded',
   summary text,
   key_clauses jsonb,
   red_flags text[],
@@ -102,8 +102,8 @@ create table public.reminders (
   title text not null,
   description text,
   due_date timestamp with time zone not null,
-  type text default 'general', -- audition, self_tape, callback, follow_up, contract
-  related_id uuid, -- polymorphic reference to auditions, self_tapes, contracts
+  type text default 'general',
+  related_id uuid,
   completed boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -115,20 +115,10 @@ create table public.universities (
   department text,
   contact_name text,
   contact_email text,
-  license_tier text default 'standard', -- standard, premium, enterprise
+  license_tier text default 'standard',
   student_count integer,
   active boolean default false,
   stripe_subscription_id text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-create table public.university_students (
-  id uuid default gen_random_uuid() primary key,
-  university_id uuid references public.universities(id) on delete cascade not null,
-  student_id text,
-  email text not null,
-  graduation_year integer,
-  activated_at timestamp with time zone,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -168,3 +158,20 @@ create policy "Users can only access their own contracts"
 create policy "Users can only access their own reminders"
   on public.reminders for all
   using (auth.uid() = user_id);
+
+-- Auto-create profile on signup
+create function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, full_name)
+  values (new.id, new.email, new.raw_user_meta_data->>'full_name');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- Auto-update updated_at
+-- (Manual: add to each table or use a generic trigger)
