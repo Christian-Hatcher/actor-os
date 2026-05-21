@@ -11,9 +11,13 @@ export function useAuditions() {
 
   useEffect(() => {
     async function fetchAuditions() {
+      const { data: user } = await supabase.auth.getUser()
+      const userId = user.user?.id
+      if (!userId) { setLoading(false); return }
       const { data, error } = await supabase
         .from("auditions")
         .select("*")
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
 
       if (error) setError(error.message)

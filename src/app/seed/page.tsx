@@ -1,5 +1,3 @@
-"use client"
-
 const SEED_SQL = `
 -- Seed data for Actor OS development
 -- Run this in Supabase SQL Editor

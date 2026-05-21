@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Search, Filter } from "lucide-react"
+import { Clapperboard, Plus, Search } from "lucide-react"
 import type { Audition } from "@/types"
 
 const STATUS_COLORS = {

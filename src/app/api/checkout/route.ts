@@ -1,8 +1,6 @@
-"use server"
+import { NextRequest, NextResponse } from "next/server"
+import Stripe from "stripe"
 
-import stripe from "stripe"
-
-const Stripe = stripe as unknown as typeof stripe.default
 const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-03-31.basil",
 })

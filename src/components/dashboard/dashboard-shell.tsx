@@ -3,6 +3,7 @@
 import { ReactNode } from "react"
 import { DashboardNav } from "./dashboard-nav"
 import { UserNav } from "./user-nav"
+import { MobileNav } from "./mobile-nav"
 import { Film } from "lucide-react"
 
 interface DashboardShellProps {
@@ -22,7 +23,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
       <div className="flex-1 lg:ml-64">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-background px-6">
           <div className="lg:hidden flex items-center">
-            <Film className="mr-2 h-6 w-6" />
+            <MobileNav />
+            <Film className="mr-2 h-6 w-6 ml-2" />
             <span className="text-lg font-bold">Actor OS</span>
           </div>
           <UserNav />

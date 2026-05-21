@@ -1,5 +1,3 @@
-"use server"
-
 import { NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
 
@@ -42,9 +40,10 @@ export async function POST(request: NextRequest) {
 
     const result = JSON.parse(completion.choices[0].message.content || "{}")
     return NextResponse.json(result)
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "AI analysis failed"
     return NextResponse.json(
-      { error: error.message || "AI analysis failed" },
+      { error: message },
       { status: 500 }
     )
   }
