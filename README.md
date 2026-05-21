@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Actor OS
 
-## Getting Started
+Your acting career, organized. A $5/month SaaS for student and emerging actors — built by a working actor in Tokyo.
 
-First, run the development server:
+## Features
+
+- **Casting Pipeline** — Track every audition from submission to booking. Know your callback rate.
+- **Self-Tape Partner** — Never miss a deadline. Upload, organize, and get feedback.
+- **Contract Reader Agent** — AI analyzes any contract in 60 seconds. Spot red flags.
+- **Outreach CRM** — Manage casting directors, agents, collaborators. Stay top of mind.
+
+## Tech Stack
+
+- Next.js 16 + TypeScript + Tailwind CSS v4
+- Supabase (Auth + Database + Row Level Security)
+- Stripe (Subscriptions + Billing Portal)
+- OpenAI (Contract analysis)
+
+## Pricing
+
+| Plan | Price | Features |
+|------|-------|----------|
+| Monthly | $5/mo | Unlimited auditions, self-tapes, 5 AI contracts/month |
+| Annual | $45/yr | Same + 10 AI contracts/month, priority support, save 25% |
+| University | $500+/yr | Institutional licensing for drama departments |
+
+## University Licensing (Phase 2)
+
+Bulk pricing for drama schools:
+- **Standard**: $500/year — up to 50 students
+- **Premium**: $1,200/year — up to 150 students + admin analytics
+- **Enterprise**: Custom — full drama school
+
+Target launch: Fall 2026, starting with University of Alabama.
+
+## Development
 
 ```bash
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Fill in: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+#          STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, etc.
+
+# Run dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Push database schema to Supabase
+# (Run supabase/schema.sql in Supabase SQL Editor)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Roadmap
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- [x] Landing page with pricing
+- [x] Dashboard with stats cards
+- [x] Casting pipeline tracker
+- [x] Self-tape deadline manager
+- [x] Contract reader UI
+- [x] Outreach CRM
+- [x] University licensing scaffolding
+- [x] Auth pages (login/signup)
+- [x] Stripe checkout + billing portal
+- [ ] Connect real Supabase data (replace mocks)
+- [ ] Email ingestion from casting agencies
+- [ ] Mobile app (React Native)
+- [ ] Japanese language support
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## License
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+© 2026 At Home Reelz K.K. — Built in Tokyo 🇯🇵

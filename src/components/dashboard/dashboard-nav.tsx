@@ -11,6 +11,7 @@ import {
   Users,
   Settings,
   Clapperboard,
+  GraduationCap,
 } from "lucide-react"
 
 const navItems = [
@@ -38,6 +39,11 @@ const navItems = [
     title: "Outreach",
     href: "/dashboard/outreach",
     icon: Users,
+  },
+  {
+    title: "Universities",
+    href: "/dashboard/universities",
+    icon: GraduationCap,
   },
   {
     title: "Settings",
