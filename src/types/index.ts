@@ -1,0 +1,99 @@
+export interface Profile {
+  id: string
+  email: string
+  full_name: string | null
+  avatar_url: string | null
+  agency_name: string | null
+  agency_email: string | null
+  subscription_tier: 'free' | 'monthly' | 'yearly'
+  subscription_status: 'active' | 'inactive' | 'cancelled'
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Audition {
+  id: string
+  user_id: string
+  project_name: string
+  role_name: string | null
+  casting_director: string | null
+  agency: string | null
+  status: 'submitted' | 'callback' | 'pinned' | 'booked' | 'passed' | 'archived'
+  submitted_date: string | null
+  callback_date: string | null
+  shoot_date: string | null
+  location: string | null
+  notes: string | null
+  self_tape_url: string | null
+  headshot_url: string | null
+  resume_url: string | null
+  compensation: string | null
+  contract_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SelfTape {
+  id: string
+  user_id: string
+  audition_id: string | null
+  title: string
+  video_url: string
+  thumbnail_url: string | null
+  scene_partner: string | null
+  deadline: string | null
+  submitted: boolean
+  feedback: string | null
+  created_at: string
+}
+
+export interface Contact {
+  id: string
+  user_id: string
+  name: string
+  email: string | null
+  phone: string | null
+  role: string | null
+  company: string | null
+  last_contact_date: string | null
+  notes: string | null
+  priority: number
+  created_at: string
+}
+
+export interface Contract {
+  id: string
+  user_id: string
+  title: string
+  file_url: string
+  status: 'uploaded' | 'analyzing' | 'reviewed' | 'signed'
+  summary: string | null
+  key_clauses: Record<string, unknown> | null
+  red_flags: string[] | null
+  questions: string[] | null
+  analyzed_at: string | null
+  created_at: string
+}
+
+export interface Reminder {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  due_date: string
+  type: 'general' | 'audition' | 'self_tape' | 'callback' | 'follow_up' | 'contract'
+  related_id: string | null
+  completed: boolean
+  created_at: string
+}
+
+export interface DashboardStats {
+  total_auditions: number
+  active_callbacks: number
+  booked_jobs: number
+  pending_self_tapes: number
+  upcoming_reminders: number
+  conversion_rate: number
+}
