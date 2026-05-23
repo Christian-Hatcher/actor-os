@@ -267,6 +267,47 @@ create policy "Users can only see their own parsed auditions"
   with check (auth.uid() = user_id);
 
 -- ==========================================
+-- CONTRACT RESTRICTIONS (Social Media Compliance)
+-- ==========================================
+
+create table public.contract_restrictions (
+  id uuid default gen_random_uuid() primary key,
+  contract_id uuid references public.contracts(id) on delete cascade not null,
+  restriction_type text not null, -- 'nda', 'social_media_ban', 'bts_delay', 'exclusivity', 'non_compete', 'confidentiality'
+  description text not null,
+  applies_to_platforms text[] default array['instagram', 'linkedin', 'facebook', 'twitter'],
+  effective_date date,
+  expiry_date date,
+  is_active boolean default true,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.contract_restrictions enable row level security;
+create policy "Users can only access their own contract restrictions"
+  on public.contract_restrictions for all
+  using (auth.uid() = (select user_id from public.contracts where id = contract_id))
+  with check (auth.uid() = (select user_id from public.contracts where id = contract_id));
+
+-- ==========================================
+-- CONTRACT ANALYSIS LOGS (AI processing tracking)
+-- ==========================================
+
+create table public.contract_analysis_logs (
+  id uuid default gen_random_uuid() primary key,
+  contract_id uuid references public.contracts(id) on delete cascade not null,
+  analysis_type text not null, -- 'initial', 'comparison', 'compliance_check'
+  model_used text default 'claude-sonnet-4',
+  raw_response text,
+  processing_time_ms integer,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.contract_analysis_logs enable row level security;
+create policy "Users can only access their own analysis logs"
+  on public.contract_analysis_logs for all
+  using (auth.uid() = (select user_id from public.contracts where id = contract_id));
+
+-- ==========================================
 -- PARSER PATTERNS (shared reference data)
 -- ==========================================
 

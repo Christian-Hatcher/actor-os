@@ -274,6 +274,49 @@ export interface Database {
           updated_at: string
         }
       }
+      contract_restrictions: {
+        Row: {
+          id: string
+          contract_id: string
+          restriction_type: string
+          description: string
+          applies_to_platforms: string[]
+          effective_date: string | null
+          expiry_date: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          contract_id: string
+          restriction_type: string
+          description: string
+          applies_to_platforms?: string[]
+          effective_date?: string | null
+          expiry_date?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          restriction_type?: string
+          description?: string
+          applies_to_platforms?: string[]
+          effective_date?: string | null
+          expiry_date?: string | null
+          is_active?: boolean
+        }
+      }
+      contract_analysis_logs: {
+        Row: {
+          id: string
+          contract_id: string
+          analysis_type: string
+          model_used: string
+          raw_response: string | null
+          processing_time_ms: number | null
+          created_at: string
+        }
+      }
     }
   }
 }
