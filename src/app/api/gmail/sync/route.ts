@@ -80,10 +80,9 @@ async function fetchCastingEmails(
 }> {
   const baseUrl = "https://gmail.googleapis.com/gmail/v1/users/me"
 
-  // Build query: search for emails from known casting domains
-  // In v1, we'll use a simple query. In v2, we'll use the agency_patterns table
-  const fromQuery = `from:bay-side.biz OR from:lilianamodels.com OR from:horipro.co.jp`
-  const fullQuery = `${fromQuery} newer_than:30d`
+  // Search for casting-related emails from any sender
+  // Matches Japanese casting keywords + English equivalents
+  const fullQuery = `(audition OR casting OR self-tape OR callback OR 出演 OR オーディション OR キャスティング OR 撮影) newer_than:30d`
 
   // If we have a cursor (historyId), use history API for incremental sync
   // Otherwise, do a full search
@@ -285,15 +284,24 @@ export async function POST(request: Request) {
           continue
         }
 
-        // Detect if it's a casting email (simple heuristic for v1)
+        // Detect if it's likely a casting email
+        const lowerSubject = subject.toLowerCase()
+        const lowerBody = text.toLowerCase()
         const isCasting =
           fromAddress.includes("bay-side.biz") ||
           fromAddress.includes("lilianamodels.com") ||
           fromAddress.includes("horipro.co.jp") ||
-          subject.toLowerCase().includes("audition") ||
-          subject.toLowerCase().includes("casting") ||
-          subject.toLowerCase().includes("self-tape") ||
-          subject.toLowerCase().includes("callback")
+          lowerSubject.includes("audition") ||
+          lowerSubject.includes("casting") ||
+          lowerSubject.includes("self-tape") ||
+          lowerSubject.includes("self tape") ||
+          lowerSubject.includes("callback") ||
+          lowerSubject.includes("出演") ||
+          lowerSubject.includes("オーディション") ||
+          lowerSubject.includes("キャスティング") ||
+          lowerBody.includes("audition") ||
+          lowerBody.includes("self-tape") ||
+          lowerBody.includes("撮影日")
 
         // Insert into database
         const { error: insertError } = await supabaseAdmin

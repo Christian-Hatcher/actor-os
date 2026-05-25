@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { llm } from "@/lib/llm"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -155,6 +156,69 @@ function parseCastingEmail(
 }
 
 /**
+ * LLM-powered casting email parser (v2)
+ * Falls back to regex parser if LLM is unavailable
+ */
+async function parseCastingEmailWithLLM(
+  subject: string,
+  body: string,
+  fromAddress: string
+): Promise<ReturnType<typeof parseCastingEmail>> {
+  const prompt = `You are parsing a casting/audition email for an actor. Extract structured data from this email.
+
+From: ${fromAddress}
+Subject: ${subject}
+Body:
+${body.substring(0, 3000)}
+
+Respond with ONLY valid JSON (no markdown, no explanation):
+{
+  "project_name": "string or null",
+  "role_name": "string or null",
+  "casting_director": "string or null",
+  "agency": "string or null",
+  "location": "string or null",
+  "compensation": "string or null",
+  "deadline": "string or null",
+  "shoot_date": "string or null",
+  "callback_date": "string or null",
+  "notes": "brief summary of key details, string or null",
+  "is_casting_email": true/false,
+  "confidence": 0-100
+}
+
+If this is NOT a casting/audition email, set is_casting_email to false and confidence to 0.
+For Japanese emails, translate field values to English.`
+
+  try {
+    const response = await llm("low", [
+      { role: "user", content: prompt },
+    ], 1000)
+
+    const jsonMatch = response.content.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error("No JSON in LLM response")
+
+    const parsed = JSON.parse(jsonMatch[0])
+    return {
+      project_name: parsed.project_name || null,
+      role_name: parsed.role_name || null,
+      casting_director: parsed.casting_director || null,
+      agency: parsed.agency || null,
+      location: parsed.location || null,
+      compensation: parsed.compensation || null,
+      deadline: parsed.deadline || null,
+      shoot_date: parsed.shoot_date || null,
+      callback_date: parsed.callback_date || null,
+      notes: parsed.notes || null,
+      confidence: parsed.is_casting_email === false ? 0 : (parsed.confidence || 50),
+    }
+  } catch (err) {
+    console.error("LLM parse failed, falling back to regex:", err)
+    return parseCastingEmail(subject, body, fromAddress)
+  }
+}
+
+/**
  * Convert parsed fields into a proper audition row
  */
 function buildAuditionFields(parsed: any, emailId: string, userId: string): any {
@@ -200,12 +264,14 @@ export async function POST(request: Request) {
       dry_run = false,
     } = body
 
-    // Build query for pending emails
+    // Build query for pending emails (last 30 days only)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     let query = supabaseAdmin
       .from("casting_emails")
       .select("*")
       .eq("processing_status", "pending")
       .eq("is_casting_email", true)
+      .gte("received_at", thirtyDaysAgo)
 
     if (email_ids?.length) {
       query = query.in("id", email_ids)
@@ -242,8 +308,8 @@ export async function POST(request: Request) {
 
     for (const email of emails) {
       try {
-        // Run parser
-        const parsed = parseCastingEmail(
+        // Run LLM parser (falls back to regex if LLM unavailable)
+        const parsed = await parseCastingEmailWithLLM(
           email.subject,
           email.body_text || "",
           email.from_address
@@ -267,7 +333,7 @@ export async function POST(request: Request) {
             email_id: email.id,
             source_email_id: email.id,
             confidence_score: parsed.confidence,
-            parser_version: "regex-v1",
+            parser_version: "llm-v2",
             extracted_fields: JSON.stringify({
               project_name: parsed.project_name,
               role_name: parsed.role_name,

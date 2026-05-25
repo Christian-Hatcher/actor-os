@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { llm } from "@/lib/llm"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -94,49 +95,31 @@ export async function POST(request: Request) {
       )
     }
 
-    // Call Claude API for analysis
-    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+    // Call LLM for analysis (provider-agnostic via llm.ts)
+    const llmResponse = await llm("high", [
+      {
+        role: "user",
+        content: CONTRACT_ANALYSIS_PROMPT.replace("{contractText}", textToAnalyze),
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
-        messages: [
-          {
-            role: "user",
-            content: CONTRACT_ANALYSIS_PROMPT.replace("{contractText}", textToAnalyze),
-          },
-        ],
-      }),
-    })
+    ], 4000)
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text()
-      throw new Error(`Claude API error: ${claudeResponse.status} ${errorText}`)
-    }
+    const analysisText = llmResponse.content
 
-    const claudeData = await claudeResponse.json()
-    const analysisText = claudeData.content?.[0]?.text || claudeData.content || ""
-
-    // Parse JSON from Claude response
+    // Parse JSON from LLM response
     let analysis
     try {
-      // Claude sometimes wraps JSON in markdown code blocks
+      // LLMs sometimes wrap JSON in markdown code blocks
       const jsonMatch = analysisText.match(/```json\n?([\s\S]*?)\n?```/) ||
                         analysisText.match(/\{[\s\S]*\}/)
       const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : analysisText
       analysis = JSON.parse(jsonString)
     } catch (parseErr) {
-      console.error("Failed to parse Claude response as JSON:", analysisText)
+      console.error("Failed to parse LLM response as JSON:", analysisText)
       // Save raw response for debugging
       await supabaseAdmin.from("contract_analysis_logs").insert({
         contract_id: contractId,
         analysis_type: "initial",
-        model_used: "claude-sonnet-4",
+        model_used: llmResponse.model,
         raw_response: analysisText,
         processing_time_ms: null,
       })
@@ -150,7 +133,7 @@ export async function POST(request: Request) {
     await supabaseAdmin.from("contract_analysis_logs").insert({
       contract_id: contractId,
       analysis_type: "initial",
-      model_used: "claude-sonnet-4",
+      model_used: llmResponse.model,
       raw_response: JSON.stringify(analysis),
       processing_time_ms: null,
     })

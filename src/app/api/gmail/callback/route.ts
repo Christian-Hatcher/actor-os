@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    console.log("[gmail-callback] code:", code?.substring(0, 10) + "...", "state:", state, "redirect_uri:", REDIRECT_URI)
+
     // Exchange code for tokens
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -41,11 +43,12 @@ export async function GET(request: NextRequest) {
     })
 
     const tokenData = await tokenRes.json()
+    console.log("[gmail-callback] token exchange status:", tokenRes.status, "has access_token:", !!tokenData.access_token, "has refresh_token:", !!tokenData.refresh_token)
 
     if (!tokenRes.ok) {
-      console.error("Token exchange failed:", tokenData)
+      console.error("[gmail-callback] Token exchange failed:", JSON.stringify(tokenData))
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?email_error=token_exchange`
+        `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?email_error=token_exchange_${tokenData.error || "unknown"}`
       )
     }
 
@@ -57,16 +60,11 @@ export async function GET(request: NextRequest) {
       }
     )
     const userInfo = await userInfoRes.json()
+    console.log("[gmail-callback] google user:", userInfo.email, userInfo.name)
 
-    // Decode state to get Supabase user_id
-    let userId: string | null = null
-    try {
-      if (state) {
-        userId = Buffer.from(state, "base64url").toString("utf8")
-      }
-    } catch {
-      // If state decoding fails, we'll try to link via email
-    }
+    // State contains the user_id directly (UUID is URL-safe)
+    let userId: string | null = state || null
+    console.log("[gmail-callback] userId from state:", userId)
 
     // If no userId from state, try matching by email in profiles
     if (!userId && userInfo.email) {
@@ -75,11 +73,13 @@ export async function GET(request: NextRequest) {
         .select("id")
         .eq("email", userInfo.email)
         .single()
-      
+
       if (profile) userId = profile.id
+      console.log("[gmail-callback] userId from profile lookup:", userId)
     }
 
     if (!userId) {
+      console.error("[gmail-callback] No userId found")
       return NextResponse.redirect(
         `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?email_error=user_not_found`
       )
@@ -98,38 +98,49 @@ export async function GET(request: NextRequest) {
 
     if (existing) {
       // Update existing connection
-      await supabaseAdmin
+      const { error: updateError } = await supabaseAdmin
         .from("email_connections")
         .update({
           access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
+          refresh_token: tokenData.refresh_token || undefined,
           token_expires_at: expiresAt.toISOString(),
           scopes: tokenData.scope?.split(" ") || [],
           is_active: true,
           updated_at: new Date().toISOString(),
         })
         .eq("id", existing.id)
+      console.log("[gmail-callback] updated existing connection:", existing.id, "error:", updateError)
     } else {
       // Create new connection
-      await supabaseAdmin.from("email_connections").insert({
+      const insertPayload = {
         user_id: userId,
+        provider: "gmail",
         email_address: userInfo.email,
         display_name: userInfo.name || userInfo.email,
         access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
+        refresh_token: tokenData.refresh_token || null,
         token_expires_at: expiresAt.toISOString(),
         scopes: tokenData.scope?.split(" ") || [],
         is_active: true,
-      })
+      }
+      console.log("[gmail-callback] inserting connection for:", userInfo.email, "user:", userId, "has refresh_token:", !!tokenData.refresh_token)
+      const { error: insertError } = await supabaseAdmin.from("email_connections").insert(insertPayload)
+      if (insertError) {
+        console.error("[gmail-callback] Insert failed:", JSON.stringify(insertError))
+        return NextResponse.redirect(
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?email_error=insert_failed_${insertError.code}`
+        )
+      }
+      console.log("[gmail-callback] insert success")
     }
 
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?email_connected=${encodeURIComponent(userInfo.email)}`
     )
   } catch (err: any) {
-    console.error("Gmail callback error:", err)
+    console.error("[gmail-callback] Unexpected error:", err)
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?email_error=unknown`
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings?email_error=unknown_${err.message?.substring(0, 50)}`
     )
   }
 }

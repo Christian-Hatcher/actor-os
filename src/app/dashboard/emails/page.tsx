@@ -31,19 +31,40 @@ export default function EmailReviewPage() {
   async function fetchPendingReviews() {
     setLoading(true)
 
-    const { data, error } = await supabase
+    // Fetch parsed auditions
+    const { data: parsed, error: parsedError } = await supabase
       .from("parsed_auditions")
-      .select(`
-        *,
-        casting_emails:email_id (*)
-      `)
+      .select("*")
       .eq("needs_review", true)
       .eq("reviewed_by_user", false)
       .order("confidence_score", { ascending: false })
 
-    if (!error && data) {
-      setParsedEntries(data as unknown as ParsedAudition[])
+    if (parsedError) {
+      console.error("Failed to fetch reviews:", parsedError)
+      setLoading(false)
+      return
     }
+
+    // Fetch associated emails
+    const emailIds = (parsed || []).map((p: any) => p.email_id).filter(Boolean)
+    let emailMap: Record<string, any> = {}
+    if (emailIds.length > 0) {
+      const { data: emails } = await supabase
+        .from("casting_emails")
+        .select("*")
+        .in("id", emailIds)
+      if (emails) {
+        emailMap = Object.fromEntries(emails.map((e: any) => [e.id, e]))
+      }
+    }
+
+    // Attach email data to parsed entries
+    const enriched = (parsed || []).map((p: any) => ({
+      ...p,
+      casting_emails: emailMap[p.email_id] || null,
+    }))
+
+    setParsedEntries(enriched as unknown as ParsedAudition[])
     setLoading(false)
   }
 

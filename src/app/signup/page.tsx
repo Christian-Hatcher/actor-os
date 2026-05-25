@@ -31,7 +31,7 @@ export default function SignUpPage() {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push(`/checkout?plan=${plan}`)
+      router.push("/dashboard")
     }
   }
 

@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [connections, setConnections] = useState<EmailConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
+  const [syncPhase, setSyncPhase] = useState("")
   const [syncResult, setSyncResult] = useState<any | null>(null)
 
   // Fetch connections on mount
@@ -64,8 +65,8 @@ export default function SettingsPage() {
       return
     }
 
-    // Encode user_id as base64 for state parameter
-    const state = Buffer.from(session.user.id).toString("base64url")
+    // Pass user_id directly as state — it's a UUID, URL-safe already
+    const state = session.user.id
 
     // Call auth endpoint
     const res = await fetch("/api/gmail/auth")
@@ -81,10 +82,13 @@ export default function SettingsPage() {
   async function handleSync(connectionId?: string) {
     setSyncing(true)
     setSyncResult(null)
+    setSyncPhase("Fetching emails from Gmail...")
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch("/api/gmail/sync", {
+
+      // Step 1: Sync emails from Gmail
+      const syncRes = await fetch("/api/gmail/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,16 +96,47 @@ export default function SettingsPage() {
           connection_id: connectionId,
         }),
       })
+      const syncData = await syncRes.json()
 
-      const data = await res.json()
-      setSyncResult(data)
+      if (syncData.error) {
+        setSyncResult(syncData)
+        return
+      }
 
-      // Refresh connections
+      const inserted = syncData.results?.[0]?.emails_inserted || 0
+      const fetched = syncData.results?.[0]?.emails_fetched || 0
+
+      if (inserted === 0) {
+        setSyncResult({
+          message: `Checked ${fetched} emails — no new casting emails found.`,
+        })
+        fetchConnections()
+        return
+      }
+
+      // Step 2: Parse new emails with AI
+      setSyncPhase(`Parsing ${inserted} new emails with AI...`)
+      const parseRes = await fetch("/api/gmail/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: session?.user?.id,
+          connection_id: connectionId,
+        }),
+      })
+      const parseData = await parseRes.json()
+
+      setSyncResult({
+        message: `Synced ${inserted} emails, parsed ${parseData.parsed || 0}, ${parseData.needs_review || 0} need review.`,
+        details: syncData,
+      })
+
       fetchConnections()
     } catch (err: any) {
       setSyncResult({ error: err.message })
     } finally {
       setSyncing(false)
+      setSyncPhase("")
     }
   }
 
@@ -155,19 +190,24 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {syncResult && (
+            {syncing && syncPhase && (
+              <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                {syncPhase}
+              </div>
+            )}
+
+            {syncResult && !syncing && (
               <div
                 className={`rounded-lg p-3 text-sm ${
                   syncResult.error
                     ? "bg-red-50 text-red-700"
-                    : "bg-blue-50 text-blue-700"
+                    : "bg-green-50 text-green-700"
                 }`}
               >
                 {syncResult.error
                   ? `Sync error: ${syncResult.error}`
-                  : syncResult.results?.[0]
-                  ? `Synced ${syncResult.results[0].emails_inserted} emails, skipped ${syncResult.results[0].emails_skipped}`
-                  : "Sync complete"}
+                  : syncResult.message || "Sync complete"}
               </div>
             )}
 
