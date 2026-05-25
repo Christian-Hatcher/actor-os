@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { PDFExtract } from "pdf-lib"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -225,10 +224,11 @@ export async function POST(request: Request) {
         schedule: analysis.schedule,
       },
     })
-  } catch (err: any) {
+  } catch (err) {
     console.error("Contract analysis error:", err)
+    const message = err instanceof Error ? err.message : "Analysis failed"
     return NextResponse.json(
-      { error: err.message || "Analysis failed" },
+      { error: message },
       { status: 500 }
     )
   }

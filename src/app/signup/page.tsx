@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clapperboard, Loader2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function SignUpPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const plan = searchParams.get("plan") || "monthly"
+  const { signUp } = useAuth()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -24,16 +26,13 @@ export default function SignUpPage() {
     setLoading(true)
     setError("")
 
-    // TODO: Replace with Supabase auth
-    // const { error } = await supabase.auth.signUp({ email, password })
-    // if (error) setError(error.message)
-    // else router.push(`/checkout?plan=${plan}`)
-
-    // Mock success for now
-    setTimeout(() => {
+    const { error } = await signUp(email, password, { full_name: name })
+    if (error) {
+      setError(error.message)
       setLoading(false)
+    } else {
       router.push(`/checkout?plan=${plan}`)
-    }, 1000)
+    }
   }
 
   return (

@@ -42,7 +42,7 @@ export default function EmailReviewPage() {
       .order("confidence_score", { ascending: false })
 
     if (!error && data) {
-      setParsedEntries(data as ParsedAudition[])
+      setParsedEntries(data as unknown as ParsedAudition[])
     }
     setLoading(false)
   }
@@ -75,8 +75,6 @@ export default function EmailReviewPage() {
             location: fields.location,
             compensation: fields.compensation,
             notes: fields.notes || "Imported from email",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
           })
           .select()
           .single()

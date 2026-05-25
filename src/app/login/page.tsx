@@ -2,14 +2,18 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clapperboard, Loader2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get("returnTo") || "/dashboard"
+  const { signIn } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -20,15 +24,13 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
 
-    // TODO: Replace with Supabase auth
-    // const { error } = await supabase.auth.signInWithPassword({ email, password })
-    // if (error) setError(error.message)
-    // else router.push('/dashboard')
-
-    setTimeout(() => {
+    const { error } = await signIn(email, password)
+    if (error) {
+      setError(error.message)
       setLoading(false)
-      router.push("/dashboard")
-    }, 1000)
+    } else {
+      router.push(returnTo)
+    }
   }
 
   return (
@@ -86,7 +88,7 @@ export default function LoginPage() {
             </form>
 
             <p className="text-center text-sm text-muted-foreground mt-4">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link href="/signup" className="text-primary hover:underline">
                 Sign up
               </Link>

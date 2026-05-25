@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
+import Stripe from "stripe"
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: Request) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) {
+    const { user_id } = await request.json()
+
+    if (!user_id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get user's Stripe customer ID
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("stripe_customer_id")
-      .eq("id", session.user.id)
+      .eq("id", user_id)
       .single()
 
     if (!profile?.stripe_customer_id) {
@@ -28,8 +32,9 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ url: portalSession.url })
-  } catch (err: any) {
+  } catch (err) {
     console.error("Portal error:", err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    const message = err instanceof Error ? err.message : "Portal failed"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

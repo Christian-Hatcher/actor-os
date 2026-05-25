@@ -21,7 +21,7 @@ export function useAuditions() {
         .order("created_at", { ascending: false })
 
       if (error) setError(error.message)
-      else setAuditions(data || [])
+      else setAuditions((data || []) as Audition[])
       setLoading(false)
     }
 
@@ -32,19 +32,20 @@ export function useAuditions() {
     const { data: user } = await supabase.auth.getUser()
     const { data, error } = await supabase
       .from("auditions")
-      .insert([{ ...audition, user_id: user.user?.id }])
+      .insert([{ ...audition, user_id: user.user!.id }])
       .select()
       .single()
 
     if (error) throw error
-    setAuditions((prev) => [data, ...prev])
+    setAuditions((prev) => [data as Audition, ...prev])
     return data
   }
 
   async function updateAudition(id: string, updates: Partial<Audition>) {
+    const { user_id: _u, id: _i, created_at: _c, updated_at: _up, ...safeUpdates } = updates
     const { error } = await supabase
       .from("auditions")
-      .update(updates)
+      .update(safeUpdates)
       .eq("id", id)
 
     if (error) throw error

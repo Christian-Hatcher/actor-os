@@ -1,103 +1,133 @@
-     1|export interface Profile {
-     2|  id: string
-     3|  email: string
-     4|  full_name: string | null
-     5|  avatar_url: string | null
-     6|  agency_name: string | null
-     7|  agency_email: string | null
-     8|  subscription_tier: 'free' | 'monthly' | 'yearly'
-     9|  subscription_status: 'active' | 'inactive' | 'cancelled'
-    10|  stripe_customer_id: string | null
-    11|  stripe_subscription_id: string | null
-    12|  created_at: string
-    13|  updated_at: string
-    14|}
-    15|
-    16|export interface Audition {
-    17|  id: string
-    18|  user_id: string
-    19|  project_name: string
-    20|  role_name: string | null
-    21|  casting_director: string | null
-    22|  agency: string | null
-    23|  status: 'submitted' | 'callback' | 'pinned' | 'booked' | 'passed' | 'archived'
-    24|  submitted_date: string | null
-    25|  callback_date: string | null
-    26|  shoot_date: string | null
-    27|  location: string | null
-    28|  notes: string | null
-    29|  self_tape_url: string | null
-    30|  headshot_url: string | null
-    31|  resume_url: string | null
-    32|  compensation: string | null
-    33|  contract_url: string | null
-    34|  created_at: string
-    35|  updated_at: string
-    36|}
-    37|
-    38|export interface SelfTape {
-    39|  id: string
-    40|  user_id: string
-    41|  audition_id: string | null
-    42|  title: string
-    43|  video_url: string
-    44|  thumbnail_url: string | null
-    45|  scene_partner: string | null
-    46|  deadline: string | null
-    47|  submitted: boolean
-    48|  feedback: string | null
-    49|  created_at: string
-    50|}
-    51|
-    52|export interface Contact {
-    53|  id: string
-    54|  user_id: string
-    55|  name: string
-    56|  email: string | null
-    57|  phone: string | null
-    58|  role: string | null
-    59|  company: string | null
-    60|  last_contact_date: string | null
-    61|  notes: string | null
-    62|  priority: number
-    63|  created_at: string
-    64|}
-    65|
-    66|export interface Contract {
-    67|  id: string
-    68|  user_id: string
-    69|  title: string
-    70|  file_url: string
-    71|  status: 'uploaded' | 'analyzing' | 'reviewed' | 'signed'
-    72|  summary: string | null
-    73|  key_clauses: Record<string, unknown> | null
-    74|  red_flags: string[] | null
-    75|  questions: string[] | null
-    76|  analyzed_at: string | null
-    77|  created_at: string
-    78|}
-    79|
-    80|export interface Reminder {
-    81|  id: string
-    82|  user_id: string
-    83|  title: string
-    84|  description: string | null
-    85|  due_date: string
-    86|  type: 'general' | 'audition' | 'self_tape' | 'callback' | 'follow_up' | 'contract'
-    87|  related_id: string | null
-    88|  completed: boolean
-    89|  created_at: string
-    90|}
-    91|
-    92|export interface DashboardStats {
-    93|  total_auditions: number
-    94|  active_callbacks: number
-    95|  booked_jobs: number
-    96|  pending_self_tapes: number
-    97|  upcoming_reminders: number
-    98|  conversion_rate: number
-    99|}
-   100|
+export interface Profile {
+  id: string
+  email: string
+  full_name: string | null
+  avatar_url: string | null
+  agency_name: string | null
+  agency_email: string | null
+  subscription_tier: "free" | "monthly" | "yearly"
+  subscription_status: "active" | "inactive" | "cancelled"
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Audition {
+  id: string
+  user_id: string
+  project_name: string
+  role_name: string | null
+  casting_director: string | null
+  agency: string | null
+  status: "submitted" | "callback" | "pinned" | "booked" | "passed" | "archived"
+  submitted_date: string | null
+  callback_date: string | null
+  shoot_date: string | null
+  location: string | null
+  notes: string | null
+  self_tape_url: string | null
+  headshot_url: string | null
+  resume_url: string | null
+  compensation: string | null
+  contract_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SelfTape {
+  id: string
+  user_id: string
+  audition_id: string | null
+  title: string
+  video_url: string
+  thumbnail_url: string | null
+  scene_partner: string | null
+  deadline: string | null
+  submitted: boolean
+  feedback: string | null
+  created_at: string
+}
+
+export interface Contact {
+  id: string
+  user_id: string
+  name: string
+  email: string | null
+  phone: string | null
+  role: string | null
+  company: string | null
+  last_contact_date: string | null
+  notes: string | null
+  priority: number
+  created_at: string
+}
+
+export interface Contract {
+  id: string
+  user_id: string
+  title: string
+  file_url: string
+  status: "uploaded" | "analyzing" | "reviewed" | "signed"
+  summary: string | null
+  key_clauses: Record<string, unknown> | null
+  red_flags: string[] | null
+  questions: string[] | null
+  analyzed_at: string | null
+  created_at: string
+}
+
+export interface Reminder {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  due_date: string
+  type: "general" | "audition" | "self_tape" | "callback" | "follow_up" | "contract"
+  related_id: string | null
+  completed: boolean
+  created_at: string
+}
+
+export interface DashboardStats {
+  total_auditions: number
+  active_callbacks: number
+  booked_jobs: number
+  pending_self_tapes: number
+  upcoming_reminders: number
+  conversion_rate: number
+}
+
+export interface ParsedAuditionFields {
+  project_name: string | null
+  role_name: string | null
+  casting_director: string | null
+  agency: string | null
+  location: string | null
+  compensation: string | null
+  deadline: string | null
+  shoot_date: string | null
+  callback_date: string | null
+  notes: string | null
+}
+
+export interface ParsedAudition {
+  id: string
+  user_id: string
+  email_id: string
+  source_email_id: string | null
+  audition_id: string | null
+  confidence_score: number
+  parser_version: string
+  extracted_fields: ParsedAuditionFields
+  raw_snippets: string[]
+  needs_review: boolean
+  review_reason: string | null
+  reviewed_by_user: boolean
+  reviewed_at: string | null
+  created_at: string
+  updated_at: string
+}
 
 export interface OutreachLog {
   id: string

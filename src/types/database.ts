@@ -50,6 +50,7 @@ export interface Database {
           stripe_subscription_id?: string | null
           updated_at?: string
         }
+        Relationships: []
       }
       auditions: {
         Row: {
@@ -112,6 +113,7 @@ export interface Database {
           contract_url?: string | null
           updated_at?: string
         }
+        Relationships: []
       }
       self_tapes: {
         Row: {
@@ -127,6 +129,30 @@ export interface Database {
           feedback: string | null
           created_at: string
         }
+        Insert: {
+          id?: string
+          user_id: string
+          audition_id?: string | null
+          title: string
+          video_url: string
+          thumbnail_url?: string | null
+          scene_partner?: string | null
+          deadline?: string | null
+          submitted?: boolean
+          feedback?: string | null
+          created_at?: string
+        }
+        Update: {
+          audition_id?: string | null
+          title?: string
+          video_url?: string
+          thumbnail_url?: string | null
+          scene_partner?: string | null
+          deadline?: string | null
+          submitted?: boolean
+          feedback?: string | null
+        }
+        Relationships: []
       }
       contacts: {
         Row: {
@@ -142,6 +168,30 @@ export interface Database {
           priority: number
           created_at: string
         }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          email?: string | null
+          phone?: string | null
+          role?: string | null
+          company?: string | null
+          last_contact_date?: string | null
+          notes?: string | null
+          priority?: number
+          created_at?: string
+        }
+        Update: {
+          name?: string
+          email?: string | null
+          phone?: string | null
+          role?: string | null
+          company?: string | null
+          last_contact_date?: string | null
+          notes?: string | null
+          priority?: number
+        }
+        Relationships: []
       }
       reminders: {
         Row: {
@@ -174,6 +224,7 @@ export interface Database {
           related_id?: string | null
           completed?: boolean
         }
+        Relationships: []
       }
       contracts: {
         Row: {
@@ -189,6 +240,30 @@ export interface Database {
           analyzed_at: string | null
           created_at: string
         }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          file_url: string
+          status?: string
+          summary?: string | null
+          key_clauses?: Json | null
+          red_flags?: string[] | null
+          questions?: string[] | null
+          analyzed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          title?: string
+          file_url?: string
+          status?: string
+          summary?: string | null
+          key_clauses?: Json | null
+          red_flags?: string[] | null
+          questions?: string[] | null
+          analyzed_at?: string | null
+        }
+        Relationships: []
       }
       outreach_logs: {
         Row: {
@@ -201,6 +276,23 @@ export interface Database {
           follow_up_date: string | null
           created_at: string
         }
+        Insert: {
+          id?: string
+          user_id: string
+          contact_id: string
+          type: string
+          notes?: string | null
+          date: string
+          follow_up_date?: string | null
+          created_at?: string
+        }
+        Update: {
+          type?: string
+          notes?: string | null
+          date?: string
+          follow_up_date?: string | null
+        }
+        Relationships: []
       }
       universities: {
         Row: {
@@ -215,6 +307,29 @@ export interface Database {
           stripe_subscription_id: string | null
           created_at: string
         }
+        Insert: {
+          id?: string
+          name: string
+          department?: string | null
+          contact_name?: string | null
+          contact_email?: string | null
+          license_tier?: string
+          student_count?: number | null
+          active?: boolean
+          stripe_subscription_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          name?: string
+          department?: string | null
+          contact_name?: string | null
+          contact_email?: string | null
+          license_tier?: string
+          student_count?: number | null
+          active?: boolean
+          stripe_subscription_id?: string | null
+        }
+        Relationships: []
       }
       email_connections: {
         Row: {
@@ -233,6 +348,36 @@ export interface Database {
           created_at: string
           updated_at: string
         }
+        Insert: {
+          id?: string
+          user_id: string
+          provider?: string
+          email_address: string
+          display_name?: string | null
+          access_token: string
+          refresh_token: string
+          token_expires_at?: string | null
+          scopes?: string[]
+          is_active?: boolean
+          last_synced_at?: string | null
+          sync_cursor?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          provider?: string
+          email_address?: string
+          display_name?: string | null
+          access_token?: string
+          refresh_token?: string
+          token_expires_at?: string | null
+          scopes?: string[]
+          is_active?: boolean
+          last_synced_at?: string | null
+          sync_cursor?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       casting_emails: {
         Row: {
@@ -254,6 +399,38 @@ export interface Database {
           created_at: string
           updated_at: string
         }
+        Insert: {
+          id?: string
+          user_id: string
+          connection_id: string
+          gmail_message_id: string
+          thread_id?: string | null
+          from_address: string
+          from_name?: string | null
+          to_address: string
+          subject: string
+          body_text?: string | null
+          body_html?: string | null
+          received_at: string
+          is_casting_email?: boolean
+          processing_status?: string
+          parsing_error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          thread_id?: string | null
+          from_address?: string
+          from_name?: string | null
+          subject?: string
+          body_text?: string | null
+          body_html?: string | null
+          is_casting_email?: boolean
+          processing_status?: string
+          parsing_error?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       parsed_auditions: {
         Row: {
@@ -273,6 +450,35 @@ export interface Database {
           created_at: string
           updated_at: string
         }
+        Insert: {
+          id?: string
+          user_id: string
+          email_id: string
+          source_email_id?: string | null
+          audition_id?: string | null
+          confidence_score: number
+          parser_version: string
+          extracted_fields: Json
+          raw_snippets?: string[]
+          needs_review?: boolean
+          review_reason?: string | null
+          reviewed_by_user?: boolean
+          reviewed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          audition_id?: string | null
+          confidence_score?: number
+          extracted_fields?: Json
+          raw_snippets?: string[]
+          needs_review?: boolean
+          review_reason?: string | null
+          reviewed_by_user?: boolean
+          reviewed_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       contract_restrictions: {
         Row: {
@@ -305,6 +511,7 @@ export interface Database {
           expiry_date?: string | null
           is_active?: boolean
         }
+        Relationships: []
       }
       contract_analysis_logs: {
         Row: {
@@ -316,7 +523,32 @@ export interface Database {
           processing_time_ms: number | null
           created_at: string
         }
+        Insert: {
+          id?: string
+          contract_id: string
+          analysis_type: string
+          model_used: string
+          raw_response?: string | null
+          processing_time_ms?: number | null
+          created_at?: string
+        }
+        Update: {
+          analysis_type?: string
+          model_used?: string
+          raw_response?: string | null
+          processing_time_ms?: number | null
+        }
+        Relationships: []
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
     }
   }
 }

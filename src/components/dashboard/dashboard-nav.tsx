@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
-  Film,
   Video,
   FileText,
   Users,
@@ -13,6 +12,7 @@ import {
   GraduationCap,
   Mail,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const navItems = [
   {
