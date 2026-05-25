@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { llm } from "@/lib/llm"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -326,6 +327,45 @@ export async function POST(request: Request) {
           console.error("Failed to insert email:", insertError)
         } else {
           inserted++
+
+          // Auto-upsert sender into contacts table
+          const senderEmail = fromAddress.match(/<(.+?)>/)?.[1] || fromAddress.trim()
+          if (senderEmail && senderEmail.includes("@")) {
+            const emailDomain = senderEmail.split("@")[1]
+            const companyName = emailDomain
+              .split(".")[0]
+              .split("-")
+              .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join("-")
+
+            const { data: existingContact } = await supabaseAdmin
+              .from("contacts")
+              .select("id")
+              .eq("user_id", connection.user_id)
+              .eq("email", senderEmail)
+              .single()
+
+            if (existingContact) {
+              // Update last_contact_date if contact already exists
+              await supabaseAdmin
+                .from("contacts")
+                .update({ last_contact_date: receivedAt.substring(0, 10) })
+                .eq("id", existingContact.id)
+            } else {
+              // Insert new contact
+              await supabaseAdmin
+                .from("contacts")
+                .insert({
+                  user_id: connection.user_id,
+                  name: fromName,
+                  email: senderEmail,
+                  company: companyName,
+                  role: isCasting ? "Casting" : null,
+                  priority: 3,
+                  last_contact_date: receivedAt.substring(0, 10),
+                })
+            }
+          }
         }
       }
 

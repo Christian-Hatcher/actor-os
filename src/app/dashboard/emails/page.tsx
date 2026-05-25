@@ -1,21 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
 import { supabase } from "@/lib/supabase"
 import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Eye,
   Loader2,
   Mail,
-  ArrowRight,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
 } from "lucide-react"
 import type { ParsedAudition } from "@/types"
 
@@ -23,15 +24,12 @@ export default function EmailReviewPage() {
   const [parsedEntries, setParsedEntries] = useState<ParsedAudition[]>([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState<Set<string>>(new Set())
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
+  const hasFetched = useRef(false)
 
-  useEffect(() => {
-    fetchPendingReviews()
-  }, [])
-
-  async function fetchPendingReviews() {
+  const fetchPendingReviews = useCallback(async () => {
     setLoading(true)
 
-    // Fetch parsed auditions
     const { data: parsed, error: parsedError } = await supabase
       .from("parsed_auditions")
       .select("*")
@@ -45,7 +43,6 @@ export default function EmailReviewPage() {
       return
     }
 
-    // Fetch associated emails
     const emailIds = (parsed || []).map((p: any) => p.email_id).filter(Boolean)
     let emailMap: Record<string, any> = {}
     if (emailIds.length > 0) {
@@ -58,7 +55,6 @@ export default function EmailReviewPage() {
       }
     }
 
-    // Attach email data to parsed entries
     const enriched = (parsed || []).map((p: any) => ({
       ...p,
       casting_emails: emailMap[p.email_id] || null,
@@ -66,6 +62,25 @@ export default function EmailReviewPage() {
 
     setParsedEntries(enriched as unknown as ParsedAudition[])
     setLoading(false)
+    hasFetched.current = true
+  }, [])
+
+  useEffect(() => {
+    if (!hasFetched.current) {
+      fetchPendingReviews()
+    }
+  }, [fetchPendingReviews])
+
+  function toggleExpanded(id: string) {
+    setExpandedCards((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
   }
 
   async function handleApprove(parsedId: string, audId?: string) {
@@ -77,13 +92,11 @@ export default function EmailReviewPage() {
 
       const fields = entry.extracted_fields
 
-      // Check if audition already created
       if (!audId && entry.audition_id) {
         audId = entry.audition_id
       }
 
       if (!audId) {
-        // Create the audition
         const { data: audition, error: audError } = await supabase
           .from("auditions")
           .insert({
@@ -105,7 +118,6 @@ export default function EmailReviewPage() {
         }
       }
 
-      // Update parsed entry
       await supabase
         .from("parsed_auditions")
         .update({
@@ -117,7 +129,6 @@ export default function EmailReviewPage() {
         })
         .eq("id", parsedId)
 
-      // Update email status
       if (entry.email_id) {
         await supabase
           .from("casting_emails")
@@ -128,7 +139,7 @@ export default function EmailReviewPage() {
           .eq("id", entry.email_id)
       }
 
-      fetchPendingReviews()
+      setParsedEntries((prev) => prev.filter((e) => e.id !== parsedId))
     } catch (err) {
       console.error("Approve failed:", err)
     } finally {
@@ -140,24 +151,37 @@ export default function EmailReviewPage() {
     }
   }
 
-  async function handleReject(parsedId: string) {
+  async function handleNeedsResponse(parsedId: string) {
     setProcessing((prev) => new Set(prev).add(parsedId))
 
     try {
+      const entry = parsedEntries.find((e) => e.id === parsedId)
+      if (!entry) return
+
       await supabase
         .from("parsed_auditions")
         .update({
           needs_review: false,
           reviewed_by_user: true,
           reviewed_at: new Date().toISOString(),
-          review_reason: "User rejected",
+          review_reason: "Needs response",
           updated_at: new Date().toISOString(),
         })
         .eq("id", parsedId)
 
-      fetchPendingReviews()
+      if (entry.email_id) {
+        await supabase
+          .from("casting_emails")
+          .update({
+            processing_status: "needs_response",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", entry.email_id)
+      }
+
+      setParsedEntries((prev) => prev.filter((e) => e.id !== parsedId))
     } catch (err) {
-      console.error("Reject failed:", err)
+      console.error("Needs response failed:", err)
     } finally {
       setProcessing((prev) => {
         const next = new Set(prev)
@@ -167,12 +191,53 @@ export default function EmailReviewPage() {
     }
   }
 
-  async function handleApproveAll() {
-    if (!confirm(`Approve all ${parsedEntries.length} entries?`)) return
+  async function handleSkip(parsedId: string) {
+    setProcessing((prev) => new Set(prev).add(parsedId))
 
-    for (const entry of parsedEntries) {
-      await handleApprove(entry.id, entry.audition_id || undefined)
+    try {
+      await supabase
+        .from("parsed_auditions")
+        .update({
+          needs_review: false,
+          reviewed_by_user: true,
+          reviewed_at: new Date().toISOString(),
+          review_reason: "User skipped",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", parsedId)
+
+      setParsedEntries((prev) => prev.filter((e) => e.id !== parsedId))
+    } catch (err) {
+      console.error("Skip failed:", err)
+    } finally {
+      setProcessing((prev) => {
+        const next = new Set(prev)
+        next.delete(parsedId)
+        return next
+      })
     }
+  }
+
+  function confidenceBadge(score: number) {
+    if (score >= 70) {
+      return (
+        <Badge className="bg-green-100 text-green-800 text-xs">
+          {score}%
+        </Badge>
+      )
+    }
+    if (score >= 40) {
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+          {score}%
+        </Badge>
+      )
+    }
+    return (
+      <Badge className="bg-red-100 text-red-800 text-xs">
+        {score}%
+      </Badge>
+    )
   }
 
   if (loading) {
@@ -190,17 +255,20 @@ export default function EmailReviewPage() {
     <DashboardShell>
       <DashboardHeader
         heading="Review Queue"
-        text="Review and approve audition data extracted from your casting emails."
+        text={`${parsedEntries.length} email${parsedEntries.length === 1 ? "" : "s"} to review`}
       >
-        {parsedEntries.length > 1 && (
-          <Button variant="outline" onClick={handleApproveAll}>
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Approve All ({parsedEntries.length})
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchPendingReviews}
+          disabled={loading}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
       </DashboardHeader>
 
-      <div className="grid gap-4">
+      <div className="mx-auto w-full max-w-lg space-y-3 px-1">
         {parsedEntries.length === 0 && (
           <Card>
             <CardContent className="flex flex-col items-center py-12 text-center">
@@ -218,131 +286,182 @@ export default function EmailReviewPage() {
           const fields = entry.extracted_fields
           const email = (entry as any).casting_emails
           const isProcessing = processing.has(entry.id)
+          const isExpanded = expandedCards.has(entry.id)
+
+          const hasDetailFields =
+            fields.casting_director ||
+            fields.location ||
+            fields.compensation ||
+            fields.shoot_date ||
+            fields.callback_date ||
+            fields.notes
 
           return (
-            <Card key={entry.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <p className="font-medium text-sm">
-                        {email?.subject || "Unknown Subject"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        Confidence {entry.confidence_score}%
-                      </Badge>
-                      <Badge
-                        className={
-                          entry.confidence_score >= 70
-                            ? "bg-green-100 text-green-800"
-                            : entry.confidence_score >= 40
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }
-                      >
-                        {entry.confidence_score >= 70
-                          ? "High confidence"
-                          : entry.confidence_score >= 40
-                          ? "Medium confidence"
-                          : "Low confidence"}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
+            <Card key={entry.id} className="overflow-hidden">
+              <CardContent className="p-3 space-y-2">
+                {/* Subject line + confidence */}
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-sm leading-snug line-clamp-2 min-w-0">
+                    {email?.subject || "Unknown Subject"}
+                  </p>
+                  {confidenceBadge(entry.confidence_score)}
+                </div>
+
+                {/* From + date row */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="truncate">
+                    {email?.from_name || "Unknown sender"}
+                  </span>
+                  <span className="whitespace-nowrap ml-2">
                     {email?.received_at
                       ? new Date(email.received_at).toLocaleDateString()
                       : ""}
-                  </div>
+                  </span>
                 </div>
 
+                {/* Review reason */}
                 {entry.review_reason && (
-                  <div className="flex items-center gap-2 mt-2 text-sm text-yellow-700 bg-yellow-50 rounded p-2">
-                    <AlertTriangle className="h-4 w-4" />
+                  <div className="flex items-center gap-1.5 text-xs text-yellow-700 bg-yellow-50 rounded px-2 py-1">
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
                     {entry.review_reason}
                   </div>
                 )}
-              </CardHeader>
 
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                {/* Key fields - 2 col on mobile */}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
                   {fields.project_name && (
                     <div>
-                      <p className="text-muted-foreground">Project</p>
-                      <p className="font-medium">{fields.project_name}</p>
+                      <span className="text-muted-foreground text-xs">Project</span>
+                      <p className="font-medium leading-tight text-sm truncate">{fields.project_name}</p>
                     </div>
                   )}
                   {fields.role_name && (
                     <div>
-                      <p className="text-muted-foreground">Role</p>
-                      <p className="font-medium">{fields.role_name}</p>
+                      <span className="text-muted-foreground text-xs">Role</span>
+                      <p className="font-medium leading-tight text-sm truncate">{fields.role_name}</p>
                     </div>
                   )}
                   {fields.agency && (
                     <div>
-                      <p className="text-muted-foreground">Agency</p>
-                      <p className="font-medium">{fields.agency}</p>
-                    </div>
-                  )}
-                  {fields.casting_director && (
-                    <div>
-                      <p className="text-muted-foreground">Casting Director</p>
-                      <p className="font-medium">{fields.casting_director}</p>
-                    </div>
-                  )}
-                  {fields.location && (
-                    <div>
-                      <p className="text-muted-foreground">Location</p>
-                      <p className="font-medium">{fields.location}</p>
-                    </div>
-                  )}
-                  {fields.compensation && (
-                    <div>
-                      <p className="text-muted-foreground">Compensation</p>
-                      <p className="font-medium">{fields.compensation}</p>
+                      <span className="text-muted-foreground text-xs">Agency</span>
+                      <p className="font-medium leading-tight text-sm truncate">{fields.agency}</p>
                     </div>
                   )}
                   {fields.deadline && (
                     <div>
-                      <p className="text-muted-foreground">Deadline</p>
-                      <p className="font-medium text-red-600">{fields.deadline}</p>
+                      <span className="text-muted-foreground text-xs">Deadline</span>
+                      <p className="font-medium leading-tight text-sm text-red-600 truncate">
+                        {fields.deadline}
+                      </p>
                     </div>
                   )}
                 </div>
 
-                {fields.notes && (
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Notes</p>
-                    <p>{fields.notes}</p>
-                  </div>
+                {/* Expandable details */}
+                {hasDetailFields && (
+                  <>
+                    <button
+                      onClick={() => toggleExpanded(entry.id)}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                      {isExpanded ? "Less" : "More"}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm border-t pt-2">
+                        {fields.casting_director && (
+                          <div>
+                            <span className="text-muted-foreground text-xs">CD</span>
+                            <p className="font-medium leading-tight truncate">
+                              {fields.casting_director}
+                            </p>
+                          </div>
+                        )}
+                        {fields.location && (
+                          <div>
+                            <span className="text-muted-foreground text-xs">Location</span>
+                            <p className="font-medium leading-tight truncate">{fields.location}</p>
+                          </div>
+                        )}
+                        {fields.compensation && (
+                          <div>
+                            <span className="text-muted-foreground text-xs">Pay</span>
+                            <p className="font-medium leading-tight truncate">
+                              {fields.compensation}
+                            </p>
+                          </div>
+                        )}
+                        {fields.shoot_date && (
+                          <div>
+                            <span className="text-muted-foreground text-xs">Shoot</span>
+                            <p className="font-medium leading-tight truncate">
+                              {fields.shoot_date}
+                            </p>
+                          </div>
+                        )}
+                        {fields.callback_date && (
+                          <div>
+                            <span className="text-muted-foreground text-xs">Callback</span>
+                            <p className="font-medium leading-tight truncate">
+                              {fields.callback_date}
+                            </p>
+                          </div>
+                        )}
+                        {fields.notes && (
+                          <div className="col-span-2">
+                            <span className="text-muted-foreground text-xs">Notes</span>
+                            <p className="leading-tight text-sm line-clamp-3">{fields.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
 
-                <div className="flex gap-2 pt-2">
+                {/* Actions - stack vertically on tiny screens */}
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
                   <Button
-                    onClick={() => handleApprove(entry.id, entry.audition_id || undefined)}
+                    size="sm"
+                    onClick={() =>
+                      handleApprove(entry.id, entry.audition_id || undefined)
+                    }
                     disabled={isProcessing}
-                    className="flex-1"
+                    className="bg-green-600 hover:bg-green-700 text-xs h-8"
                   >
                     {isProcessing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Create Audition
+                        <CheckCircle className="mr-1 h-3 w-3" />
+                        Add
                       </>
                     )}
                   </Button>
 
                   <Button
-                    variant="outline"
-                    onClick={() => handleReject(entry.id)}
+                    size="sm"
+                    onClick={() => handleNeedsResponse(entry.id)}
                     disabled={isProcessing}
-                    className="flex-1"
+                    className="bg-blue-600 hover:bg-blue-700 text-xs h-8"
                   >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Not an Audition
+                    <MessageSquare className="mr-1 h-3 w-3" />
+                    Reply
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSkip(entry.id)}
+                    disabled={isProcessing}
+                    className="text-xs h-8"
+                  >
+                    <XCircle className="mr-1 h-3 w-3" />
+                    Skip
                   </Button>
                 </div>
               </CardContent>

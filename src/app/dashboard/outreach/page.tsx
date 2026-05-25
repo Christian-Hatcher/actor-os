@@ -1,60 +1,40 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Plus, Mail, Phone, Calendar, Star, Building2 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import { Plus, Mail, Phone, Calendar, Star, Building2, Loader2, Users } from "lucide-react"
 import type { Contact, OutreachLog } from "@/types"
 
-const MOCK_CONTACTS: Contact[] = [
-  {
-    id: "1",
-    user_id: "user1",
-    name: "Cyrus Sethna",
-    email: "cnsethna@soliconsultants.com",
-    phone: null,
-    role: "Agent",
-    company: "Soli Consultants",
-    last_contact_date: "2026-05-19",
-    notes: "Godzilla lead. Active negotiations ongoing.",
-    priority: 5,
-    created_at: "2026-05-18",
-  },
-  {
-    id: "2",
-    user_id: "user1",
-    name: "Yukimi Goto",
-    email: "yukimi.goto@liliana.co.jp",
-    phone: null,
-    role: "Casting Coordinator",
-    company: "Liliana Models",
-    last_contact_date: "2026-05-20",
-    notes: "Primary casting contact. Sends daily opportunities.",
-    priority: 4,
-    created_at: "2026-03-01",
-  },
-  {
-    id: "3",
-    user_id: "user1",
-    name: "BAYSIDE Casting",
-    email: "info@bay-side.biz",
-    phone: null,
-    role: "Casting Agency",
-    company: "BAYSIDE",
-    last_contact_date: "2026-05-09",
-    notes: "LOST10 callback scheduled. Keep warm.",
-    priority: 5,
-    created_at: "2024-10-01",
-  },
-]
-
 export default function OutreachPage() {
-  const [contacts] = useState<Contact[]>(MOCK_CONTACTS)
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+
+  useEffect(() => {
+    async function fetchContacts() {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("*")
+        .order("priority", { ascending: false })
+        .order("last_contact_date", { ascending: false })
+
+      if (error) {
+        console.error("Failed to fetch contacts:", error)
+      } else {
+        setContacts((data || []) as Contact[])
+      }
+      setLoading(false)
+    }
+
+    fetchContacts()
+  }, [])
 
   const filtered = contacts.filter(
     (c) =>
@@ -83,66 +63,110 @@ export default function OutreachPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((contact) => (
-          <Card key={contact.id}>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-base">{contact.name}</CardTitle>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Building2 className="h-3 w-3" />
-                    {contact.company}
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                    <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                  </div>
+                  <div className="h-3 w-12 bg-muted animate-pulse rounded" />
+                </div>
+                <div className="h-5 w-16 bg-muted animate-pulse rounded mt-2" />
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-36 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-40 bg-muted animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filtered.length === 0 && contacts.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center py-12 text-center">
+            <Users className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">No contacts yet</p>
+            <p className="text-sm text-muted-foreground max-w-md">
+              Contacts will appear here automatically when you sync your Gmail, or you can add them manually.
+            </p>
+          </CardContent>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center py-12 text-center">
+            <Users className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">No matching contacts</p>
+            <p className="text-sm text-muted-foreground">
+              Try a different search term.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((contact) => (
+            <Card key={contact.id}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-base">{contact.name}</CardTitle>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Building2 className="h-3 w-3" />
+                      {contact.company}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    {Array.from({ length: contact.priority }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className="h-3 w-3 fill-yellow-400 text-yellow-400"
+                      />
+                    ))}
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  {Array.from({ length: contact.priority }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-3 w-3 fill-yellow-400 text-yellow-400"
-                    />
-                  ))}
-                </div>
-              </div>
-              <Badge variant="outline" className="mt-2">{contact.role}</Badge>
-            </CardHeader>
+                <Badge variant="outline" className="mt-2">{contact.role}</Badge>
+              </CardHeader>
 
-            <CardContent className="grid gap-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="truncate">{contact.email}</span>
-              </div>
-
-              {contact.phone && (
+              <CardContent className="grid gap-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{contact.phone}</span>
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">{contact.email}</span>
                 </div>
-              )}
 
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>Last contact: {contact.last_contact_date || "Never"}</span>
-              </div>
+                {contact.phone && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>{contact.phone}</span>
+                  </div>
+                )}
 
-              {contact.notes && (
-                <p className="text-sm text-muted-foreground">{contact.notes}</p>
-              )}
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span>Last contact: {contact.last_contact_date || "Never"}</span>
+                </div>
 
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Mail className="mr-1 h-3 w-3" />
-                  Email
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Calendar className="mr-1 h-3 w-3" />
-                  Log
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                {contact.notes && (
+                  <p className="text-sm text-muted-foreground">{contact.notes}</p>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Mail className="mr-1 h-3 w-3" />
+                    Email
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Calendar className="mr-1 h-3 w-3" />
+                    Log
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </DashboardShell>
   )
 }
