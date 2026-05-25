@@ -26,6 +26,7 @@ function parseCastingEmail(
   shoot_date: string | null
   callback_date: string | null
   notes: string | null
+  summary: string | null
   confidence: number
 } {
   const result = {
@@ -39,6 +40,7 @@ function parseCastingEmail(
     shoot_date: null as string | null,
     callback_date: null as string | null,
     notes: null as string | null,
+    summary: null as string | null,
     confidence: 0,
   }
 
@@ -183,6 +185,7 @@ Respond with ONLY valid JSON (no markdown, no explanation):
   "shoot_date": "string or null",
   "callback_date": "string or null",
   "notes": "brief summary of key details, string or null",
+  "summary": "1-2 sentence plain-English summary of what this email is about. Lead with compensation if mentioned. Example: '$500/day commercial shoot for Toyota. Casting director needs self-tape by Friday.'",
   "is_casting_email": true/false,
   "confidence": 0-100
 }
@@ -210,6 +213,7 @@ For Japanese emails, translate field values to English.`
       shoot_date: parsed.shoot_date || null,
       callback_date: parsed.callback_date || null,
       notes: parsed.notes || null,
+      summary: parsed.summary || null,
       confidence: parsed.is_casting_email === false ? 0 : (parsed.confidence || 50),
     }
   } catch (err) {
@@ -345,6 +349,7 @@ export async function POST(request: Request) {
               shoot_date: parsed.shoot_date,
               callback_date: parsed.callback_date,
               notes: parsed.notes,
+              summary: parsed.summary,
             }),
             raw_snippets: [],
             needs_review: needsReview || !auto_create,

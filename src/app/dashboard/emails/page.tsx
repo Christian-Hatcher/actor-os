@@ -319,6 +319,13 @@ export default function EmailReviewPage() {
                   </span>
                 </div>
 
+                {/* Summary */}
+                {fields.summary && (
+                  <p className="text-sm text-muted-foreground leading-snug">
+                    {fields.summary}
+                  </p>
+                )}
+
                 {/* Review reason */}
                 {entry.review_reason && (
                   <div className="flex items-center gap-1.5 text-xs text-yellow-700 bg-yellow-50 rounded px-2 py-1">

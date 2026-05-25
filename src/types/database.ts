@@ -540,6 +540,45 @@ export interface Database {
         }
         Relationships: []
       }
+      actor_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          priorities: Json
+          min_compensation: string | null
+          preferred_project_types: string[]
+          preferred_locations: string[]
+          willing_to_travel: boolean
+          career_goal: string | null
+          bio_context: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          priorities?: Json
+          min_compensation?: string | null
+          preferred_project_types?: string[]
+          preferred_locations?: string[]
+          willing_to_travel?: boolean
+          career_goal?: string | null
+          bio_context?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          priorities?: Json
+          min_compensation?: string | null
+          preferred_project_types?: string[]
+          preferred_locations?: string[]
+          willing_to_travel?: boolean
+          career_goal?: string | null
+          bio_context?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -109,6 +109,7 @@ export interface ParsedAuditionFields {
   shoot_date: string | null
   callback_date: string | null
   notes: string | null
+  summary: string | null
 }
 
 export interface ParsedAudition {
@@ -125,6 +126,29 @@ export interface ParsedAudition {
   review_reason: string | null
   reviewed_by_user: boolean
   reviewed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ActorPreferences {
+  id: string
+  user_id: string
+  // What matters most — ordered by importance (1 = highest)
+  priorities: {
+    compensation: number      // 1-5 ranking
+    experience: number        // 1-5 ranking
+    networking: number        // 1-5 ranking
+    project_type: number      // 1-5 ranking (film, commercial, TV, etc.)
+    location_flexibility: number // 1-5 ranking
+  }
+  // Filters
+  min_compensation: string | null       // e.g. "$200/day", "any"
+  preferred_project_types: string[]     // e.g. ["commercial", "film", "tv", "theater", "voice_over", "modeling"]
+  preferred_locations: string[]         // e.g. ["Tokyo", "Yokohama", "Remote"]
+  willing_to_travel: boolean
+  // Career stage context
+  career_goal: "building_experience" | "earning_income" | "building_network" | "all_opportunities" | null
+  bio_context: string | null           // Free text: "I'm a student actor looking for..." helps AI understand
   created_at: string
   updated_at: string
 }

@@ -18,7 +18,9 @@ import {
   AlertTriangle,
   ExternalLink,
   Trash2,
+  Target,
 } from "lucide-react"
+import type { ActorPreferences } from "@/types"
 
 interface EmailConnection {
   id: string
@@ -40,9 +42,31 @@ export default function SettingsPage() {
   const [syncPhase, setSyncPhase] = useState("")
   const [syncResult, setSyncResult] = useState<any | null>(null)
 
-  // Fetch connections on mount
+  // Preferences state
+  const defaultPreferences = {
+    career_goal: "all_opportunities" as ActorPreferences["career_goal"],
+    priorities: {
+      compensation: 1,
+      experience: 2,
+      networking: 3,
+      project_type: 4,
+      location_flexibility: 5,
+    },
+    preferred_project_types: [] as string[],
+    min_compensation: "",
+    preferred_locations: "",
+    willing_to_travel: false,
+    bio_context: "",
+  }
+  const [prefs, setPrefs] = useState(defaultPreferences)
+  const [prefsSaving, setPrefsSaving] = useState(false)
+  const [prefsSaved, setPrefsSaved] = useState(false)
+  const [prefsError, setPrefsError] = useState<string | null>(null)
+
+  // Fetch connections + preferences on mount
   useEffect(() => {
     fetchConnections()
+    fetchPreferences()
   }, [])
 
   async function fetchConnections() {
@@ -55,6 +79,73 @@ export default function SettingsPage() {
       setConnections(data as EmailConnection[])
     }
     setLoading(false)
+  }
+
+  async function fetchPreferences() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    const { data, error } = await supabase
+      .from("actor_preferences")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .single()
+
+    if (!error && data) {
+      setPrefs({
+        career_goal: (data.career_goal as typeof defaultPreferences.career_goal) || "all_opportunities",
+        priorities: (data.priorities as typeof defaultPreferences.priorities) || defaultPreferences.priorities,
+        preferred_project_types: data.preferred_project_types || [],
+        min_compensation: data.min_compensation || "",
+        preferred_locations: Array.isArray(data.preferred_locations)
+          ? data.preferred_locations.join(", ")
+          : "",
+        willing_to_travel: data.willing_to_travel || false,
+        bio_context: data.bio_context || "",
+      })
+    }
+  }
+
+  async function savePreferences() {
+    setPrefsSaving(true)
+    setPrefsSaved(false)
+    setPrefsError(null)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      setPrefsError("Please log in first")
+      setPrefsSaving(false)
+      return
+    }
+
+    const locations = prefs.preferred_locations
+      .split(",")
+      .map((l) => l.trim())
+      .filter(Boolean)
+
+    const payload = {
+      user_id: session.user.id,
+      career_goal: prefs.career_goal,
+      priorities: prefs.priorities,
+      preferred_project_types: prefs.preferred_project_types,
+      min_compensation: prefs.min_compensation || null,
+      preferred_locations: locations,
+      willing_to_travel: prefs.willing_to_travel,
+      bio_context: prefs.bio_context || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { error } = await supabase
+      .from("actor_preferences")
+      .upsert(payload, { onConflict: "user_id" })
+
+    if (error) {
+      setPrefsError(error.message)
+    } else {
+      setPrefsSaved(true)
+      setTimeout(() => setPrefsSaved(false), 3000)
+    }
+    setPrefsSaving(false)
   }
 
   async function handleConnectGmail() {
@@ -278,6 +369,241 @@ export default function SettingsPage() {
               audition and self-tape emails. We never send emails or
               delete anything.
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Audition Preferences */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Audition Preferences</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Tell us what matters to you so we can prioritize your casting emails.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {prefsSaved && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                <CheckCircle className="h-4 w-4" />
+                Preferences saved successfully.
+              </div>
+            )}
+
+            {prefsError && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                <AlertTriangle className="h-4 w-4" />
+                {prefsError}
+              </div>
+            )}
+
+            {/* Career Goal */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Career Goal</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "building_experience", label: "Building Experience", desc: "As many auditions as possible" },
+                  { value: "earning_income", label: "Earning Income", desc: "Show me the money first" },
+                  { value: "building_network", label: "Building Network", desc: "Connections matter most" },
+                  { value: "all_opportunities", label: "All Opportunities", desc: "Show me everything" },
+                ].map((goal) => (
+                  <button
+                    key={goal.value}
+                    type="button"
+                    onClick={() =>
+                      setPrefs((p) => ({
+                        ...p,
+                        career_goal: goal.value as ActorPreferences["career_goal"],
+                      }))
+                    }
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      prefs.career_goal === goal.value
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{goal.label}</p>
+                    <p className="text-xs text-muted-foreground">{goal.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Priority Rankings */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Priority Rankings</label>
+              <p className="text-xs text-muted-foreground">
+                Rank each factor from 1 (most important) to 5 (least important).
+              </p>
+              <div className="space-y-2">
+                {[
+                  { key: "compensation", label: "Compensation" },
+                  { key: "experience", label: "Experience" },
+                  { key: "networking", label: "Networking" },
+                  { key: "project_type", label: "Project Type" },
+                  { key: "location_flexibility", label: "Location Flexibility" },
+                ].map((item) => (
+                  <div
+                    key={item.key}
+                    className="flex items-center justify-between rounded-lg border px-3 py-2"
+                  >
+                    <span className="text-sm">{item.label}</span>
+                    <select
+                      value={prefs.priorities[item.key as keyof typeof prefs.priorities]}
+                      onChange={(e) =>
+                        setPrefs((p) => ({
+                          ...p,
+                          priorities: {
+                            ...p.priorities,
+                            [item.key]: parseInt(e.target.value),
+                          },
+                        }))
+                      }
+                      className="h-8 w-16 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Project Types */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Preferred Project Types</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "commercial", label: "Commercial" },
+                  { value: "film", label: "Film" },
+                  { value: "tv", label: "TV" },
+                  { value: "theater", label: "Theater" },
+                  { value: "voice_over", label: "Voice Over" },
+                  { value: "modeling", label: "Modeling" },
+                ].map((type) => {
+                  const selected = prefs.preferred_project_types.includes(type.value)
+                  return (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() =>
+                        setPrefs((p) => ({
+                          ...p,
+                          preferred_project_types: selected
+                            ? p.preferred_project_types.filter((t) => t !== type.value)
+                            : [...p.preferred_project_types, type.value],
+                        }))
+                      }
+                      className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                        selected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border hover:bg-muted/50"
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Minimum Compensation */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Minimum Compensation</label>
+              <input
+                type="text"
+                value={prefs.min_compensation}
+                onChange={(e) =>
+                  setPrefs((p) => ({ ...p, min_compensation: e.target.value }))
+                }
+                placeholder="e.g. $200/day or leave blank for any"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+
+            {/* Preferred Locations */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Preferred Locations</label>
+              <input
+                type="text"
+                value={prefs.preferred_locations}
+                onChange={(e) =>
+                  setPrefs((p) => ({ ...p, preferred_locations: e.target.value }))
+                }
+                placeholder="e.g. Tokyo, Yokohama, Remote"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+
+            {/* Willing to Travel */}
+            <div className="flex items-center justify-between rounded-lg border px-3 py-3">
+              <div>
+                <p className="text-sm font-medium">Willing to Travel</p>
+                <p className="text-xs text-muted-foreground">
+                  Consider opportunities outside your preferred locations
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={prefs.willing_to_travel}
+                onClick={() =>
+                  setPrefs((p) => ({
+                    ...p,
+                    willing_to_travel: !p.willing_to_travel,
+                  }))
+                }
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                  prefs.willing_to_travel ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                    prefs.willing_to_travel ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            <Separator />
+
+            {/* About You */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">About You</label>
+              <textarea
+                value={prefs.bio_context}
+                onChange={(e) =>
+                  setPrefs((p) => ({ ...p, bio_context: e.target.value }))
+                }
+                placeholder="Tell us about your career goals so we can better prioritize your emails. E.g., 'I'm a university student looking for commercial experience...'"
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+
+            <Button
+              onClick={savePreferences}
+              disabled={prefsSaving}
+              className="w-full"
+            >
+              {prefsSaving ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Preferences"
+              )}
+            </Button>
           </CardContent>
         </Card>
 
