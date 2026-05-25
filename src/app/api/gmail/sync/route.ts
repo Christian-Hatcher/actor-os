@@ -353,7 +353,7 @@ export async function POST(request: Request) {
                 .eq("id", existingContact.id)
             } else {
               // Insert new contact
-              await supabaseAdmin
+              const { data: newContact } = await supabaseAdmin
                 .from("contacts")
                 .insert({
                   user_id: connection.user_id,
@@ -364,6 +364,27 @@ export async function POST(request: Request) {
                   priority: 3,
                   last_contact_date: receivedAt.substring(0, 10),
                 })
+                .select("id")
+                .single()
+
+              // Fire-and-forget: generate a 1-sentence description via LLM
+              if (newContact) {
+                ;(async () => {
+                  try {
+                    const desc = await llm("low", [
+                      { role: "user", content: `Write a 1-sentence professional description of this contact based on what we know. Name: ${fromName}. Email domain: ${senderEmail.split("@")[1]}. Subject of their email: ${subject}. Keep it under 20 words.` },
+                    ], 100)
+                    if (desc.content) {
+                      await supabaseAdmin
+                        .from("contacts")
+                        .update({ notes: desc.content.trim() })
+                        .eq("id", newContact.id)
+                    }
+                  } catch (e) {
+                    console.error("LLM contact description failed:", e)
+                  }
+                })()
+              }
             }
           }
         }
