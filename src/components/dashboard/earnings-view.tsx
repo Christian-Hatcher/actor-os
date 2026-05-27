@@ -7,9 +7,12 @@ import { useAuth } from "@/hooks/use-auth"
 import { useAuditions } from "@/hooks/use-data"
 import { useEarnings, type EarningsRange } from "@/hooks/use-earnings"
 import { EarningsChart } from "./earnings-chart"
+import { TaxKeeper } from "./tax-keeper"
 import { formatYen, formatYenCompact, isActiveAudition } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Audition } from "@/types"
+
+type EarningsTab = "overview" | "goal" | "tax"
 
 const RANGES: EarningsRange[] = ["3M", "6M", "YTD"]
 
@@ -95,7 +98,7 @@ export function EarningsView() {
   const { profile } = useAuth()
   const { auditions, loading } = useAuditions()
   const [range, setRange] = useState<EarningsRange>("6M")
-  const [goalMode, setGoalMode] = useState(false)
+  const [tab, setTab] = useState<EarningsTab>("overview")
 
   const { buckets, banked, potential, deltaPct, stats, breakdown, monthLabel } = useEarnings(
     auditions,
@@ -119,19 +122,33 @@ export function EarningsView() {
           <ChevronLeft className="size-3.5" /> Dashboard
         </Link>
         <div className="flex items-center gap-2">
-          {profile && (yearlyGoal > 0 || true) && (
-            <button
-              type="button"
-              onClick={() => setGoalMode((g) => !g)}
-              className={cn(
-                "font-mono rounded-[30px] border px-3 py-1.5 text-[10px] uppercase tracking-[0.1em]",
-                goalMode ? "border-amber bg-amber/10 text-amber" : "border-rule text-paper-dim",
-              )}
-            >
-              Goal
-            </button>
-          )}
-          {!goalMode && (
+          {/* Tab pills: Overview / Goal / Tax */}
+          <div className="inline-flex rounded-[30px] border border-rule bg-white/[0.02] p-[3px]">
+            {([
+              { id: "overview", label: "Overview" },
+              { id: "goal", label: "Goal" },
+              { id: "tax", label: "Tax" },
+            ] as { id: EarningsTab; label: string }[]).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "font-mono rounded-[30px] px-3 py-1.5 text-[10px] uppercase tracking-[0.1em]",
+                  tab === t.id
+                    ? t.id === "tax"
+                      ? "bg-amber text-bg"
+                      : t.id === "goal"
+                        ? "bg-green text-bg"
+                        : "bg-paper text-bg"
+                    : "text-paper-dim",
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {tab === "overview" && (
             <div className="inline-flex rounded-[30px] border border-rule bg-white/[0.02] p-[3px]">
               {RANGES.map((r) => (
                 <button
@@ -155,7 +172,9 @@ export function EarningsView() {
         <p className="font-serif mt-10 text-center text-[18px] italic text-paper-faint">
           Tallying your year…
         </p>
-      ) : goalMode ? (
+      ) : tab === "tax" ? (
+        <TaxKeeper />
+      ) : tab === "goal" ? (
         /* ===== Goal mode ===== */
         <div className="mt-6">
           <h1 className="font-serif text-center text-[34px] leading-[1.1]">
