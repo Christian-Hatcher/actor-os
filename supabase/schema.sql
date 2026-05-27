@@ -341,3 +341,95 @@ alter table public.casting_agency_patterns enable row level security;
 create policy "Agency patterns are readable by all authenticated users"
   on public.casting_agency_patterns for select
   using (auth.role() = 'authenticated');
+
+-- =====================================================================
+-- Redesign migration (Claude design handoff) — new columns + tables
+-- Safe to re-run: all additions use IF NOT EXISTS.
+-- =====================================================================
+
+-- Profile additions: splash, currency/city, goals, theme, focus mode
+alter table public.profiles add column if not exists splash_photo_url text;
+alter table public.profiles add column if not exists splash_mode text
+  check (splash_mode in ('headshot','onset','stage'));
+alter table public.profiles add column if not exists currency text default 'JPY';
+alter table public.profiles add column if not exists city text;
+alter table public.profiles add column if not exists monthly_goal numeric;
+alter table public.profiles add column if not exists yearly_goal numeric;
+alter table public.profiles add column if not exists theme_id text default 'cinematic';
+alter table public.profiles add column if not exists custom_theme jsonb;
+alter table public.profiles add column if not exists preferred_mode text default 'both'
+  check (preferred_mode in ('theater','film','both'));
+
+-- Audition additions: shoot-day / overtime fields
+alter table public.auditions add column if not exists call_time text;
+alter table public.auditions add column if not exists est_wrap_time text;
+alter table public.auditions add column if not exists wrap_time text;
+alter table public.auditions add column if not exists ot_rate_multiplier numeric default 1.5;
+
+-- One row per self-tape take
+create table if not exists public.audition_takes (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) not null,
+  self_tape_id uuid references public.self_tapes(id) on delete cascade,
+  take_number integer not null default 1,
+  video_url text,
+  thumbnail_url text,
+  duration_seconds integer,
+  is_selected boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.audition_takes enable row level security;
+create policy "Users own their takes" on public.audition_takes
+  for all using (auth.uid() = user_id);
+create index if not exists idx_audition_takes_tape on public.audition_takes(self_tape_id);
+
+-- Per-shoot overtime records (feeds Earnings OT stat)
+create table if not exists public.overtime_log (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) not null,
+  audition_id uuid references public.auditions(id) on delete set null,
+  shoot_date date not null,
+  minutes_overtime integer not null default 0,
+  hourly_rate numeric,
+  multiplier numeric default 1.5,
+  calculated_amount numeric,
+  paid boolean default false,
+  paid_date date,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.overtime_log enable row level security;
+create policy "Users own their overtime log" on public.overtime_log
+  for all using (auth.uid() = user_id);
+create index if not exists idx_overtime_user on public.overtime_log(user_id, shoot_date);
+
+-- Obsidian-style notes graph (Relationships — future-facing scaffold)
+create table if not exists public.relationships_notes (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) not null,
+  title text not null,
+  body text,
+  links uuid[] default '{}',
+  entity_type text check (entity_type in ('person','project','place')),
+  entity_id uuid,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.relationships_notes enable row level security;
+create policy "Users own their notes" on public.relationships_notes
+  for all using (auth.uid() = user_id);
+
+-- Multi-source approvals queue (email / text / agent forward)
+create table if not exists public.approvals_queue (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) not null,
+  source text check (source in ('email','text','forward')),
+  confidence integer,
+  parsed_audition_id uuid references public.parsed_auditions(id) on delete set null,
+  raw_payload jsonb,
+  status text default 'pending' check (status in ('pending','approved','rejected')),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.approvals_queue enable row level security;
+create policy "Users own their approvals" on public.approvals_queue
+  for all using (auth.uid() = user_id);
+create index if not exists idx_approvals_user on public.approvals_queue(user_id, status);

@@ -19,7 +19,11 @@ import {
   ExternalLink,
   Trash2,
   Target,
+  LogOut,
+  Palette,
 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
+import { useTheme } from "@/components/theme-provider"
 import type { ActorPreferences } from "@/types"
 
 interface EmailConnection {
@@ -32,6 +36,8 @@ interface EmailConnection {
 }
 
 export default function SettingsPage() {
+  const { signOut } = useAuth()
+  const { themeId, setThemeId, availableThemes } = useTheme()
   const searchParams = useSearchParams()
   const emailError = searchParams.get("email_error")
   const emailConnected = searchParams.get("email_connected")
@@ -643,6 +649,55 @@ export default function SettingsPage() {
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Open Billing Portal
               </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Appearance — theme picker (cinematic design system) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5" /> Appearance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {availableThemes.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setThemeId(t.id)}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    themeId === t.id ? "border-amber" : "border-rule hover:border-rule-strong"
+                  }`}
+                >
+                  <span
+                    className="size-8 flex-none rounded-full border border-rule-strong"
+                    style={{
+                      background: `linear-gradient(135deg, ${t.bg} 0 50%, ${t.amber} 50% 100%)`,
+                    }}
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-paper">{t.name}</span>
+                    <span className="font-mono block text-[10px] uppercase tracking-[0.12em] text-paper-faint">
+                      {themeId === t.id ? "Active" : "Tap to use"}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Account */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Account</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" className="w-full" onClick={() => signOut()}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
             </Button>
           </CardContent>
         </Card>
