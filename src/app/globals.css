@@ -1,50 +1,50 @@
 @import "tailwindcss";
 
+/*
+ * ActorOS cinematic design system.
+ * Default :root values are the "cinematic" theme (dark-first). The ThemeProvider
+ * / no-flash script overwrite these per-user. See src/lib/themes.ts.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #171717;
-  --primary-foreground: #fafafa;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #171717;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --accent: #f5f5f5;
-  --accent-foreground: #171717;
-  --destructive: #ef4444;
-  --destructive-foreground: #fafafa;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #171717;
-  --radius: 0.5rem;
-}
+  /* --- ActorOS tokens (cinematic default) --- */
+  --bg: #0a0908;
+  --bg2: #141210;
+  --bg3: #1c1916;
+  --paper: #f4efe6;
+  --paper-dim: #a8a298;
+  --paper-faint: #6e6a62;
+  --rule: #26231f;
+  --rule-strong: #36322c;
+  --green: #3aa86b;
+  --green-glow: rgba(58, 168, 107, 0.14);
+  --amber: #e8a755;
+  --blue: #6ab3e8;
+  --red: #e8625a;
+  --purple: #b69de0;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #fafafa;
-    --card: #0a0a0a;
-    --card-foreground: #fafafa;
-    --popover: #0a0a0a;
-    --popover-foreground: #fafafa;
-    --primary: #fafafa;
-    --primary-foreground: #171717;
-    --secondary: #262626;
-    --secondary-foreground: #fafafa;
-    --muted: #262626;
-    --muted-foreground: #a3a3a3;
-    --accent: #262626;
-    --accent-foreground: #fafafa;
-    --destructive: #dc2626;
-    --destructive-foreground: #fafafa;
-    --border: #262626;
-    --input: #262626;
-    --ring: #d4d4d4;
-  }
+  /* --- shadcn/ui semantic tokens, remapped onto the cinematic palette --- */
+  --background: var(--bg);
+  --foreground: var(--paper);
+  --card: var(--bg2);
+  --card-foreground: var(--paper);
+  --popover: var(--bg2);
+  --popover-foreground: var(--paper);
+  --primary: var(--paper);
+  --primary-foreground: var(--bg);
+  --secondary: var(--bg3);
+  --secondary-foreground: var(--paper);
+  --muted: var(--bg3);
+  --muted-foreground: var(--paper-dim);
+  --accent: var(--bg3);
+  --accent-foreground: var(--paper);
+  --destructive: var(--red);
+  --destructive-foreground: var(--paper);
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: var(--amber);
+
+  --radius: 14px;
+  --radius-sm: 10px;
 }
 
 @theme inline {
@@ -67,13 +67,124 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* ActorOS palette exposed as Tailwind color utilities (bg-bg, text-paper, ...) */
+  --color-bg: var(--bg);
+  --color-bg2: var(--bg2);
+  --color-bg3: var(--bg3);
+  --color-paper: var(--paper);
+  --color-paper-dim: var(--paper-dim);
+  --color-paper-faint: var(--paper-faint);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-green: var(--green);
+  --color-amber: var(--amber);
+  --color-blue: var(--blue);
+  --color-red: var(--red);
+  --color-purple: var(--purple);
+
   --radius: var(--radius);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-instrument-serif);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--paper);
+  font-family: var(--font-inter), "Inter", system-ui, sans-serif;
+  font-weight: 400;
+  /* warm cinematic ambiance */
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(60, 50, 40, 0.16), transparent 50%),
+    radial-gradient(ellipse at 90% 100%, rgba(40, 30, 20, 0.18), transparent 50%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Film grain overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    radial-gradient(circle at 7px 9px, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+  background-size: 3px 3px, 5px 5px;
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+}
+
+/* Typographic helpers — used directly in screen markup */
+.font-serif {
+  font-family: var(--font-instrument-serif), "Times New Roman", serif;
+}
+.font-mono {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+/* ===== Status chips =====
+   <span class="chip cb">CB</span> etc. Each variant tints its accent. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 30px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--paper-dim);
+  border: 1px solid var(--rule);
+}
+.chip.cb {
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 40%, transparent);
+  background: color-mix(in srgb, var(--amber) 12%, transparent);
+}
+.chip.sub {
+  color: var(--blue);
+  border-color: color-mix(in srgb, var(--blue) 40%, transparent);
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+}
+.chip.bk {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 40%, transparent);
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+}
+.chip.flag {
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 40%, transparent);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}
+.chip.pers {
+  color: var(--purple);
+  border-color: color-mix(in srgb, var(--purple) 40%, transparent);
+  background: color-mix(in srgb, var(--purple) 12%, transparent);
+}
+
+/* Pulsing live-ribbon dot */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.pulse-dot {
+  animation: blink 1.6s ease-in-out infinite;
 }
