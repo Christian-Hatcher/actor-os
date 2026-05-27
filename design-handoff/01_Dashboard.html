@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ActorOS — Hi-Fi Dashboard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0a0908;
+    --bg2:#141210;
+    --bg3:#1c1916;
+    --paper:#f4efe6;
+    --paper-dim:#a8a298;
+    --paper-faint:#6e6a62;
+    --rule:#26231f;
+    --rule-strong:#36322c;
+    --green:#3aa86b;
+    --green-glow:rgba(58,168,107,.14);
+    --amber:#e8a755;
+    --blue:#6ab3e8;
+    --red:#e8625a;
+    --purple:#b69de0;
+
+    --serif:"Instrument Serif", "Times New Roman", serif;
+    --sans:"Inter", system-ui, sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, monospace;
+
+    --radius:14px;
+    --radius-sm:10px;
+  }
+  *{box-sizing:border-box; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
+  html,body{margin:0; background:var(--bg); color:var(--paper); font-family:var(--sans); font-weight:400;}
+  body{
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(60,50,40,.16), transparent 50%),
+      radial-gradient(ellipse at 90% 100%, rgba(40,30,20,.18), transparent 50%);
+    background-attachment: fixed;
+    min-height:100vh;
+  }
+  /* film grain */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(circle at 0 0, rgba(255,255,255,.012) 1px, transparent 1px),
+      radial-gradient(circle at 7px 9px, rgba(255,255,255,.01) 1px, transparent 1px);
+    background-size: 3px 3px, 5px 5px;
+    mix-blend-mode:overlay; opacity:.7;
+  }
+
+  /* ===== Top bar ===== */
+  header.top{
+    position:relative; z-index:2;
+    padding:22px 32px 18px;
+    display:flex; align-items:flex-end; justify-content:space-between; gap:24px;
+    border-bottom:1px solid var(--rule);
+  }
+  .brand{display:flex; align-items:center; gap:14px}
+  .ao-mark{
+    font-family:var(--serif); font-size:34px; line-height:.85;
+    letter-spacing:-.02em; color:var(--paper);
+  }
+  .brand-meta{display:flex; flex-direction:column; gap:2px;}
+  .brand-meta .t1{font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-dim); text-transform:uppercase}
+  .brand-meta .t2{font-family:var(--serif); font-size:24px; line-height:1; letter-spacing:-.01em;}
+
+  nav.frames{
+    display:flex; gap:4px; padding:4px;
+    border:1px solid var(--rule); border-radius:30px;
+    background:rgba(20,18,16,.5);
+    backdrop-filter: blur(8px);
+  }
+  nav.frames button{
+    font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    background:transparent; border:none; padding:7px 14px 6px; cursor:pointer;
+    color:var(--paper-dim); border-radius:30px; white-space:nowrap;
+  }
+  nav.frames button.active{background:var(--paper); color:var(--bg);}
+  nav.frames button:hover:not(.active){color:var(--paper);}
+
+  .top-meta{
+    display:flex; gap:18px; align-items:center;
+    font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;
+  }
+  .top-meta .dot{width:6px;height:6px;background:var(--green);border-radius:50%; display:inline-block; box-shadow:0 0 8px var(--green-glow);}
+
+  /* ===== Canvas ===== */
+  main{position:relative; z-index:1; padding:48px 32px 100px;}
+
+  .frame-set{display:none; opacity:0; transition: opacity .2s;}
+  .frame-set.active{display:block; opacity:1;}
+
+  .canvas-row{
+    display:flex; gap:48px; justify-content:center; flex-wrap:wrap; align-items:flex-start;
+  }
+
+  /* ===== Phone frame ===== */
+  .device{
+    position:relative;
+    width:380px;
+    border-radius:46px;
+    background:linear-gradient(180deg, #1a1815, #0e0d0b);
+    padding:10px;
+    box-shadow:
+      0 30px 80px rgba(0,0,0,.5),
+      0 0 0 1px rgba(255,255,255,.04) inset,
+      0 1px 0 rgba(255,255,255,.06) inset;
+  }
+  .device-inner{
+    border-radius:38px; overflow:hidden; background:var(--bg2); position:relative;
+    height:780px;
+  }
+  .device-inner::before{
+    content:""; position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    width:108px; height:30px; background:#000; border-radius:18px; z-index:5;
+  }
+  .device-label{
+    position:absolute; top:-30px; left:24px; font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;
+  }
+  .device-caption{
+    margin-top:18px; max-width:380px; font-family:var(--sans); font-size:13px; color:var(--paper-dim); line-height:1.55; padding-left:6px;
+  }
+  .device-caption b{color:var(--paper); font-weight:500}
+
+  /* status bar inside phone */
+  .statusbar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 14px 26px 0;
+    font-family:var(--mono); font-size:11px; color:var(--paper);
+    height:42px;
+  }
+  .statusbar .right{display:flex; gap:6px; align-items:center;}
+  .statusbar .signal{display:inline-flex; gap:2px;}
+  .statusbar .signal i{width:3px; height:8px; background:var(--paper); border-radius:1px;}
+  .statusbar .signal i:nth-child(1){height:3px} .statusbar .signal i:nth-child(2){height:5px} .statusbar .signal i:nth-child(3){height:7px} .statusbar .signal i:nth-child(4){height:9px}
+  .battery{width:22px; height:11px; border:1px solid var(--paper); border-radius:3px; position:relative; padding:1px;}
+  .battery::after{content:""; position:absolute; right:-3px; top:3px; width:2px; height:5px; background:var(--paper); border-radius:0 1px 1px 0;}
+  .battery i{display:block; height:100%; width:78%; background:var(--paper); border-radius:1px;}
+
+  .scroll{
+    height: calc(780px - 42px); overflow-y:auto; padding: 14px 22px 100px;
+    scrollbar-width:none;
+  }
+  .scroll::-webkit-scrollbar{display:none}
+
+  /* ===== Dashboard content ===== */
+  .hello-row{
+    display:flex; justify-content:space-between; align-items:flex-start; padding-top:10px;
+  }
+  .meta-line{
+    font-family:var(--mono); font-size:10px; letter-spacing:.22em; color:var(--paper-faint); text-transform:uppercase;
+    margin-bottom:14px;
+  }
+  .meta-line .live{display:inline-block; width:5px; height:5px; background:var(--green); border-radius:50%; margin-right:6px; vertical-align:1px; box-shadow:0 0 8px var(--green);}
+  h1.hello{
+    font-family:var(--serif); font-weight:400; font-size:48px; line-height:1; letter-spacing:-.015em; margin:0;
+  }
+  h1.hello em{font-style:italic; color:var(--paper-dim);}
+
+  .avatar{
+    width:42px; height:42px; border-radius:50%;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.06), transparent 50%),
+      linear-gradient(45deg, #2a251f, #4a3f33);
+    border:1px solid var(--rule-strong);
+    display:grid; place-items:center;
+    font-family:var(--serif); font-size:18px;
+    color:var(--paper);
+  }
+
+  /* prose briefing */
+  .briefing{
+    margin-top:22px;
+    padding:18px 18px 16px;
+    background:linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.01));
+    border:1px solid var(--rule);
+    border-radius:var(--radius);
+    position:relative;
+  }
+  .briefing::before{
+    content:""; position:absolute; top:0; left:18px; right:18px; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(232,167,85,.4), transparent);
+  }
+  .briefing .label{
+    font-family:var(--mono); font-size:10px; letter-spacing:.22em; color:var(--amber); text-transform:uppercase; margin-bottom:10px;
+  }
+  .briefing p{
+    margin:0;
+    font-family:var(--serif); font-size:18px; font-style:italic; line-height:1.5;
+    color:var(--paper); letter-spacing:.005em;
+  }
+  .briefing p b{font-style:normal; font-family:var(--serif); font-weight:600; color:var(--paper); background:linear-gradient(180deg, transparent 65%, rgba(232,167,85,.22) 65%); padding:0 1px;}
+  .briefing .cta-row{display:flex; gap:8px; margin-top:14px;}
+  .btn{
+    font-family:var(--sans); font-size:13px; font-weight:500;
+    padding:8px 14px; border-radius:30px; border:1px solid var(--rule-strong);
+    background:transparent; color:var(--paper); cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn.primary{background:var(--paper); color:var(--bg); border-color:var(--paper)}
+  .btn.ghost{color:var(--paper-dim)}
+  .btn .arrow{font-family:var(--serif); font-size:16px; line-height:1;}
+
+  /* week strip */
+  .weekstrip{
+    margin-top:22px;
+    display:grid; grid-template-columns:repeat(7,1fr); gap:6px;
+  }
+  .wd{
+    border:1px solid var(--rule); border-radius:10px;
+    padding:9px 4px 7px; text-align:center;
+    background:rgba(255,255,255,.012);
+    position:relative;
+  }
+  .wd .d{font-family:var(--mono); font-size:9px; letter-spacing:.1em; color:var(--paper-faint); text-transform:uppercase;}
+  .wd .n{font-family:var(--serif); font-size:22px; line-height:1.05; margin-top:2px;}
+  .wd .dots{display:flex; gap:3px; justify-content:center; margin-top:4px; height:4px;}
+  .wd .dots i{width:4px; height:4px; border-radius:50%; background:var(--paper-dim);}
+  .wd .dots i.g{background:var(--green)} .wd .dots i.a{background:var(--amber)}
+  .wd.today{background:var(--paper); border-color:var(--paper);}
+  .wd.today .d, .wd.today .n{color:var(--bg);}
+  .wd.today .dots i{background:var(--bg);}
+
+  /* accordion */
+  .sections{margin-top:24px;}
+  .sec-head-label{
+    font-family:var(--mono); font-size:10px; letter-spacing:.22em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:10px;
+  }
+  .acc{
+    border-top:1px solid var(--rule);
+  }
+  .acc:last-child{border-bottom:1px solid var(--rule);}
+  .acc .acc-head{
+    width:100%; display:flex; align-items:center; gap:10px;
+    padding:16px 4px;
+    background:transparent; border:none; color:var(--paper); text-align:left; cursor:pointer;
+    font-family:inherit;
+  }
+  .acc .acc-head .title{
+    flex:1; font-family:var(--serif); font-size:22px; font-weight:400; letter-spacing:-.005em;
+  }
+  .acc .acc-head .meta{
+    font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--paper-dim); text-transform:uppercase;
+  }
+  .acc.urgent .acc-head .meta{color:var(--amber);}
+  .acc.good .acc-head .meta{color:var(--green);}
+  .acc .chev{
+    width:22px; height:22px; border-radius:50%;
+    border:1px solid var(--rule-strong); display:grid; place-items:center;
+    font-family:var(--sans); font-size:14px; color:var(--paper-dim); line-height:1;
+    transition: transform .25s ease, background .2s;
+  }
+  .acc.open .chev{background:var(--paper); color:var(--bg); border-color:var(--paper); transform:rotate(45deg);}
+  .acc-body{
+    max-height:0; overflow:hidden; transition: max-height .3s ease, padding .3s ease;
+    padding:0 4px;
+  }
+  .acc.open .acc-body{max-height:520px; padding:0 4px 18px;}
+  .acc-body p{margin:0; font-size:14px; line-height:1.55; color:var(--paper-dim);}
+  .acc-body p b{color:var(--paper); font-weight:500;}
+  .acc-body .row{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+
+  /* chips */
+  .chip{
+    display:inline-flex; align-items:center; gap:4px;
+    font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase;
+    padding:4px 8px 3px; border-radius:30px;
+    background:rgba(255,255,255,.05); color:var(--paper-dim);
+    border:1px solid var(--rule);
+  }
+  .chip.cb{color:var(--amber); border-color:rgba(232,167,85,.28); background:rgba(232,167,85,.08)}
+  .chip.sub{color:var(--blue); border-color:rgba(106,179,232,.28); background:rgba(106,179,232,.08)}
+  .chip.bk{color:var(--green); border-color:rgba(58,168,107,.32); background:rgba(58,168,107,.08)}
+  .chip.flag{color:var(--red); border-color:rgba(232,98,90,.32); background:rgba(232,98,90,.08)}
+  .chip.pers{color:var(--purple); border-color:rgba(182,157,224,.28); background:rgba(182,157,224,.08)}
+
+  /* audition list (inside expanded section) */
+  .aud-list{display:flex; flex-direction:column;}
+  .aud-row{
+    display:grid; grid-template-columns: 44px 1fr auto; gap:12px; align-items:center;
+    padding:10px 0; border-top:1px solid var(--rule);
+  }
+  .aud-row:first-child{border-top:none}
+  .aud-date{text-align:center;}
+  .aud-date .d{font-family:var(--serif); font-size:22px; line-height:1; color:var(--paper);}
+  .aud-date .m{font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase; margin-top:2px;}
+  .aud-body .aud-title{font-family:var(--serif); font-size:17px; line-height:1.15; color:var(--paper);}
+  .aud-body .aud-sub{font-family:var(--sans); font-size:11.5px; color:var(--paper-dim); margin-top:2px;}
+  .aud-right{display:flex; flex-direction:column; align-items:flex-end; gap:4px;}
+  .aud-right .aud-pay{font-family:var(--mono); font-size:10.5px; color:var(--paper-dim); letter-spacing:.04em;}
+
+  /* mini chart inside earnings */
+  .earn-card{
+    border:1px solid var(--rule); border-radius:var(--radius); padding:16px;
+    background:linear-gradient(180deg, rgba(58,168,107,.04), transparent 60%);
+  }
+  .earn-card .big{
+    font-family:var(--serif); font-size:42px; line-height:1; letter-spacing:-.02em; color:var(--paper); margin-top:2px;
+  }
+  .earn-card .big .ccy{color:var(--paper-faint); font-size:24px; vertical-align:6px; margin-right:4px;}
+  .earn-card .sub{font-family:var(--mono); font-size:10px; letter-spacing:.12em; color:var(--paper-dim); text-transform:uppercase; margin-top:6px;}
+  .earn-card .sub .up{color:var(--green)}
+
+  .linechart{height:90px; margin-top:14px; position:relative;}
+  .linechart svg{width:100%; height:100%;}
+
+  /* bottom nav floating */
+  .botnav{
+    position:absolute; bottom:14px; left:14px; right:14px; z-index:4;
+    display:flex; gap:4px;
+    background:rgba(10,9,8,.7);
+    backdrop-filter: blur(20px);
+    border:1px solid var(--rule);
+    border-radius:30px; padding:5px;
+  }
+  .botnav a{
+    flex:1; padding:8px; text-align:center;
+    font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--paper-dim); border-radius:24px; text-decoration:none;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+  }
+  .botnav a.on{background:var(--paper); color:var(--bg);}
+  .botnav a svg{width:14px; height:14px;}
+
+  /* Day drilldown specifics */
+  .back{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-dim); text-transform:uppercase; cursor:pointer;}
+  .seg{display:inline-flex; padding:3px; border:1px solid var(--rule); border-radius:30px; background:rgba(255,255,255,.02); gap:0;}
+  .seg span{padding:5px 12px 4px; font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--paper-dim); border-radius:30px; cursor:pointer;}
+  .seg span.on{background:var(--paper); color:var(--bg);}
+
+  .day-event{
+    display:grid; grid-template-columns: 64px 1fr auto; gap:14px; align-items:flex-start;
+    padding:16px 0; border-top:1px solid var(--rule);
+  }
+  .day-event:first-of-type{border-top:none;}
+  .day-event .time{
+    font-family:var(--mono); font-size:11px; letter-spacing:.05em; color:var(--paper-dim);
+    padding-top:3px;
+  }
+  .day-event.now .time{color:var(--amber);}
+  .day-event.now .time::before{
+    content:""; display:inline-block; width:5px; height:5px; background:var(--amber); border-radius:50%;
+    margin-right:5px; vertical-align:2px; box-shadow:0 0 8px var(--amber);
+  }
+  .day-event .title{font-family:var(--serif); font-size:19px; line-height:1.2;}
+  .day-event .sub{font-family:var(--sans); font-size:12px; color:var(--paper-dim); margin-top:3px;}
+  .day-event .right{display:flex; flex-direction:column; align-items:flex-end; gap:6px; padding-top:4px;}
+  .day-event.done .title, .day-event.done .sub{color:var(--paper-faint); text-decoration:line-through; text-decoration-color:var(--paper-faint);}
+
+  /* ===== Desktop frame ===== */
+  .desk{
+    width:100%; max-width:1400px; margin:60px auto 0;
+    border-radius:18px; overflow:hidden;
+    background:var(--bg2);
+    border:1px solid var(--rule-strong);
+    box-shadow: 0 40px 100px rgba(0,0,0,.5);
+  }
+  .desk-bar{
+    display:flex; align-items:center; gap:8px;
+    padding:12px 18px;
+    background:#0e0d0b; border-bottom:1px solid var(--rule);
+  }
+  .desk-bar .dots{display:flex; gap:7px; margin-right:14px;}
+  .desk-bar .dots i{width:11px; height:11px; border-radius:50%; background:#2c2823; border:1px solid #1c1916;}
+  .desk-bar .url{
+    font-family:var(--mono); font-size:11px; color:var(--paper-dim);
+    padding:5px 12px; border-radius:20px; background:rgba(255,255,255,.03); border:1px solid var(--rule);
+  }
+  .desk-body{display:grid; grid-template-columns: 240px 1fr 320px; min-height:680px;}
+  .desk-side{padding:22px 18px; border-right:1px solid var(--rule);}
+  .desk-side .ao-mark{font-size:28px; margin-bottom:24px;}
+  .desk-side .nav-item{
+    display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px;
+    font-family:var(--sans); font-size:13px; color:var(--paper-dim);
+    margin-bottom:2px; cursor:pointer;
+  }
+  .desk-side .nav-item.on{background:rgba(255,255,255,.05); color:var(--paper);}
+  .desk-side .nav-item .ic{
+    width:16px; height:16px; opacity:.7;
+    background:currentColor; -webkit-mask-size:contain; mask-size:contain;
+    -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+    -webkit-mask-position:center; mask-position:center;
+  }
+  .desk-side .group-label{font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--paper-faint); padding:12px 12px 6px; margin-top:14px;}
+
+  .desk-main{padding:34px 38px; overflow:hidden;}
+  .desk-main h1.hello{font-size:56px;}
+  .desk-main .briefing{margin-top:24px; padding:24px;}
+  .desk-main .briefing p{font-size:22px;}
+  .desk-main .weekstrip{margin-top:28px; max-width:560px;}
+
+  .desk-grid{
+    display:grid; grid-template-columns: 1.4fr 1fr; gap:18px; margin-top:30px;
+  }
+  .desk-card{border:1px solid var(--rule); border-radius:var(--radius); padding:18px; background:linear-gradient(180deg, rgba(255,255,255,.015), transparent);}
+  .desk-card .lbl{font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;}
+  .desk-card .title{font-family:var(--serif); font-size:26px; line-height:1; margin-top:4px;}
+
+  .desk-rail{padding:22px; border-left:1px solid var(--rule); background:rgba(0,0,0,.18);}
+  .desk-rail .head{font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;}
+  .rail-event{padding:14px 0; border-top:1px solid var(--rule); display:grid; grid-template-columns: 60px 1fr; gap:10px;}
+  .rail-event:first-of-type{border-top:none;}
+  .rail-event .t{font-family:var(--mono); font-size:11px; color:var(--paper-dim);}
+  .rail-event .tit{font-family:var(--serif); font-size:18px; line-height:1.2;}
+  .rail-event .sub{font-size:12px; color:var(--paper-dim); margin-top:2px;}
+
+  /* tweaks panel */
+  .tweaks{
+    position:fixed; right:18px; bottom:18px; z-index:30;
+    border:1px solid var(--rule-strong); background:rgba(20,18,16,.92);
+    backdrop-filter: blur(12px);
+    padding:14px 16px; border-radius:14px;
+    font-family:var(--sans); font-size:13px; color:var(--paper);
+    min-width:220px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    display:none;
+  }
+  .tweaks h4{margin:0 0 8px; font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--paper-faint);}
+  .tweaks label{display:flex; gap:8px; align-items:center; margin:5px 0; cursor:pointer; color:var(--paper-dim);}
+  .tweaks label:hover{color:var(--paper);}
+  .tweaks .close{position:absolute; top:6px; right:10px; cursor:pointer; font-size:14px; color:var(--paper-faint);}
+  .swatch-row{display:flex; gap:6px; margin-top:4px;}
+  .swatch-row label{margin:0; width:24px; height:24px; border-radius:50%; padding:0; border:1px solid var(--rule-strong); cursor:pointer; position:relative;}
+  .swatch-row input{display:none;}
+  .swatch-row input:checked + i{box-shadow:0 0 0 2px var(--paper); border-radius:50%;}
+  .swatch-row label i{display:block; width:100%; height:100%; border-radius:50%;}
+
+  /* News-style bottom nav (Apple News inspiration: icon + tiny label) */
+  .botnav.news{
+    background:rgba(10,9,8,.85);
+    backdrop-filter: blur(24px);
+    border:none; border-top:1px solid var(--rule);
+    border-radius:0; padding:8px 4px 14px; gap:0;
+    left:0; right:0; bottom:0;
+  }
+  .botnav.news a{
+    padding:6px 4px 2px;
+    font-family:var(--sans); font-size:9.5px; letter-spacing:0; text-transform:none; font-weight:500;
+    color:var(--paper-faint); border-radius:0; background:none;
+    gap:4px;
+  }
+  .botnav.news a.on{background:none; color:var(--amber);}
+  .botnav.news a.on .ic{color:var(--amber);}
+  .botnav.news .ic{
+    width:24px; height:24px; color:var(--paper-faint);
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .botnav.news .ic svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6;}
+  .device-inner.news-mode .scroll{padding-bottom:80px;}
+
+  /* helper for caption boxes between frames */
+  .frame-note{
+    max-width:380px; font-family:var(--sans); font-size:13px; color:var(--paper-dim); line-height:1.55;
+    padding:18px 22px; border-top:1px dashed var(--rule); margin-top:24px;
+  }
+
+  /* footer */
+  footer.foot{
+    padding: 60px 32px; font-family:var(--sans); color:var(--paper-dim); font-size:13px; max-width:1100px; margin:0 auto;
+    line-height:1.65;
+  }
+  footer.foot h3{font-family:var(--serif); font-size:30px; margin:32px 0 8px; color:var(--paper); font-weight:400;}
+  footer.foot ul{margin:0; padding-left:22px;}
+  footer.foot li{margin-bottom:4px;}
+  footer.foot b{color:var(--paper); font-weight:500;}
+
+  @media (max-width:980px){
+    .desk-body{grid-template-columns: 1fr;}
+    .desk-side, .desk-rail{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="ao-mark">AO</span>
+    <div class="brand-meta">
+      <span class="t1">ACTOROS · HI-FI</span>
+      <span class="t2">Dashboard</span>
+    </div>
+  </div>
+  <nav class="frames" id="frames">
+    <button data-f="opened" class="active">Dashboard</button>
+    <button data-f="day">Day drilldown</button>
+    <button data-f="collapsed">Collapsed alt</button>
+    <button data-f="news">Nav compare</button>
+    <button data-f="all">All</button>
+    <button data-f="desk">Desktop</button>
+  </nav>
+  <div class="top-meta">
+    <span><span class="dot"></span>TYO · MAY 27</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ====== Collapsed ====== -->
+  <section class="frame-set" id="set-collapsed">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block">
+          <span class="device-label">01 · dashboard · collapsed default</span>
+          <div class="device">
+            <div class="device-inner" id="dev-collapsed">
+              <!-- statusbar -->
+              <div class="statusbar">
+                <span>9:41</span>
+                <div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div>
+              </div>
+              <!-- scroll -->
+              <div class="scroll">
+                <div class="hello-row">
+                  <div>
+                    <div class="meta-line"><span class="live"></span>TUE · 27 MAY · TOKYO</div>
+                    <h1 class="hello">Good morning,<br/><em>Christian.</em></h1>
+                  </div>
+                  <div class="avatar">CH</div>
+                </div>
+
+                <div class="briefing">
+                  <div class="label">Today's briefing</div>
+                  <p>You start with a <b>callback for Toyota CM</b> at <b>10:30 in Roppongi</b> &mdash; <b>Watanabe</b> asked for the smile take again. Slip into <b>costume fitting at 13:00</b> in Aoyama for <b>LOST10</b>, then your <b>self-tape</b> is due by <b>15:00</b>. Close the day by replying to <b>CD Tanaka</b> about <b>Asahi CM</b>. You're tracking <b>¥ 312k banked</b> this month with <b>¥ 168k still in play</b>.</p>
+                  <div class="cta-row">
+                    <button class="btn primary">Open day <span class="arrow">→</span></button>
+                    <button class="btn ghost">Snooze</button>
+                  </div>
+                </div>
+
+                <div class="weekstrip">
+                  <div class="wd"><div class="d">Mon</div><div class="n">26</div><div class="dots"><i></i></div></div>
+                  <div class="wd today"><div class="d">Tue</div><div class="n">27</div><div class="dots"><i></i><i></i><i></i></div></div>
+                  <div class="wd"><div class="d">Wed</div><div class="n">28</div><div class="dots"><i></i><i></i></div></div>
+                  <div class="wd"><div class="d">Thu</div><div class="n">29</div><div class="dots"></div></div>
+                  <div class="wd"><div class="d">Fri</div><div class="n">30</div><div class="dots"><i class="g"></i></div></div>
+                  <div class="wd"><div class="d">Sat</div><div class="n">31</div><div class="dots"></div></div>
+                  <div class="wd"><div class="d">Sun</div><div class="n">1</div><div class="dots"><i></i></div></div>
+                </div>
+
+                <div class="sections">
+                  <div class="sec-head-label">Your work</div>
+                  <div class="acc"><button class="acc-head" data-acc><span class="title">Auditions</span><span class="meta">12 active</span><span class="chev">+</span></button><div class="acc-body"><p><b>3 this week.</b> 1 callback, 2 submitted — awaiting reply.</p><div class="row"><span class="chip cb">1 CB</span><span class="chip sub">2 SUB</span><span class="chip bk">2 BK</span></div></div></div>
+                  <div class="acc good"><button class="acc-head" data-acc><span class="title">Earnings</span><span class="meta">¥ 312k / 480k</span><span class="chev">+</span></button><div class="acc-body"><p><b style="color:var(--green)">¥ 312,000 banked.</b> ¥ 168k still in play. <b>+ 27%</b> on April.</p></div></div>
+                  <div class="acc urgent"><button class="acc-head" data-acc><span class="title">Self-tapes</span><span class="meta">2 due</span><span class="chev">+</span></button><div class="acc-body"><p><b>LOST10 — Ninja Scene</b> due today, 15:00. <b>Shokz Earphone</b> due Friday.</p></div></div>
+                  <div class="acc urgent"><button class="acc-head" data-acc><span class="title">Contracts</span><span class="meta">1 to review</span><span class="chev">+</span></button><div class="acc-body"><p><b>LOST10 — TBS Drama</b> guest-star agreement. <b>2 red flags</b> flagged by AI.</p><div class="row"><span class="chip flag">2 FLAGS</span><span class="chip">analyzed</span></div></div></div>
+                  <div class="acc"><button class="acc-head" data-acc><span class="title">Outreach</span><span class="meta">5 to follow up</span><span class="chev">+</span></button><div class="acc-body"><p><b>CD Tanaka</b> &mdash; 9 days since last contact. <b>K. Watanabe</b> &mdash; you saw him today, log it.</p></div></div>
+                  <div class="acc"><button class="acc-head" data-acc><span class="title">Relationships</span><span class="meta">23 notes</span><span class="chev">+</span></button><div class="acc-body"><p><b>Notes on people, projects, places.</b> Linked like a graph &mdash; opens your private <i>Obsidian-style</i> vault. Last edited: <b>Watanabe</b> 2 days ago.</p></div></div>
+                  <div class="acc urgent"><button class="acc-head" data-acc><span class="title">Needs approval</span><span class="meta">7 pending</span><span class="chev">+</span></button><div class="acc-body"><p>5 from <b>email</b>, 1 from a <b>text</b>, 1 forwarded by your agent. 3 are high-confidence auditions, ready to one-tap approve.</p></div></div>
+                </div>
+
+                <div style="height:80px"></div>
+              </div>
+
+              <div class="botnav">
+                <a href="#" class="on">Home</a>
+                <a href="#">Auditions</a>
+                <a href="#">Tapes</a>
+                <a href="#">$</a>
+                <a href="#">Me</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption">Default state. The prose briefing is the hero — a paragraph in <b>Instrument Serif italic</b> with names highlighted by a soft amber underline. Sections below collapse to titles + counts. Try tapping any row.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== Opened (Earnings + Self-tapes expanded) ====== -->
+  <section class="frame-set active" id="set-opened">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block">
+          <span class="device-label">02 · dashboard · earnings + self-tapes opened</span>
+          <div class="device">
+            <div class="device-inner">
+              <div class="statusbar">
+                <span>9:41</span>
+                <div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div>
+              </div>
+              <div class="scroll">
+                <div class="hello-row">
+                  <div>
+                    <div class="meta-line"><span class="live"></span>TUE · 27 MAY · TOKYO</div>
+                    <h1 class="hello">Good morning,<br/><em>Christian.</em></h1>
+                  </div>
+                  <div class="avatar">CH</div>
+                </div>
+
+                <div class="briefing">
+                  <div class="label">Today's briefing</div>
+                  <p>You start with a <b>callback for Toyota CM</b> at <b>10:30 in Roppongi</b> &mdash; <b>Watanabe</b> asked for the smile take again. Slip into <b>costume fitting at 13:00</b> for <b>LOST10</b>, then your <b>self-tape</b> is due by <b>15:00</b>.</p>
+                  <div class="cta-row">
+                    <button class="btn primary">Open day <span class="arrow">→</span></button>
+                    <button class="btn ghost">Snooze</button>
+                  </div>
+                </div>
+
+                <div class="sections">
+                  <div class="sec-head-label">Your work</div>
+
+                  <div class="acc open">
+                    <button class="acc-head" data-acc><span class="title">Auditions</span><span class="meta">12 active</span><span class="chev">+</span></button>
+                    <div class="acc-body">
+                      <p style="margin-bottom:14px"><b>3 this week.</b> 1 callback, 2 submitted &mdash; awaiting reply.</p>
+                      <div class="aud-list">
+                        <div class="aud-row">
+                          <div class="aud-date"><div class="d">27</div><div class="m">Tue</div></div>
+                          <div class="aud-body">
+                            <div class="aud-title">Toyota CM &mdash; “Crown Highway”</div>
+                            <div class="aud-sub">Lead Stunt · Roppongi · w/ Watanabe</div>
+                          </div>
+                          <div class="aud-right"><span class="chip cb">CB</span><div class="aud-pay">¥ 220k</div></div>
+                        </div>
+                        <div class="aud-row">
+                          <div class="aud-date"><div class="d">28</div><div class="m">Wed</div></div>
+                          <div class="aud-body">
+                            <div class="aud-title">Shokz Earphone &mdash; Athletic</div>
+                            <div class="aud-sub">Self-tape due 14:00</div>
+                          </div>
+                          <div class="aud-right"><span class="chip sub">SUB</span><div class="aud-pay">¥ 132k</div></div>
+                        </div>
+                        <div class="aud-row">
+                          <div class="aud-date"><div class="d">30</div><div class="m">Fri</div></div>
+                          <div class="aud-body">
+                            <div class="aud-title">LOST10 &mdash; TBS Drama</div>
+                            <div class="aud-sub">Guest star · Shibuya studio · all day</div>
+                          </div>
+                          <div class="aud-right"><span class="chip bk">BK</span><div class="aud-pay" style="color:var(--green)">¥ 180k</div></div>
+                        </div>
+                        <div class="aud-row">
+                          <div class="aud-date"><div class="d">02</div><div class="m">Jun</div></div>
+                          <div class="aud-body">
+                            <div class="aud-title">P-Co. Home Appliance</div>
+                            <div class="aud-sub">Audition 11:00 · P-Co. agency</div>
+                          </div>
+                          <div class="aud-right"><span class="chip sub">SUB</span><div class="aud-pay">¥ 80k</div></div>
+                        </div>
+                        <div class="aud-row">
+                          <div class="aud-date"><div class="d">—</div><div class="m">soon</div></div>
+                          <div class="aud-body">
+                            <div class="aud-title">Kamen Rider — Toy VO</div>
+                            <div class="aud-sub">BANDAI · submitted 18 May · waiting</div>
+                          </div>
+                          <div class="aud-right"><span class="chip">SUB</span><div class="aud-pay">¥ 95k</div></div>
+                        </div>
+                      </div>
+                      <div class="row"><button class="btn" style="font-size:12px; padding:7px 12px">View all auditions <span class="arrow">→</span></button></div>
+                    </div>
+                  </div>
+
+                  <div class="acc open good">
+                    <button class="acc-head" data-acc><span class="title">Earnings</span><span class="meta">¥ 312k / 480k</span><span class="chev">+</span></button>
+                    <div class="acc-body">
+                      <div class="earn-card" style="margin-top:8px">
+                        <div class="lbl" style="font-family:var(--mono); font-size:10px; letter-spacing:.2em; color:var(--paper-faint); text-transform:uppercase">May · banked</div>
+                        <div class="big"><span class="ccy">¥</span>312,000</div>
+                        <div class="sub">of <span style="color:var(--paper-dim)">¥480k potential</span> &nbsp;·&nbsp; <span class="up">↑ 27%</span> on April</div>
+                        <div class="linechart">
+                          <svg viewBox="0 0 320 90" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id="gFill" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="0" stop-color="#3aa86b" stop-opacity=".35"/>
+                                <stop offset="1" stop-color="#3aa86b" stop-opacity="0"/>
+                              </linearGradient>
+                            </defs>
+                            <!-- grid -->
+                            <line x1="0" y1="22" x2="320" y2="22" stroke="#26231f" stroke-dasharray="2 4"/>
+                            <line x1="0" y1="44" x2="320" y2="44" stroke="#26231f" stroke-dasharray="2 4"/>
+                            <line x1="0" y1="66" x2="320" y2="66" stroke="#26231f" stroke-dasharray="2 4"/>
+                            <!-- potential -->
+                            <polyline fill="none" stroke="#6e6a62" stroke-width="1.5" stroke-dasharray="4 3" points="0,72 50,62 100,48 150,36 200,26 250,18 320,10"/>
+                            <!-- banked -->
+                            <polyline fill="url(#gFill)" stroke="#3aa86b" stroke-width="2.2" points="0,82 50,76 100,64 150,52 200,42 250,34 320,30 320,90 0,90"/>
+                            <circle cx="320" cy="30" r="3.5" fill="#3aa86b"/>
+                            <circle cx="320" cy="30" r="6" fill="#3aa86b" opacity=".25"/>
+                          </svg>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:var(--paper-faint); margin-top:4px; text-transform:uppercase">
+                          <span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span>
+                        </div>
+                      </div>
+                      <div class="row"><button class="btn" style="font-size:12px; padding:7px 12px">Fullscreen earnings <span class="arrow">→</span></button></div>
+                    </div>
+                  </div>
+
+                  <div class="acc open urgent">
+                    <button class="acc-head" data-acc><span class="title">Self-tapes</span><span class="meta">2 due</span><span class="chev">+</span></button>
+                    <div class="acc-body">
+                      <div style="border:1px solid var(--rule); border-radius:10px; padding:14px; background:rgba(232,98,90,.04)">
+                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px">
+                          <div style="font-family:var(--serif); font-size:18px;">LOST10 — Ninja Scene</div>
+                          <span class="chip" style="color:var(--red); border-color:rgba(232,98,90,.4); background:rgba(232,98,90,.08)">Today · 15:00</span>
+                        </div>
+                        <div style="font-size:12px; color:var(--paper-dim)">Scene partner: Yuki · not recorded</div>
+                      </div>
+                      <div style="border:1px solid var(--rule); border-radius:10px; padding:14px; margin-top:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px">
+                          <div style="font-family:var(--serif); font-size:18px;">Shokz Earphone — Athletic</div>
+                          <span class="chip">Fri · 30 May</span>
+                        </div>
+                        <div style="font-size:12px; color:var(--paper-dim)">Pending · no recordings yet</div>
+                      </div>
+                      <div class="row"><button class="btn" style="font-size:12px; padding:7px 12px">Record <span class="arrow">→</span></button><button class="btn ghost" style="font-size:12px; padding:7px 12px">Upload</button></div>
+                    </div>
+                  </div>
+
+                  <div class="acc urgent"><button class="acc-head" data-acc><span class="title">Contracts</span><span class="meta">1 to review</span><span class="chev">+</span></button><div class="acc-body"><p><b>LOST10 — TBS Drama</b> guest-star agreement. <b>2 red flags</b>.</p></div></div>
+                  <div class="acc"><button class="acc-head" data-acc><span class="title">Outreach</span><span class="meta">5 to follow up</span><span class="chev">+</span></button><div class="acc-body"><p><b>CD Tanaka</b> &mdash; 9 days since last contact.</p></div></div>
+                  <div class="acc"><button class="acc-head" data-acc><span class="title">Relationships</span><span class="meta">23 notes</span><span class="chev">+</span></button><div class="acc-body"><p>Your private vault. Notes on <b>Watanabe</b>, <b>LOST10</b>, <b>Roppongi Studio</b> &mdash; linked like Obsidian.</p></div></div>
+                  <div class="acc urgent"><button class="acc-head" data-acc><span class="title">Needs approval</span><span class="meta">7 pending</span><span class="chev">+</span></button><div class="acc-body"><p>5 from <b>email</b>, 1 from a <b>text</b>, 1 forwarded by your agent.</p></div></div>
+                </div>
+
+                <div style="height:80px"></div>
+              </div>
+
+              <div class="botnav news">
+                <a href="#" class="on">
+                  <span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z" stroke-linejoin="round"/><path d="M15 4v4h4M8 12h8M8 16h8M8 8h4"/></svg></span>
+                  Today
+                </a>
+                <a href="#">
+                  <span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 11h18M6 7l3-3M11 7l3-3M16 7l3-3"/></svg></span>
+                  Auditions
+                </a>
+                <a href="#">
+                  <span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/><path d="M16 11l5-3v8l-5-3z" stroke-linejoin="round"/><circle cx="7" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span>
+                  Tapes
+                </a>
+                <a href="#">
+                  <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16" stroke-linecap="round"/><path d="M8 16v-4M12 16v-7M16 16v-2M20 16V8" stroke-linecap="round"/></svg></span>
+                  Earnings
+                </a>
+                <a href="#">
+                  <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>
+                  Me
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption"><b>Locked direction.</b> Prose briefing as hero, no standalone calendar, section accordion below. Auditions opened to show the production list with date markers; Earnings opened with the area chart. News-style bottom nav with thin-stroke icons + tiny labels.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== Day drilldown ====== -->
+  <section class="frame-set" id="set-day">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block">
+          <span class="device-label">03 · day drilldown</span>
+          <div class="device">
+            <div class="device-inner">
+              <div class="statusbar">
+                <span>9:41</span>
+                <div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div>
+              </div>
+              <div class="scroll">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-top:6px">
+                  <span class="back">← Dashboard</span>
+                  <div class="seg"><span class="on">Today</span><span>Tomorrow</span><span>Week</span></div>
+                </div>
+
+                <div style="margin-top:24px">
+                  <div class="meta-line">TUE · 27 MAY · 8 EVENTS</div>
+                  <h1 class="hello" style="font-size:42px">Tuesday,<br/><em>May 27.</em></h1>
+                </div>
+
+                <div style="margin-top:24px">
+
+                  <div class="day-event now">
+                    <div class="time">10:30</div>
+                    <div>
+                      <div class="title">Toyota CM — Callback</div>
+                      <div class="sub">Roppongi Studio 4F · w/ Watanabe</div>
+                      <div style="margin-top:8px; display:flex; gap:6px;"><span class="chip cb">Callback</span><span class="chip" style="color:var(--green); border-color:rgba(58,168,107,.3)">¥ 220k</span></div>
+                    </div>
+                    <div class="right"><span style="font-family:var(--mono); font-size:9px; color:var(--paper-faint)">IN 1H 12M</span></div>
+                  </div>
+
+                  <div class="day-event">
+                    <div class="time">13:00</div>
+                    <div>
+                      <div class="title">Costume fitting</div>
+                      <div class="sub">Aoyama Studios · for LOST10</div>
+                      <div style="margin-top:8px;"><span class="chip pers">Personal</span></div>
+                    </div>
+                    <div class="right"></div>
+                  </div>
+
+                  <div class="day-event">
+                    <div class="time">15:00</div>
+                    <div>
+                      <div class="title">LOST10 — Ninja self-tape</div>
+                      <div class="sub">Scene partner: Yuki · due today</div>
+                      <div style="margin-top:8px;"><span class="chip" style="color:var(--red); border-color:rgba(232,98,90,.3)">Due</span></div>
+                    </div>
+                    <div class="right"></div>
+                  </div>
+
+                  <div class="day-event">
+                    <div class="time">16:30</div>
+                    <div>
+                      <div class="title">Doctor — physio</div>
+                      <div class="sub">Hiroo Clinic</div>
+                      <div style="margin-top:8px;"><span class="chip pers">Personal</span></div>
+                    </div>
+                    <div class="right"></div>
+                  </div>
+
+                  <div class="day-event">
+                    <div class="time">17:30</div>
+                    <div>
+                      <div class="title">Reply to CD Tanaka</div>
+                      <div class="sub">Asahi CM — 2 days unanswered</div>
+                      <div style="margin-top:8px;"><span class="chip">Reply</span></div>
+                    </div>
+                    <div class="right"></div>
+                  </div>
+
+                  <div class="day-event done">
+                    <div class="time">07:00</div>
+                    <div>
+                      <div class="title">Morning training</div>
+                      <div class="sub">Stunt gym · checked in</div>
+                    </div>
+                    <div class="right"><span class="chip bk">Done</span></div>
+                  </div>
+
+                </div>
+
+                <div style="height:80px"></div>
+              </div>
+
+              <div class="botnav">
+                <a href="#" class="on">Home</a>
+                <a href="#">Auditions</a>
+                <a href="#">Tapes</a>
+                <a href="#">$</a>
+                <a href="#">Me</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption">From the briefing's "Open day" CTA. Chronological stack of every event — auditions, personal, replies. The active event blinks amber. Past events strike through. Tap any row → its detail page.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== All side-by-side ====== -->
+  <section class="frame-set" id="set-all">
+    <div class="canvas-row" id="all-row"></div>
+  </section>
+
+  <!-- ====== News-style ====== -->
+  <section class="frame-set" id="set-news">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block">
+          <span class="device-label">04 · news-app bottom nav</span>
+          <div class="device">
+            <div class="device-inner news-mode">
+              <div class="statusbar">
+                <span>9:41</span>
+                <div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div>
+              </div>
+              <div class="scroll">
+                <div class="hello-row">
+                  <div>
+                    <div class="meta-line"><span class="live"></span>TUE · 27 MAY · TOKYO</div>
+                    <h1 class="hello">Good morning,<br/><em>Christian.</em></h1>
+                  </div>
+                  <div class="avatar">CH</div>
+                </div>
+                <div class="briefing">
+                  <div class="label">Today's briefing</div>
+                  <p>You start with a <b>callback for Toyota CM</b> at <b>10:30 in Roppongi</b> &mdash; <b>Watanabe</b> asked for the smile take again. Then <b>costume fitting at 13:00</b> for <b>LOST10</b>, then your <b>self-tape</b> by <b>15:00</b>. Tracking <b>¥ 312k banked</b> with <b>¥ 168k still in play</b>.</p>
+                  <div class="cta-row">
+                    <button class="btn primary">Open day <span class="arrow">→</span></button>
+                    <button class="btn ghost">Snooze</button>
+                  </div>
+                </div>
+                <div class="weekstrip">
+                  <div class="wd"><div class="d">Mon</div><div class="n">26</div><div class="dots"><i></i></div></div>
+                  <div class="wd today"><div class="d">Tue</div><div class="n">27</div><div class="dots"><i></i><i></i><i></i></div></div>
+                  <div class="wd"><div class="d">Wed</div><div class="n">28</div><div class="dots"><i></i><i></i></div></div>
+                  <div class="wd"><div class="d">Thu</div><div class="n">29</div><div class="dots"></div></div>
+                  <div class="wd"><div class="d">Fri</div><div class="n">30</div><div class="dots"><i class="g"></i></div></div>
+                  <div class="wd"><div class="d">Sat</div><div class="n">31</div><div class="dots"></div></div>
+                  <div class="wd"><div class="d">Sun</div><div class="n">1</div><div class="dots"><i></i></div></div>
+                </div>
+                <div class="sections">
+                  <div class="sec-head-label">Your work</div>
+                  <div class="acc"><button class="acc-head" data-acc><span class="title">Auditions</span><span class="meta">12 active</span><span class="chev">+</span></button><div class="acc-body"><p><b>3 this week.</b></p></div></div>
+                  <div class="acc good"><button class="acc-head" data-acc><span class="title">Earnings</span><span class="meta">¥ 312k / 480k</span><span class="chev">+</span></button><div class="acc-body"><p><b style="color:var(--green)">¥ 312,000 banked.</b></p></div></div>
+                  <div class="acc urgent"><button class="acc-head" data-acc><span class="title">Self-tapes</span><span class="meta">2 due</span><span class="chev">+</span></button><div class="acc-body"><p><b>LOST10</b> today, 15:00.</p></div></div>
+                  <div class="acc urgent"><button class="acc-head" data-acc><span class="title">Contracts</span><span class="meta">1 to review</span><span class="chev">+</span></button><div class="acc-body"><p><b>LOST10 — TBS Drama</b>. 2 flags.</p></div></div>
+                  <div class="acc"><button class="acc-head" data-acc><span class="title">Outreach</span><span class="meta">5 to follow up</span><span class="chev">+</span></button><div class="acc-body"><p><b>CD Tanaka</b> — 9 days.</p></div></div>
+                  <div class="acc"><button class="acc-head" data-acc><span class="title">Relationships</span><span class="meta">23 notes</span><span class="chev">+</span></button><div class="acc-body"><p>Your private vault.</p></div></div>
+                  <div class="acc urgent"><button class="acc-head" data-acc><span class="title">Needs approval</span><span class="meta">7 pending</span><span class="chev">+</span></button><div class="acc-body"><p>From <b>email</b>, <b>text</b>, agent forwards.</p></div></div>
+                </div>
+                <div style="height:60px"></div>
+              </div>
+
+              <div class="botnav news">
+                <a href="#" class="on">
+                  <span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z" stroke-linejoin="round"/><path d="M15 4v4h4M8 12h8M8 16h8M8 8h4"/></svg></span>
+                  Today
+                </a>
+                <a href="#">
+                  <span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 11h18M6 7l3-3M11 7l3-3M16 7l3-3"/></svg></span>
+                  Auditions
+                </a>
+                <a href="#">
+                  <span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/><path d="M16 11l5-3v8l-5-3z" stroke-linejoin="round"/><circle cx="7" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span>
+                  Tapes
+                </a>
+                <a href="#">
+                  <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16" stroke-linecap="round"/><path d="M8 16v-4M12 16v-7M16 16v-2M20 16V8" stroke-linecap="round"/></svg></span>
+                  Earnings
+                </a>
+                <a href="#">
+                  <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>
+                  Me
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption">News-app inspired bottom bar — <b>thin stroke icons</b> on top, <b>tiny labels</b> below, blurred backdrop, no pill chrome. Active tab tints amber. Reads less app-y and more editorial.</p>
+      </div>
+
+      <div>
+        <div style="position:relative; display:inline-block">
+          <span class="device-label">vs · original pill bar (compare)</span>
+          <div class="device">
+            <div class="device-inner">
+              <div class="statusbar">
+                <span>9:41</span>
+                <div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div>
+              </div>
+              <div class="scroll">
+                <div class="hello-row">
+                  <div>
+                    <div class="meta-line"><span class="live"></span>TUE · 27 MAY · TOKYO</div>
+                    <h1 class="hello">Good morning,<br/><em>Christian.</em></h1>
+                  </div>
+                  <div class="avatar">CH</div>
+                </div>
+                <div class="briefing">
+                  <div class="label">Today's briefing</div>
+                  <p>You start with a <b>callback for Toyota CM</b> at <b>10:30</b>. Then <b>costume fitting at 13:00</b> for <b>LOST10</b>, then your <b>self-tape</b> by <b>15:00</b>.</p>
+                  <div class="cta-row">
+                    <button class="btn primary">Open day <span class="arrow">→</span></button>
+                  </div>
+                </div>
+                <div class="weekstrip">
+                  <div class="wd"><div class="d">Mon</div><div class="n">26</div><div class="dots"><i></i></div></div>
+                  <div class="wd today"><div class="d">Tue</div><div class="n">27</div><div class="dots"><i></i><i></i><i></i></div></div>
+                  <div class="wd"><div class="d">Wed</div><div class="n">28</div><div class="dots"><i></i><i></i></div></div>
+                  <div class="wd"><div class="d">Thu</div><div class="n">29</div><div class="dots"></div></div>
+                  <div class="wd"><div class="d">Fri</div><div class="n">30</div><div class="dots"><i class="g"></i></div></div>
+                  <div class="wd"><div class="d">Sat</div><div class="n">31</div><div class="dots"></div></div>
+                  <div class="wd"><div class="d">Sun</div><div class="n">1</div><div class="dots"><i></i></div></div>
+                </div>
+                <div class="sections">
+                  <div class="sec-head-label">Your work</div>
+                  <div class="acc"><button class="acc-head" data-acc><span class="title">Auditions</span><span class="meta">12 active</span><span class="chev">+</span></button><div class="acc-body"><p><b>3 this week.</b></p></div></div>
+                  <div class="acc good"><button class="acc-head" data-acc><span class="title">Earnings</span><span class="meta">¥ 312k / 480k</span><span class="chev">+</span></button><div class="acc-body"><p><b style="color:var(--green)">¥ 312,000 banked.</b></p></div></div>
+                  <div class="acc urgent"><button class="acc-head" data-acc><span class="title">Self-tapes</span><span class="meta">2 due</span><span class="chev">+</span></button><div class="acc-body"><p><b>LOST10</b> today.</p></div></div>
+                </div>
+                <div style="height:80px"></div>
+              </div>
+              <div class="botnav">
+                <a href="#" class="on">Home</a>
+                <a href="#">Auditions</a>
+                <a href="#">Tapes</a>
+                <a href="#">$</a>
+                <a href="#">Me</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption">Original floating pill bar. Same content, side-by-side for comparison.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== Desktop ====== -->
+  <section class="frame-set" id="set-desk">
+    <div class="desk">
+      <div class="desk-bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="url">actoros.app/dashboard</div>
+        <div style="margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--paper-faint); letter-spacing:.18em">TUE · MAY 27</div>
+      </div>
+      <div class="desk-body">
+
+        <aside class="desk-side">
+          <div class="ao-mark">AO</div>
+          <div class="nav-item on">Home</div>
+          <div class="nav-item">Auditions</div>
+          <div class="nav-item">Self-tapes</div>
+          <div class="nav-item">Contracts</div>
+          <div class="nav-item">Outreach</div>
+          <div class="nav-item">Emails</div>
+          <div class="group-label">Insights</div>
+          <div class="nav-item">Earnings</div>
+          <div class="nav-item">Calendar</div>
+          <div class="group-label">Account</div>
+          <div class="nav-item">Settings</div>
+        </aside>
+
+        <div class="desk-main">
+          <div class="meta-line"><span class="live"></span>TUE · 27 MAY · TOKYO · 8 things today</div>
+          <h1 class="hello">Good morning, <em>Christian.</em></h1>
+
+          <div class="briefing">
+            <div class="label">Today's briefing</div>
+            <p>You start with a <b>callback for Toyota CM</b> at <b>10:30 in Roppongi</b> &mdash; <b>Watanabe</b> asked for the smile take again. Slip into <b>costume fitting at 13:00</b> in Aoyama for <b>LOST10</b>, then your <b>self-tape</b> is due by <b>15:00</b>. Close the day by replying to <b>CD Tanaka</b> about <b>Asahi CM</b>. You're tracking <b>¥ 312k banked</b> this month with <b>¥ 168k still in play</b>.</p>
+            <div class="cta-row">
+              <button class="btn primary">Open day <span class="arrow">→</span></button>
+              <button class="btn ghost">Snooze briefing</button>
+            </div>
+          </div>
+
+          <div class="weekstrip">
+            <div class="wd"><div class="d">Mon</div><div class="n">26</div><div class="dots"><i></i></div></div>
+            <div class="wd today"><div class="d">Tue</div><div class="n">27</div><div class="dots"><i></i><i></i><i></i></div></div>
+            <div class="wd"><div class="d">Wed</div><div class="n">28</div><div class="dots"><i></i><i></i></div></div>
+            <div class="wd"><div class="d">Thu</div><div class="n">29</div><div class="dots"></div></div>
+            <div class="wd"><div class="d">Fri</div><div class="n">30</div><div class="dots"><i class="g"></i></div></div>
+            <div class="wd"><div class="d">Sat</div><div class="n">31</div><div class="dots"></div></div>
+            <div class="wd"><div class="d">Sun</div><div class="n">1</div><div class="dots"><i></i></div></div>
+          </div>
+
+          <div class="desk-grid">
+            <div class="desk-card" style="background:linear-gradient(180deg, rgba(58,168,107,.05), transparent 70%); border-color:rgba(58,168,107,.18)">
+              <div class="lbl">May · banked</div>
+              <div style="font-family:var(--serif); font-size:54px; line-height:1; letter-spacing:-.02em; margin-top:6px"><span style="color:var(--paper-faint); font-size:30px; vertical-align:8px; margin-right:4px">¥</span>312,000</div>
+              <div style="font-family:var(--mono); font-size:11px; letter-spacing:.12em; color:var(--paper-dim); text-transform:uppercase; margin-top:8px">of ¥ 480k potential · <span style="color:var(--green)">↑ 27% on April</span></div>
+              <div class="linechart" style="height:140px; margin-top:18px">
+                <svg viewBox="0 0 600 140" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="gFill2" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0" stop-color="#3aa86b" stop-opacity=".35"/>
+                      <stop offset="1" stop-color="#3aa86b" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <line x1="0" y1="35" x2="600" y2="35" stroke="#26231f" stroke-dasharray="2 4"/>
+                  <line x1="0" y1="70" x2="600" y2="70" stroke="#26231f" stroke-dasharray="2 4"/>
+                  <line x1="0" y1="105" x2="600" y2="105" stroke="#26231f" stroke-dasharray="2 4"/>
+                  <polyline fill="none" stroke="#6e6a62" stroke-width="1.5" stroke-dasharray="5 4" points="0,110 100,95 200,72 300,55 400,40 500,28 600,18"/>
+                  <polyline fill="url(#gFill2)" stroke="#3aa86b" stroke-width="2.5" points="0,125 100,118 200,100 300,82 400,65 500,52 600,46 600,140 0,140"/>
+                  <circle cx="600" cy="46" r="4.5" fill="#3aa86b"/>
+                  <circle cx="600" cy="46" r="9" fill="#3aa86b" opacity=".2"/>
+                </svg>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; color:var(--paper-faint); margin-top:6px; text-transform:uppercase">
+                <span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:14px">
+              <div class="desk-card">
+                <div class="lbl">Auditions</div>
+                <div class="title">12 active</div>
+                <div style="font-size:13px; color:var(--paper-dim); margin-top:8px">3 this week. 1 callback, 2 submitted.</div>
+                <div style="display:flex; gap:6px; margin-top:10px"><span class="chip cb">1 CB</span><span class="chip sub">2 SUB</span><span class="chip bk">2 BK</span></div>
+              </div>
+              <div class="desk-card" style="border-color:rgba(232,98,90,.18)">
+                <div class="lbl" style="color:var(--red)">Self-tapes · urgent</div>
+                <div class="title">2 due</div>
+                <div style="font-size:13px; color:var(--paper-dim); margin-top:8px"><b style="color:var(--paper)">LOST10 — Ninja Scene</b> by 15:00 today.</div>
+              </div>
+              <div class="desk-card" style="border-color:rgba(232,98,90,.18)">
+                <div class="lbl" style="color:var(--red)">Contracts</div>
+                <div class="title">2 red flags</div>
+                <div style="font-size:13px; color:var(--paper-dim); margin-top:8px">LOST10 — TBS Drama agreement. Review before signing.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="desk-rail">
+          <div class="head">Today · chronological</div>
+          <div style="margin-top:14px">
+            <div class="rail-event"><div class="t" style="color:var(--amber)">10:30</div><div><div class="tit">Toyota CM · Callback</div><div class="sub">Roppongi · in 1h 12m</div></div></div>
+            <div class="rail-event"><div class="t">13:00</div><div><div class="tit">Costume fitting</div><div class="sub">Aoyama · LOST10</div></div></div>
+            <div class="rail-event"><div class="t">15:00</div><div><div class="tit">Self-tape due</div><div class="sub">LOST10 Ninja</div></div></div>
+            <div class="rail-event"><div class="t">16:30</div><div><div class="tit">Physio</div><div class="sub">Hiroo Clinic</div></div></div>
+            <div class="rail-event"><div class="t">17:30</div><div><div class="tit">Reply CD Tanaka</div><div class="sub">Asahi CM</div></div></div>
+            <div class="rail-event"><div class="t">18:30</div><div><div class="tit">Stunt training</div><div class="sub">Roppongi gym</div></div></div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+    <p style="max-width:1100px; margin:24px auto 0; font-family:var(--sans); font-size:13px; color:var(--paper-dim); line-height:1.6; padding:0 32px">Desktop: same vocabulary, breathing wider. Briefing + week strip stay center; right rail shows the day chronologically; left nav holds the existing screens.</p>
+  </section>
+
+</main>
+
+<!-- Tweaks panel -->
+<div class="tweaks" id="tweaks">
+  <span class="close" id="tw-close">×</span>
+  <h4>Tweaks</h4>
+  <small style="display:block; font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:4px">Display font</small>
+  <label><input type="radio" name="font" value="instrument" checked/> Instrument Serif (cinematic)</label>
+  <label><input type="radio" name="font" value="fraunces"/> Fraunces (modern serif)</label>
+  <label><input type="radio" name="font" value="inter"/> Inter (no serif)</label>
+
+  <div style="height:1px; background:var(--rule); margin:10px 0"></div>
+  <small style="display:block; font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:4px">Accent</small>
+  <div class="swatch-row">
+    <label><input type="radio" name="accent" value="amber" checked/><i style="background:#e8a755"></i></label>
+    <label><input type="radio" name="accent" value="red"/><i style="background:#e8625a"></i></label>
+    <label><input type="radio" name="accent" value="purple"/><i style="background:#b69de0"></i></label>
+    <label><input type="radio" name="accent" value="green"/><i style="background:#3aa86b"></i></label>
+  </div>
+
+  <div style="height:1px; background:var(--rule); margin:10px 0"></div>
+  <small style="display:block; font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:4px">Theme</small>
+  <label><input type="radio" name="theme" value="dark" checked/> Dark (default)</label>
+  <label><input type="radio" name="theme" value="ivory"/> Light · ivory + slate</label>
+  <label><input type="radio" name="theme" value="navy"/> Light · paper + navy</label>
+  <label><input type="radio" name="theme" value="warm"/> Light · warm cream</label>
+</div>
+
+<footer class="foot">
+  <h3>What's locked in v5</h3>
+  <ul>
+    <li><b>Aesthetic</b> — warm near-black canvas, paper-white type, Instrument Serif italic for the briefing voice. The whole product reads like a film title card crossed with a call sheet.</li>
+    <li><b>Hierarchy</b> — Greeting → prose briefing (CTA: Open day) → week strip → collapsed section accordion (Auditions · Earnings · Self-tapes · Contracts · Outreach · Inbox).</li>
+    <li><b>Color codes</b> — green = banked / done. amber = today / callback. red = urgent (overdue tape, contract flags). blue = submitted. purple = personal.</li>
+    <li><b>Bolded names</b> in the briefing get a faint amber underline highlight so they survive a glance.</li>
+    <li><b>Section meta numbers</b> flip color when the row is urgent.</li>
+  </ul>
+
+  <h3>What I'd touch next</h3>
+  <ul>
+    <li>Hi-fi the <b>audition detail</b> page — same vocabulary, the call-sheet block lit by the poster image.</li>
+    <li>Hi-fi the <b>splash</b> as a 1.4s motion sketch (animations starter).</li>
+    <li>Onboarding (photo upload, Gmail, Calendar MCP, currency).</li>
+  </ul>
+
+  <h3>Caveats</h3>
+  <ul>
+    <li>Avatar shows initials; user photo lands at integration.</li>
+    <li>Chart values are illustrative — wire to the existing Supabase data layer.</li>
+    <li>Accordion state is in-memory; persist to localStorage when wiring.</li>
+  </ul>
+</footer>
+
+<script>
+  // Frame tab nav
+  const tabs = document.querySelectorAll('#frames button');
+  const sets = document.querySelectorAll('.frame-set');
+  tabs.forEach(b => b.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    const f = b.dataset.f;
+    sets.forEach(s => s.classList.toggle('active', s.id === 'set-' + f));
+    if (f === 'all') buildAll();
+    window.scrollTo({top:0});
+  }));
+
+  // Accordion toggle
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-acc]');
+    if (!btn) return;
+    const acc = btn.closest('.acc');
+    acc.classList.toggle('open');
+    const chev = btn.querySelector('.chev');
+    if (chev) chev.textContent = acc.classList.contains('open') ? '+' : '+';
+  });
+
+  // Build "all" tab by cloning the 3 mobile frames
+  function buildAll(){
+    const row = document.getElementById('all-row');
+    if (row.dataset.built) return;
+    ['collapsed','opened','day'].forEach(id => {
+      const src = document.getElementById('set-'+id);
+      const dev = src.querySelector('.canvas-row > div');
+      if (dev) row.appendChild(dev.cloneNode(true));
+    });
+    row.dataset.built = '1';
+  }
+
+  // Tweaks panel <-> host
+  const tweaks = document.getElementById('tweaks');
+  window.addEventListener('message', e => {
+    if (!e.data) return;
+    if (e.data.type === '__activate_edit_mode') tweaks.style.display = 'block';
+    if (e.data.type === '__deactivate_edit_mode') tweaks.style.display = 'none';
+  });
+  window.parent.postMessage({type: '__edit_mode_available'}, '*');
+  document.getElementById('tw-close').addEventListener('click', () => {
+    tweaks.style.display = 'none';
+    window.parent.postMessage({type: '__edit_mode_dismissed'}, '*');
+  });
+
+  // Font tweak
+  document.querySelectorAll('input[name="font"]').forEach(r => r.addEventListener('change', e => {
+    const v = e.target.value;
+    const root = document.documentElement;
+    if (v === 'instrument') root.style.setProperty('--serif', '"Instrument Serif", serif');
+    if (v === 'fraunces') root.style.setProperty('--serif', '"Fraunces", serif');
+    if (v === 'inter') root.style.setProperty('--serif', '"Inter", sans-serif');
+  }));
+
+  // Accent tweak
+  document.querySelectorAll('input[name="accent"]').forEach(r => r.addEventListener('change', e => {
+    const map = {amber:'#e8a755', red:'#e8625a', purple:'#b69de0', green:'#3aa86b'};
+    document.documentElement.style.setProperty('--amber', map[e.target.value]);
+  }));
+
+  // Theme picker
+  const themes = {
+    dark: null,
+    ivory: {
+      '--bg':'#eaeef2','--bg2':'#dee3e9','--bg3':'#cfd5dd',
+      '--paper':'#1a2230','--paper-dim':'#4a5468','--paper-faint':'#6e7a91',
+      '--rule':'#b7c0cf','--rule-strong':'#8a93a6',
+      '--amber':'#a37314','--green':'#1c7a4a','--red':'#b03a31','--blue':'#1f5fa8','--purple':'#7a5db8'
+    },
+    navy: {
+      '--bg':'#f1e9d6','--bg2':'#ebe2cc','--bg3':'#e0d5ba',
+      '--paper':'#0d1b3a','--paper-dim':'#3a486a','--paper-faint':'#6c7892',
+      '--rule':'#c2b69c','--rule-strong':'#8e8267',
+      '--amber':'#8a5a14','--green':'#1d6e44','--red':'#a83128','--blue':'#143e7d','--purple':'#5a4699'
+    },
+    warm: {
+      '--bg':'#ebe5d8','--bg2':'#e0d9c8','--bg3':'#d6cebb',
+      '--paper':'#1a1815','--paper-dim':'#5a554d','--paper-faint':'#7d7669',
+      '--rule':'#b8ad97','--rule-strong':'#8d8270',
+      '--amber':'#9c6a14','--green':'#1c7a4a','--red':'#a83128','--blue':'#1c5b9c','--purple':'#6c4ea8'
+    }
+  };
+  document.querySelectorAll('input[name="theme"]').forEach(r => r.addEventListener('change', e => {
+    const root = document.documentElement;
+    const keys = ['--bg','--bg2','--bg3','--paper','--paper-dim','--paper-faint','--rule','--rule-strong','--amber','--green','--red','--blue','--purple'];
+    keys.forEach(k => root.style.removeProperty(k));
+    const t = themes[e.target.value];
+    if (t) Object.entries(t).forEach(([k,v]) => root.style.setProperty(k,v));
+  }));
+
+  // Need Inter & Fraunces lazily for tweaks
+  if (!document.querySelector('link[data-extra-fonts]')) {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.dataset.extraFonts = '1';
+    l.href = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap';
+    document.head.appendChild(l);
+  }
+</script>
+
+</body>
+</html>

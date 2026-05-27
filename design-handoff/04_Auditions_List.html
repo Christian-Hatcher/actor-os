@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ActorOS — Auditions List</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0a0908; --bg2:#141210; --bg3:#1c1916;
+    --paper:#f4efe6; --paper-dim:#a8a298; --paper-faint:#6e6a62;
+    --rule:#26231f; --rule-strong:#36322c;
+    --green:#3aa86b; --amber:#e8a755; --blue:#6ab3e8; --red:#e8625a; --purple:#b69de0;
+    --serif:"Instrument Serif", serif;
+    --sans:"Inter", system-ui, sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, monospace;
+  }
+  *{box-sizing:border-box; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
+  html,body{margin:0; background:var(--bg); color:var(--paper); font-family:var(--sans); font-weight:400;}
+  body{
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(60,50,40,.16), transparent 50%),
+      radial-gradient(ellipse at 90% 100%, rgba(40,30,20,.18), transparent 50%);
+    background-attachment:fixed; min-height:100vh;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image: radial-gradient(circle at 0 0, rgba(255,255,255,.012) 1px, transparent 1px), radial-gradient(circle at 7px 9px, rgba(255,255,255,.01) 1px, transparent 1px);
+    background-size: 3px 3px, 5px 5px; mix-blend-mode:overlay; opacity:.7;
+  }
+
+  header.top{position:relative; z-index:2; padding:22px 32px 18px; display:flex; align-items:flex-end; justify-content:space-between; gap:24px; border-bottom:1px solid var(--rule);}
+  .brand{display:flex; align-items:center; gap:14px}
+  .ao-mark{font-family:var(--serif); font-size:34px; line-height:.85; letter-spacing:-.02em;}
+  .brand-meta{display:flex; flex-direction:column; gap:2px}
+  .brand-meta .t1{font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-dim); text-transform:uppercase}
+  .brand-meta .t2{font-family:var(--serif); font-size:24px; line-height:1; letter-spacing:-.01em}
+  nav.frames{display:flex; gap:4px; padding:4px; border:1px solid var(--rule); border-radius:30px; background:rgba(20,18,16,.5); backdrop-filter: blur(8px);}
+  nav.frames button{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; background:transparent; border:none; padding:7px 14px 6px; cursor:pointer; color:var(--paper-dim); border-radius:30px; white-space:nowrap;}
+  nav.frames button.active{background:var(--paper); color:var(--bg);}
+  nav.frames button:hover:not(.active){color:var(--paper);}
+  .top-meta{font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;}
+  .top-meta .dot{width:6px;height:6px;background:var(--green);border-radius:50%; display:inline-block; box-shadow:0 0 8px rgba(58,168,107,.4); margin-right:6px;}
+
+  main{position:relative; z-index:1; padding:48px 32px 100px;}
+  .frame-set{display:none}
+  .frame-set.active{display:block}
+  .canvas-row{display:flex; gap:48px; justify-content:center; flex-wrap:wrap; align-items:flex-start;}
+
+  /* phone */
+  .device{position:relative; width:380px; border-radius:46px; background:linear-gradient(180deg, #1a1815, #0e0d0b); padding:10px;
+    box-shadow:0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04) inset, 0 1px 0 rgba(255,255,255,.06) inset;}
+  .device-inner{border-radius:38px; overflow:hidden; background:var(--bg2); position:relative; height:820px;}
+  .device-inner::before{content:""; position:absolute; top:10px; left:50%; transform:translateX(-50%); width:108px; height:30px; background:#000; border-radius:18px; z-index:50;}
+  .device-label{position:absolute; top:-30px; left:24px; font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;}
+  .device-caption{margin-top:18px; max-width:380px; font-family:var(--sans); font-size:13px; color:var(--paper-dim); line-height:1.55; padding-left:6px;}
+  .device-caption b{color:var(--paper); font-weight:500}
+
+  .statusbar{display:flex; justify-content:space-between; align-items:center; padding: 14px 26px 0; font-family:var(--mono); font-size:11px; color:var(--paper); height:42px;}
+  .statusbar .right{display:flex; gap:6px; align-items:center;}
+  .statusbar .signal{display:inline-flex; gap:2px;}
+  .statusbar .signal i{width:3px; background:var(--paper); border-radius:1px;}
+  .statusbar .signal i:nth-child(1){height:3px} .statusbar .signal i:nth-child(2){height:5px} .statusbar .signal i:nth-child(3){height:7px} .statusbar .signal i:nth-child(4){height:9px}
+  .battery{width:22px; height:11px; border:1px solid var(--paper); border-radius:3px; position:relative; padding:1px;}
+  .battery::after{content:""; position:absolute; right:-3px; top:3px; width:2px; height:5px; background:var(--paper); border-radius:0 1px 1px 0;}
+  .battery i{display:block; height:100%; width:78%; background:var(--paper); border-radius:1px;}
+  .scroll{height:calc(820px - 42px); overflow-y:auto; padding:0 0 100px; scrollbar-width:none;}
+  .scroll::-webkit-scrollbar{display:none}
+
+  /* Page header */
+  .page-head{padding:14px 22px 10px; display:flex; justify-content:space-between; align-items:flex-end; gap:14px;}
+  .page-head .titles{flex:1; min-width:0;}
+  .meta-line{font-family:var(--mono); font-size:10px; letter-spacing:.22em; color:var(--paper-faint); text-transform:uppercase;}
+  .meta-line .live{display:inline-block; width:5px; height:5px; background:var(--green); border-radius:50%; margin-right:6px; vertical-align:1px; box-shadow:0 0 8px var(--green);}
+  h1.title{font-family:var(--serif); font-weight:400; font-size:40px; line-height:1; letter-spacing:-.015em; margin:4px 0 0;}
+  h1.title em{font-style:italic; color:var(--paper-dim);}
+
+  /* View toggle (Agenda / Calendar) */
+  .view-toggle{
+    display:inline-flex; border:1px solid var(--rule-strong); border-radius:30px; padding:3px;
+    background:rgba(255,255,255,.02);
+    flex-shrink:0;
+  }
+  .view-toggle button{
+    background:transparent; border:none; cursor:pointer;
+    padding:6px 10px; border-radius:30px; color:var(--paper-dim);
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase;
+  }
+  .view-toggle button.on{background:var(--paper); color:var(--bg);}
+  .view-toggle button svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.7;}
+
+  /* Search bar */
+  .search-row{padding:12px 22px 4px; display:flex; gap:8px;}
+  .search{
+    flex:1; padding:10px 14px; border-radius:30px; border:1px solid var(--rule);
+    background:rgba(255,255,255,.025); color:var(--paper);
+    font-family:var(--sans); font-size:13px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .search svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.8; color:var(--paper-faint);}
+  .search input{flex:1; background:transparent; border:none; color:var(--paper); font-family:inherit; font-size:13px; outline:none;}
+  .search input::placeholder{color:var(--paper-faint);}
+  .add-btn{
+    flex:0 0 auto; padding:0 14px; border-radius:30px; border:none;
+    background:var(--paper); color:var(--bg); cursor:pointer;
+    font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; font-weight:600;
+  }
+
+  /* Filter chips */
+  .filter-row{
+    display:flex; gap:6px; padding:14px 22px 12px;
+    overflow-x:auto; scrollbar-width:none;
+  }
+  .filter-row::-webkit-scrollbar{display:none}
+  .filter-chip{
+    flex:0 0 auto; padding:5px 12px;
+    border:1px solid var(--rule); border-radius:30px;
+    background:rgba(255,255,255,.025); color:var(--paper-dim);
+    font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+    cursor:pointer; white-space:nowrap;
+  }
+  .filter-chip.on{background:var(--paper); color:var(--bg); border-color:var(--paper);}
+  .filter-chip .ct{margin-left:5px; opacity:.6;}
+  .filter-chip.on .ct{opacity:.5;}
+
+  /* day group */
+  .day-group{margin-top:22px;}
+  .day-header{
+    padding:24px 22px 12px;
+    display:flex; align-items:baseline; justify-content:space-between; gap:14px;
+    position:relative;
+  }
+  .day-header::before{
+    content:""; position:absolute; top:0; left:22px; right:22px; height:1px;
+    background:linear-gradient(90deg, var(--rule-strong) 0, var(--rule) 30%, transparent 100%);
+  }
+  .day-group:first-of-type .day-header{padding-top:14px;}
+  .day-group:first-of-type .day-header::before{display:none;}
+  .day-header .dh-left{font-family:var(--serif); font-style:italic; font-size:24px; line-height:1; color:var(--paper); letter-spacing:-.005em; text-transform:none;}
+  .day-header .dh-left .pip{display:inline-block; width:6px; height:6px; background:var(--amber); border-radius:50%; margin-right:8px; vertical-align:3px; box-shadow:0 0 10px var(--amber);}
+  .day-header .dh-left.today{color:var(--amber);}
+  .day-header .dh-right{font-family:var(--mono); font-size:9.5px; letter-spacing:.16em; color:var(--paper-faint); text-transform:uppercase;}
+
+  /* audition row */
+  .aud-row{
+    display:grid; grid-template-columns: 56px 1fr auto; column-gap:16px;
+    padding:18px 22px 18px 24px;
+    border-top:1px solid var(--rule);
+    align-items:center; cursor:pointer; position:relative;
+    transition:background .12s;
+  }
+  .aud-row::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:2px;
+    background:transparent;
+  }
+  .aud-row.cb::before{background:linear-gradient(180deg, var(--amber), rgba(232,167,85,.25));}
+  .aud-row.sub::before{background:linear-gradient(180deg, var(--blue), rgba(106,179,232,.25));}
+  .aud-row.bk::before{background:linear-gradient(180deg, var(--green), rgba(58,168,107,.25));}
+  .aud-row:hover{background:rgba(255,255,255,.025);}
+  .day-group .aud-row:first-of-type{border-top:none;}
+  .aud-row.now{
+    background:linear-gradient(90deg, rgba(232,167,85,.07), transparent 75%);
+  }
+  .aud-row.now::before{width:3px; background:var(--amber); box-shadow:0 0 12px rgba(232,167,85,.4);}
+  .aud-row.bk-strong{background:linear-gradient(90deg, rgba(58,168,107,.04), transparent 80%);}
+  .aud-row .time{
+    font-family:var(--mono); font-size:11px; letter-spacing:.04em; color:var(--paper-dim);
+  }
+  .aud-row.now .time{color:var(--amber); font-weight:600;}
+  .aud-row .info{min-width:0;}
+  .aud-row .info .proj{font-family:var(--serif); font-size:22px; line-height:1.15; color:var(--paper); letter-spacing:-.005em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .aud-row .info .sub{font-family:var(--mono); font-size:10px; letter-spacing:.08em; color:var(--paper-faint); text-transform:uppercase; margin-top:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .aud-row .right{display:flex; flex-direction:column; align-items:flex-end; gap:7px; flex-shrink:0;}
+  .aud-row .pay{font-family:var(--mono); font-size:11.5px; color:var(--paper); letter-spacing:.02em;}
+  .aud-row .pay.green{color:var(--green);}
+  .aud-row .pay.dim{color:var(--paper-faint);}
+
+  /* chip */
+  .chip{display:inline-flex; align-items:center; gap:4px; font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; padding:3px 8px; border-radius:30px; background:rgba(255,255,255,.05); color:var(--paper-dim); border:1px solid var(--rule); white-space:nowrap; flex-shrink:0;}
+  .chip.cb{color:var(--amber); border-color:rgba(232,167,85,.3); background:rgba(232,167,85,.08)}
+  .chip.sub{color:var(--blue); border-color:rgba(106,179,232,.3); background:rgba(106,179,232,.08)}
+  .chip.bk{color:var(--green); border-color:rgba(58,168,107,.32); background:rgba(58,168,107,.08)}
+  .chip.passed{color:var(--paper-faint); border-color:var(--rule); background:rgba(255,255,255,.02);}
+
+  /* Calendar view */
+  .cal-wrap{padding:6px 22px 8px;}
+  .cal-head{display:flex; justify-content:space-between; align-items:baseline; padding:10px 0;}
+  .cal-head .month-name{font-family:var(--serif); font-size:30px; line-height:1; letter-spacing:-.015em;}
+  .cal-head .month-name em{font-style:italic; color:var(--paper-dim);}
+  .cal-head .nav-controls{display:flex; gap:4px; font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--paper-dim); text-transform:uppercase;}
+  .cal-head .nav-controls span{padding:5px 10px; border:1px solid var(--rule); border-radius:30px; cursor:pointer; background:rgba(255,255,255,.02);}
+  .cal-head .nav-controls span:hover{color:var(--paper);}
+  .cal-head .nav-controls span.today{background:var(--paper); color:var(--bg); border-color:var(--paper);}
+
+  .cal-grid{display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; margin-top:10px;}
+  .cal-grid .hd{font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase; text-align:center; padding:4px 0;}
+  .cal-day{
+    aspect-ratio:1; padding:8px 7px 6px;
+    border:1px solid var(--rule); border-radius:8px;
+    background:rgba(255,255,255,.012);
+    position:relative;
+    cursor:pointer; transition:background .12s, border-color .12s;
+    display:flex; flex-direction:column;
+  }
+  .cal-day:hover{background:rgba(255,255,255,.04);}
+  .cal-day.outside{opacity:.3; pointer-events:none;}
+  .cal-day .n{font-family:var(--serif); font-size:18px; line-height:1; color:var(--paper); letter-spacing:-.005em;}
+  .cal-day .ev{font-family:var(--mono); font-size:8.5px; letter-spacing:.1em; color:var(--paper-faint); text-transform:uppercase; margin-top:auto;}
+
+  /* status-tinted cells */
+  .cal-day.cb{background:rgba(232,167,85,.1); border-color:rgba(232,167,85,.32);}
+  .cal-day.cb .ev{color:var(--amber);}
+  .cal-day.sub{background:rgba(106,179,232,.08); border-color:rgba(106,179,232,.25);}
+  .cal-day.sub .ev{color:var(--blue);}
+  .cal-day.bk{background:rgba(58,168,107,.1); border-color:rgba(58,168,107,.32);}
+  .cal-day.bk .ev{color:var(--green);}
+  .cal-day.pers{background:rgba(182,157,224,.08); border-color:rgba(182,157,224,.25);}
+  .cal-day.pers .ev{color:var(--purple);}
+
+  .cal-day.today{background:var(--paper); border-color:var(--paper);}
+  .cal-day.today .n{color:var(--bg); font-weight:600;}
+  .cal-day.today .ev{color:var(--bg); opacity:.6;}
+  .cal-day.selected{box-shadow:0 0 0 2px var(--amber); border-color:var(--amber);}
+
+  /* multi-status: stack mini dots in top-right corner */
+  .cal-day .dots{position:absolute; top:6px; right:6px; display:flex; gap:2px;}
+  .cal-day .dots i{width:4px; height:4px; border-radius:50%; background:var(--paper-dim);}
+  .cal-day .dots i.cb{background:var(--amber);}
+  .cal-day .dots i.bk{background:var(--green);}
+  .cal-day .dots i.sub{background:var(--blue);}
+  .cal-day .dots i.pers{background:var(--purple);}
+
+  /* Selected day panel */
+  .sel-day{
+    margin:14px 0 0;
+    border-top:1px solid var(--rule);
+    padding-top:14px;
+  }
+  .sel-day .header{padding:0 22px 8px; display:flex; justify-content:space-between; align-items:baseline;}
+  .sel-day .header .h{font-family:var(--serif); font-size:24px; line-height:1; color:var(--paper);}
+  .sel-day .header .h em{font-style:italic; color:var(--paper-dim);}
+  .sel-day .header .count{font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase;}
+
+  /* Empty/booked sliver */
+  .empty-day{padding:24px 22px; text-align:center; color:var(--paper-faint); font-family:var(--mono); font-size:10px; letter-spacing:.18em; text-transform:uppercase;}
+
+  /* News bottom nav */
+  .botnav.news{position:absolute; bottom:0; left:0; right:0; z-index:4; background:rgba(10,9,8,.85); backdrop-filter:blur(24px); border-top:1px solid var(--rule); display:flex; padding:8px 4px 14px;}
+  .botnav.news a{flex:1; padding:6px 4px 2px; text-decoration:none; font-family:var(--sans); font-size:9.5px; font-weight:500; color:var(--paper-faint); text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px;}
+  .botnav.news a.on{color:var(--amber);}
+  .botnav.news a.on .ic{color:var(--amber);}
+  .botnav.news .ic{width:22px; height:22px; color:var(--paper-faint); display:inline-flex; align-items:center; justify-content:center;}
+  .botnav.news .ic svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6;}
+
+  /* spec card */
+  .spec-card{border:1px solid var(--rule); border-radius:14px; padding:20px 22px; background:linear-gradient(180deg, rgba(255,255,255,.015), transparent); max-width:380px;}
+  .spec-card h4{font-family:var(--serif); font-size:22px; margin:0 0 8px; font-weight:400; color:var(--paper);}
+  .spec-card .lbl{font-family:var(--mono); font-size:10px; letter-spacing:.2em; color:var(--paper-faint); text-transform:uppercase; margin-top:14px; margin-bottom:6px;}
+  .spec-card ol, .spec-card ul{margin:0; padding-left:18px; font-size:13px; line-height:1.55; color:var(--paper-dim);}
+  .spec-card li{margin-bottom:3px;}
+  .spec-card b{color:var(--paper); font-weight:500;}
+  .spec-card .sep{height:1px; background:var(--rule); margin:14px 0;}
+  .spec-card code{font-family:var(--mono); font-size:11px; background:rgba(255,255,255,.05); padding:1px 5px; border-radius:4px;}
+
+  /* desktop */
+  .desk{width:100%; max-width:1400px; margin:0 auto; border-radius:18px; overflow:hidden; background:var(--bg2); border:1px solid var(--rule-strong); box-shadow:0 40px 100px rgba(0,0,0,.5);}
+  .desk-bar{display:flex; align-items:center; gap:8px; padding:12px 18px; background:#0e0d0b; border-bottom:1px solid var(--rule);}
+  .desk-bar .dots{display:flex; gap:7px; margin-right:14px;}
+  .desk-bar .dots i{width:11px; height:11px; border-radius:50%; background:#2c2823; border:1px solid #1c1916;}
+  .desk-bar .url{font-family:var(--mono); font-size:11px; color:var(--paper-dim); padding:5px 12px; border-radius:20px; background:rgba(255,255,255,.03); border:1px solid var(--rule);}
+  .desk-body{display:grid; grid-template-columns:240px 1fr;}
+  .desk-side{padding:22px 18px; border-right:1px solid var(--rule);}
+  .desk-side .ao-mark{font-size:28px; margin-bottom:24px;}
+  .desk-side .nav-item{display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; font-family:var(--sans); font-size:13px; color:var(--paper-dim); margin-bottom:2px; cursor:pointer;}
+  .desk-side .nav-item.on{background:rgba(255,255,255,.05); color:var(--paper);}
+  .desk-main{padding:34px 38px 50px;}
+  .desk-aud-row{display:grid; grid-template-columns: 90px 90px 1fr auto auto 24px; align-items:center; gap:18px; padding:14px 0; border-top:1px solid var(--rule); cursor:pointer;}
+  .desk-aud-row:hover{background:rgba(255,255,255,.02);}
+  .desk-aud-row.now{background:linear-gradient(90deg, rgba(232,167,85,.06), transparent 70%); border-left:2px solid var(--amber); padding-left:14px;}
+  .desk-aud-row .date{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--paper-dim); text-transform:uppercase;}
+  .desk-aud-row .time{font-family:var(--mono); font-size:11px; color:var(--paper);}
+  .desk-aud-row .proj{font-family:var(--serif); font-size:20px; line-height:1.15;}
+  .desk-aud-row .sub{font-family:var(--mono); font-size:10px; letter-spacing:.08em; color:var(--paper-faint); text-transform:uppercase; margin-top:2px;}
+  .desk-aud-row .pay{font-family:var(--mono); font-size:13px; color:var(--paper); text-align:right;}
+  .desk-aud-row .pay.green{color:var(--green);}
+  .desk-aud-row .chev{font-family:var(--serif); font-size:18px; color:var(--paper-faint);}
+
+  footer.foot{padding:60px 32px; font-family:var(--sans); color:var(--paper-dim); font-size:13px; max-width:1100px; margin:0 auto; line-height:1.65;}
+  footer.foot h3{font-family:var(--serif); font-size:30px; margin:32px 0 8px; color:var(--paper); font-weight:400;}
+  footer.foot ul{margin:0; padding-left:22px;}
+  footer.foot li{margin-bottom:4px;}
+  footer.foot b{color:var(--paper); font-weight:500;}
+  @media (max-width:980px){.desk-body{grid-template-columns:1fr;} .desk-side{display:none;}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="ao-mark">AO</span>
+    <div class="brand-meta">
+      <span class="t1">ACTOROS · HI-FI</span>
+      <span class="t2">Auditions list</span>
+    </div>
+  </div>
+  <nav class="frames" id="frames">
+    <button data-f="agenda" class="active">Agenda</button>
+    <button data-f="calendar">Calendar</button>
+    <button data-f="filtered">Filtered</button>
+    <button data-f="desk">Desktop</button>
+  </nav>
+  <div class="top-meta"><span class="dot"></span>TYO · MAY 27 · 12 ACTIVE</div>
+</header>
+
+<main>
+
+  <!-- ============================ AGENDA ============================ -->
+  <section class="frame-set active" id="set-agenda">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block;">
+          <span class="device-label">01 · agenda · default</span>
+          <div class="device"><div class="device-inner">
+            <div class="statusbar"><span>9:18</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+            <div class="scroll">
+
+              <div class="page-head">
+                <div class="titles">
+                  <div class="meta-line"><span class="live"></span>TUE · 27 MAY · 12 ACTIVE</div>
+                  <h1 class="title">Auditions</h1>
+                </div>
+                <div class="view-toggle">
+                  <button class="on" title="Agenda">
+                    <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke-linecap="round"/></svg>
+                  </button>
+                  <button title="Calendar">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="search-row">
+                <div class="search">
+                  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5" stroke-linecap="round"/></svg>
+                  <input type="text" placeholder="Search project, role, agency"/>
+                </div>
+                <button class="add-btn">+ Add</button>
+              </div>
+
+              <div class="filter-row">
+                <span class="filter-chip on">All <span class="ct">12</span></span>
+                <span class="filter-chip">Callback <span class="ct">1</span></span>
+                <span class="filter-chip">Submitted <span class="ct">8</span></span>
+                <span class="filter-chip">Booked <span class="ct">2</span></span>
+                <span class="filter-chip">Past <span class="ct">28</span></span>
+              </div>
+
+              <!-- Today -->
+              <div class="day-group">
+                <div class="day-header">
+                  <span class="dh-left today">Today · Tue 27 May</span>
+                  <span class="dh-right">1 event</span>
+                </div>
+                <div class="aud-row now cb">
+                  <div class="time">10:30</div>
+                  <div class="info">
+                    <div class="proj">Toyota CM — Crown Highway</div>
+                    <div class="sub">Lead Stunt · Roppongi · Watanabe</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip cb">CB</span>
+                    <span class="pay">¥ 220k</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tomorrow -->
+              <div class="day-group">
+                <div class="day-header">
+                  <span class="dh-left">Wed 28 May</span>
+                  <span class="dh-right">1 event</span>
+                </div>
+                <div class="aud-row sub">
+                  <div class="time">14:00</div>
+                  <div class="info">
+                    <div class="proj">Shokz Earphone — Athletic</div>
+                    <div class="sub">Self-tape due · solo</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip sub">SUB</span>
+                    <span class="pay">¥ 132k</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fri -->
+              <div class="day-group">
+                <div class="day-header">
+                  <span class="dh-left">Fri 30 May</span>
+                  <span class="dh-right">1 event</span>
+                </div>
+                <div class="aud-row bk bk-strong">
+                  <div class="time">07:00</div>
+                  <div class="info">
+                    <div class="proj">LOST10 — TBS Drama</div>
+                    <div class="sub">Guest star · Shibuya studio · all day</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip bk">BK</span>
+                    <span class="pay green">¥ 180k</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Next week -->
+              <div class="day-group">
+                <div class="day-header">
+                  <span class="dh-left">Mon 2 Jun</span>
+                  <span class="dh-right">1 event</span>
+                </div>
+                <div class="aud-row sub">
+                  <div class="time">11:00</div>
+                  <div class="info">
+                    <div class="proj">P-Co. Home Appliance</div>
+                    <div class="sub">Audition · P-Co. agency · Aoyama</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip sub">SUB</span>
+                    <span class="pay">¥ 80k</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Awaiting -->
+              <div class="day-group">
+                <div class="day-header">
+                  <span class="dh-left">Awaiting reply</span>
+                  <span class="dh-right">3 events</span>
+                </div>
+                <div class="aud-row">
+                  <div class="time">—</div>
+                  <div class="info">
+                    <div class="proj">Kamen Rider — Toy VO</div>
+                    <div class="sub">BANDAI · sent 18 May</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip">SUB</span>
+                    <span class="pay dim">¥ 95k</span>
+                  </div>
+                </div>
+                <div class="aud-row">
+                  <div class="time">—</div>
+                  <div class="info">
+                    <div class="proj">Netflix Series Ep 4</div>
+                    <div class="sub">Bit part · sent 14 May</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip">SUB</span>
+                    <span class="pay dim">¥ 60k</span>
+                  </div>
+                </div>
+                <div class="aud-row">
+                  <div class="time">—</div>
+                  <div class="info">
+                    <div class="proj">Asahi commercial</div>
+                    <div class="sub">Spec · sent 10 May</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip">SUB</span>
+                    <span class="pay dim">¥ 120k</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="height:80px"></div>
+            </div>
+
+            <div class="botnav news">
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4M8 12h8M8 16h8M8 8h4"/></svg></span>Today</a>
+              <a href="#" class="on"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 11h18M6 7l3-3M11 7l3-3M16 7l3-3"/></svg></span>Auditions</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/><path d="M16 11l5-3v8l-5-3z"/><circle cx="7" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span>Tapes</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16v-7M16 16v-2M20 16V8"/></svg></span>Earnings</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>Me</a>
+            </div>
+          </div></div>
+        </div>
+        <p class="device-caption">Default agenda. Grouped by day. <b>Today</b> highlighted amber. Status chip + pay on the right. Awaiting-reply auditions cluster at the bottom with em-dashes for time. Tap any row to open the audition detail.</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>Agenda rules</h4>
+        <ul>
+          <li>Day groups sort chronologically; "Awaiting reply" sits last.</li>
+          <li><b>Today</b> day-header gets an amber dot + label color.</li>
+          <li>In-progress / upcoming-soon row gets the amber left stripe.</li>
+          <li>Pay color codes: <b style="color:var(--green)">green</b> = booked, <b>paper</b> = pending callback, <span style="color:var(--paper-faint)">dim</span> = awaiting reply.</li>
+        </ul>
+        <div class="sep"></div>
+        <div class="lbl">View toggle</div>
+        <ul>
+          <li>Top-right pair of icons cycles <b>Agenda ⇄ Calendar</b>.</li>
+          <li>Selection persists per device.</li>
+        </ul>
+        <div class="sep"></div>
+        <div class="lbl">Filters</div>
+        <ul>
+          <li>One chip = one status. <code>All</code> default selected.</li>
+          <li>Counts update live as data refreshes.</li>
+          <li>Multi-select supported (long-press to add).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ CALENDAR ============================ -->
+  <section class="frame-set" id="set-calendar">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block;">
+          <span class="device-label">02 · calendar · month grid</span>
+          <div class="device"><div class="device-inner">
+            <div class="statusbar"><span>9:18</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+            <div class="scroll">
+
+              <div class="page-head">
+                <div class="titles">
+                  <div class="meta-line"><span class="live"></span>TUE · 27 MAY · 12 ACTIVE</div>
+                  <h1 class="title">Auditions</h1>
+                </div>
+                <div class="view-toggle">
+                  <button title="Agenda">
+                    <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke-linecap="round"/></svg>
+                  </button>
+                  <button class="on" title="Calendar">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="cal-wrap">
+                <div class="cal-head">
+                  <div class="month-name">May <em>2026</em></div>
+                  <div class="nav-controls">
+                    <span>‹</span><span class="today">Today</span><span>›</span>
+                  </div>
+                </div>
+
+                <div class="cal-grid">
+                  <div class="hd">M</div><div class="hd">T</div><div class="hd">W</div><div class="hd">T</div><div class="hd">F</div><div class="hd">S</div><div class="hd">S</div>
+
+                  <div class="cal-day outside"><div class="n">28</div></div>
+                  <div class="cal-day outside"><div class="n">29</div></div>
+                  <div class="cal-day outside"><div class="n">30</div></div>
+                  <div class="cal-day"><div class="n">1</div></div>
+                  <div class="cal-day bk"><div class="n">2</div><div class="ev">Shoot</div></div>
+                  <div class="cal-day"><div class="n">3</div></div>
+                  <div class="cal-day"><div class="n">4</div></div>
+
+                  <div class="cal-day"><div class="n">5</div></div>
+                  <div class="cal-day sub"><div class="n">6</div><div class="ev">Self-tape</div></div>
+                  <div class="cal-day"><div class="n">7</div></div>
+                  <div class="cal-day"><div class="n">8</div></div>
+                  <div class="cal-day"><div class="n">9</div></div>
+                  <div class="cal-day bk"><div class="n">10</div><div class="ev">Shoot</div></div>
+                  <div class="cal-day"><div class="n">11</div></div>
+
+                  <div class="cal-day"><div class="n">12</div></div>
+                  <div class="cal-day"><div class="n">13</div></div>
+                  <div class="cal-day cb"><div class="n">14</div><div class="ev">Callback</div></div>
+                  <div class="cal-day"><div class="n">15</div></div>
+                  <div class="cal-day"><div class="n">16</div></div>
+                  <div class="cal-day"><div class="n">17</div></div>
+                  <div class="cal-day sub"><div class="n">18</div><div class="ev">Submit</div></div>
+
+                  <div class="cal-day"><div class="n">19</div></div>
+                  <div class="cal-day bk"><div class="n">20</div><div class="ev">Shoot</div></div>
+                  <div class="cal-day"><div class="n">21</div></div>
+                  <div class="cal-day sub"><div class="n">22</div><div class="ev">Self-tape</div></div>
+                  <div class="cal-day"><div class="n">23</div></div>
+                  <div class="cal-day"><div class="n">24</div></div>
+                  <div class="cal-day"><div class="n">25</div></div>
+
+                  <div class="cal-day"><div class="n">26</div></div>
+                  <div class="cal-day today selected"><div class="n">27</div><div class="ev">Callback</div><div class="dots"><i class="cb"></i></div></div>
+                  <div class="cal-day sub"><div class="n">28</div><div class="ev">Self-tape</div></div>
+                  <div class="cal-day"><div class="n">29</div></div>
+                  <div class="cal-day bk"><div class="n">30</div><div class="ev">Shoot</div></div>
+                  <div class="cal-day"><div class="n">31</div></div>
+                  <div class="cal-day outside"><div class="n">1</div></div>
+                </div>
+
+                <!-- legend -->
+                <div style="display:flex; gap:14px; justify-content:center; margin-top:14px; font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase;">
+                  <span><i style="display:inline-block; width:5px; height:5px; background:var(--amber); border-radius:50%; vertical-align:1px; margin-right:5px;"></i>Callback</span>
+                  <span><i style="display:inline-block; width:5px; height:5px; background:var(--blue); border-radius:50%; vertical-align:1px; margin-right:5px;"></i>Submitted</span>
+                  <span><i style="display:inline-block; width:5px; height:5px; background:var(--green); border-radius:50%; vertical-align:1px; margin-right:5px;"></i>Booked</span>
+                </div>
+              </div>
+
+              <!-- Selected day events -->
+              <div class="sel-day">
+                <div class="header">
+                  <span class="h">Tuesday, <em>27 May</em></span>
+                  <span class="count">1 event</span>
+                </div>
+                <div class="aud-row now cb">
+                  <div class="time">10:30</div>
+                  <div class="info">
+                    <div class="proj">Toyota CM — Crown Highway</div>
+                    <div class="sub">Lead Stunt · Roppongi · Watanabe</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip cb">CB</span>
+                    <span class="pay">¥ 220k</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="height:80px"></div>
+            </div>
+
+            <div class="botnav news">
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/></svg></span>Today</a>
+              <a href="#" class="on"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 11h18M6 7l3-3M11 7l3-3M16 7l3-3"/></svg></span>Auditions</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/></svg></span>Tapes</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/></svg></span>Earnings</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>Me</a>
+            </div>
+          </div></div>
+        </div>
+        <p class="device-caption">Month grid. Dots indicate the day's status mix — <b>amber</b> callback, <b>blue</b> submission/self-tape due, <b>green</b> booked shoot. Today is inverted (paper bg). Tap a day → selected-day events slide in below.</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>Calendar rules</h4>
+        <ul>
+          <li>Up to <b>3 dots</b> per day. Beyond that, summarized as a single dot with count badge.</li>
+          <li><b>Today</b> = inverted paper background.</li>
+          <li><b>Selected day</b> = amber outline + glow.</li>
+          <li>Drag across days to multi-select (rare — used for booking out unavailable days).</li>
+        </ul>
+        <div class="sep"></div>
+        <div class="lbl">Personal events</div>
+        <ul>
+          <li>Once Calendar MCP is connected, personal events surface here too (costume fittings, doctor, training).</li>
+          <li>They use a <b>purple dot</b>. Filterable via the agenda's filter chips.</li>
+        </ul>
+        <div class="sep"></div>
+        <div class="lbl">Long press</div>
+        <ul>
+          <li>Long-press a day → quick-add audition pre-filled to that date.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ FILTERED ============================ -->
+  <section class="frame-set" id="set-filtered">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block;">
+          <span class="device-label">03 · filtered · submitted only</span>
+          <div class="device"><div class="device-inner">
+            <div class="statusbar"><span>9:18</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+            <div class="scroll">
+
+              <div class="page-head">
+                <div class="titles">
+                  <div class="meta-line">SUBMITTED · 8 SHOWN</div>
+                  <h1 class="title">Auditions</h1>
+                </div>
+                <div class="view-toggle">
+                  <button class="on">
+                    <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke-linecap="round"/></svg>
+                  </button>
+                  <button>
+                    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="search-row">
+                <div class="search">
+                  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5" stroke-linecap="round"/></svg>
+                  <input type="text" value="Watanabe" style="color:var(--paper);"/>
+                </div>
+                <button class="add-btn">+ Add</button>
+              </div>
+
+              <div class="filter-row">
+                <span class="filter-chip">All <span class="ct">12</span></span>
+                <span class="filter-chip">Callback <span class="ct">1</span></span>
+                <span class="filter-chip on">Submitted <span class="ct">8</span></span>
+                <span class="filter-chip">Booked <span class="ct">2</span></span>
+                <span class="filter-chip">Past <span class="ct">28</span></span>
+              </div>
+
+              <div style="padding:6px 22px 0; font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase;">
+                3 matches for "Watanabe"
+              </div>
+
+              <div class="day-group" style="margin-top:8px;">
+                <div class="day-header"><span class="dh-left">Awaiting reply</span><span class="dh-right">3 events</span></div>
+                <div class="aud-row">
+                  <div class="time">—</div>
+                  <div class="info">
+                    <div class="proj">Toyota CM — Crown Highway</div>
+                    <div class="sub">Watanabe · sent 12 May</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip cb">CB</span>
+                    <span class="pay">¥ 220k</span>
+                  </div>
+                </div>
+                <div class="aud-row">
+                  <div class="time">—</div>
+                  <div class="info">
+                    <div class="proj">Nissan Spec — Director's Cut</div>
+                    <div class="sub">Watanabe · sent 22 Apr</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip">SUB</span>
+                    <span class="pay dim">¥ 150k</span>
+                  </div>
+                </div>
+                <div class="aud-row">
+                  <div class="time">—</div>
+                  <div class="info">
+                    <div class="proj">Honda CM — Family</div>
+                    <div class="sub">Watanabe · sent 18 Mar</div>
+                  </div>
+                  <div class="right">
+                    <span class="chip passed">PASS</span>
+                    <span class="pay dim">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- bulk action bar (appears when items selected) -->
+              <div style="margin:14px 22px 0; padding:10px 14px; border:1px solid var(--rule-strong); border-radius:11px; background:rgba(255,255,255,.04); display:flex; justify-content:space-between; align-items:center; gap:14px;">
+                <span style="font-family:var(--mono); font-size:10px; letter-spacing:.12em; color:var(--paper); text-transform:uppercase;">
+                  Tip · long-press to multi-select
+                </span>
+                <button style="padding:5px 10px; border:1px solid var(--paper); background:transparent; color:var(--paper); border-radius:30px; font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; cursor:pointer;">Clear filter</button>
+              </div>
+
+              <div style="height:80px"></div>
+            </div>
+
+            <div class="botnav news">
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/></svg></span>Today</a>
+              <a href="#" class="on"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 11h18M6 7l3-3M11 7l3-3M16 7l3-3"/></svg></span>Auditions</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/></svg></span>Tapes</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/></svg></span>Earnings</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>Me</a>
+            </div>
+          </div></div>
+        </div>
+        <p class="device-caption">Filtered + searched. Search by CD ("Watanabe") + filter by status (Submitted). The "Awaiting reply" group shows everything you've sent the CD over time — useful when you're prepping a callback.</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>Search rules</h4>
+        <ul>
+          <li>Search fields: <b>project name, role, agency, CD name, scene number</b>.</li>
+          <li>Combines with chip filter (AND).</li>
+          <li>Past auditions only show when "Past" chip selected — clean active view by default.</li>
+        </ul>
+        <div class="sep"></div>
+        <div class="lbl">CD context surfacing</div>
+        <ul>
+          <li>Searching a CD name reveals your <b>history with them</b> — every audition, past and present.</li>
+          <li>Used to prep callbacks: see what you submitted last time, what they liked.</li>
+          <li>Counts feed into the Outreach + Relationships pages.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ DESKTOP ============================ -->
+  <section class="frame-set" id="set-desk">
+    <div class="desk">
+      <div class="desk-bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="url">actoros.app/auditions</div>
+        <div style="margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--paper-faint); letter-spacing:.18em">TUE · MAY 27</div>
+      </div>
+      <div class="desk-body">
+        <aside class="desk-side">
+          <div class="ao-mark">AO</div>
+          <div class="nav-item">Home</div>
+          <div class="nav-item on">Auditions</div>
+          <div class="nav-item">Self-tapes</div>
+          <div class="nav-item">Contracts</div>
+          <div class="nav-item">Outreach</div>
+          <div class="nav-item">Relationships</div>
+          <div class="nav-item">Needs approval</div>
+          <div class="nav-item">Earnings</div>
+          <div class="nav-item">Calendar</div>
+          <div class="nav-item">Settings</div>
+        </aside>
+
+        <div class="desk-main">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:18px; margin-bottom:18px;">
+            <div>
+              <div class="meta-line"><span class="live"></span>TUE · 27 MAY · 12 ACTIVE</div>
+              <div style="font-family:var(--serif); font-size:56px; line-height:1; letter-spacing:-.02em; margin-top:6px;">Auditions</div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <div class="search" style="width:280px; padding:9px 14px;">
+                <svg viewBox="0 0 24 24" style="width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.8; color:var(--paper-faint);"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg>
+                <input type="text" placeholder="Search project, role, CD"/>
+              </div>
+              <div class="view-toggle">
+                <button class="on"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke-linecap="round"/></svg></button>
+                <button><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 9h18M8 3v4M16 3v4"/></svg></button>
+              </div>
+              <button class="add-btn">+ Add audition</button>
+            </div>
+          </div>
+
+          <div class="filter-row" style="padding:0 0 18px;">
+            <span class="filter-chip on">All <span class="ct">12</span></span>
+            <span class="filter-chip">Callback <span class="ct">1</span></span>
+            <span class="filter-chip">Submitted <span class="ct">8</span></span>
+            <span class="filter-chip">Booked <span class="ct">2</span></span>
+            <span class="filter-chip">Past <span class="ct">28</span></span>
+          </div>
+
+          <!-- Table-style list -->
+          <div>
+            <div class="desk-aud-row now">
+              <div class="date" style="color:var(--amber);">Today · Tue 27</div>
+              <div class="time" style="color:var(--amber); font-weight:600;">10:30</div>
+              <div>
+                <div class="proj">Toyota CM — Crown Highway</div>
+                <div class="sub">Lead Stunt · Roppongi · Watanabe</div>
+              </div>
+              <span class="chip cb">Callback</span>
+              <span class="pay">¥ 220,000</span>
+              <span class="chev">›</span>
+            </div>
+            <div class="desk-aud-row">
+              <div class="date">Wed 28</div>
+              <div class="time">14:00</div>
+              <div>
+                <div class="proj">Shokz Earphone — Athletic</div>
+                <div class="sub">Self-tape due · solo</div>
+              </div>
+              <span class="chip sub">Submitted</span>
+              <span class="pay">¥ 132,000</span>
+              <span class="chev">›</span>
+            </div>
+            <div class="desk-aud-row">
+              <div class="date">Fri 30</div>
+              <div class="time">07:00</div>
+              <div>
+                <div class="proj">LOST10 — TBS Drama</div>
+                <div class="sub">Guest star · Shibuya studio · all day</div>
+              </div>
+              <span class="chip bk">Booked</span>
+              <span class="pay green">¥ 180,000</span>
+              <span class="chev">›</span>
+            </div>
+            <div class="desk-aud-row">
+              <div class="date">Mon 2 Jun</div>
+              <div class="time">11:00</div>
+              <div>
+                <div class="proj">P-Co. Home Appliance</div>
+                <div class="sub">Audition · P-Co. agency · Aoyama</div>
+              </div>
+              <span class="chip sub">Submitted</span>
+              <span class="pay">¥ 80,000</span>
+              <span class="chev">›</span>
+            </div>
+            <div class="desk-aud-row">
+              <div class="date" style="color:var(--paper-faint);">—</div>
+              <div class="time" style="color:var(--paper-faint);">—</div>
+              <div>
+                <div class="proj">Kamen Rider — Toy VO</div>
+                <div class="sub">BANDAI · sent 18 May</div>
+              </div>
+              <span class="chip">Submitted</span>
+              <span class="pay" style="color:var(--paper-faint);">¥ 95,000</span>
+              <span class="chev">›</span>
+            </div>
+            <div class="desk-aud-row">
+              <div class="date" style="color:var(--paper-faint);">—</div>
+              <div class="time" style="color:var(--paper-faint);">—</div>
+              <div>
+                <div class="proj">Netflix Series Ep 4</div>
+                <div class="sub">Bit part · sent 14 May</div>
+              </div>
+              <span class="chip">Submitted</span>
+              <span class="pay" style="color:var(--paper-faint);">¥ 60,000</span>
+              <span class="chev">›</span>
+            </div>
+            <div class="desk-aud-row">
+              <div class="date" style="color:var(--paper-faint);">—</div>
+              <div class="time" style="color:var(--paper-faint);">—</div>
+              <div>
+                <div class="proj">Asahi commercial</div>
+                <div class="sub">Spec · sent 10 May</div>
+              </div>
+              <span class="chip">Submitted</span>
+              <span class="pay" style="color:var(--paper-faint);">¥ 120,000</span>
+              <span class="chev">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p style="max-width:1100px; margin:24px auto 0; font-family:var(--sans); font-size:13px; color:var(--paper-dim); line-height:1.6; padding:0 32px">Desktop: same data, table-style rows. Date · time · project + sub · chip · pay · chev. Search and view-toggle in the header strip.</p>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <h3>Auditions list — what's locked</h3>
+  <ul>
+    <li><b>Agenda</b> default: day-grouped, today in amber, awaiting-reply cluster at the bottom.</li>
+    <li><b>Calendar</b> view (top-right toggle): month grid with colored dots, today inverted.</li>
+    <li><b>Search</b> across project / role / agency / CD / scene; combines with chip filter.</li>
+    <li><b>CD context</b> — searching a name surfaces your full history with them. Useful for callback prep.</li>
+    <li>Personal events from Calendar MCP surface in calendar view (purple dot).</li>
+  </ul>
+
+  <h3>Next</h3>
+  <ul>
+    <li>Day drilldown (chronological day from briefing CTA)</li>
+    <li>Relationships / Vault (Obsidian-style notes)</li>
+    <li>Needs approval queue (email/text/agent forwards)</li>
+    <li>Onboarding flow</li>
+  </ul>
+</footer>
+
+<script>
+  const tabs = document.querySelectorAll('#frames button');
+  const sets = document.querySelectorAll('.frame-set');
+  tabs.forEach(b => b.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    const f = b.dataset.f;
+    sets.forEach(s => s.classList.toggle('active', s.id === 'set-' + f));
+    window.scrollTo({top:0});
+  }));
+</script>
+</body>
+</html>
