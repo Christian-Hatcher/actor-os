@@ -67,6 +67,33 @@ export function useAuditions() {
   return { auditions, loading, error, addAudition, updateAudition }
 }
 
+export function useAudition(id: string | undefined) {
+  const [audition, setAudition] = useState<Audition | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    async function fetchOne() {
+      if (!id) {
+        if (active) setLoading(false)
+        return
+      }
+      const { data, error } = await supabase.from("auditions").select("*").eq("id", id).single()
+      if (!active) return
+      if (error) setError(error.message)
+      else setAudition(data as Audition)
+      setLoading(false)
+    }
+    fetchOne()
+    return () => {
+      active = false
+    }
+  }, [id])
+
+  return { audition, loading, error }
+}
+
 export function useDashboardStats() {
   const [stats, setStats] = useState<DashboardStats>({
     total_auditions: 0,
