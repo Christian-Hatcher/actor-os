@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { llm } from "@/lib/llm"
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 // Contract analysis prompt template
 const CONTRACT_ANALYSIS_PROMPT = `You are a legal analyst specializing in entertainment industry contracts. Analyze the following contract and extract structured information.
@@ -55,6 +50,7 @@ Provide your analysis in this exact JSON format:
 Be thorough but concise. If information is missing, use null or empty arrays. Do NOT make up information that isn't in the contract.`
 
 export async function POST(request: Request) {
+  const supabaseAdmin = getSupabaseAdmin()
   try {
     const { contractId, contractText, fileUrl } = await request.json()
 

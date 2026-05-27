@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { llm } from "@/lib/llm"
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 /**
  * Parse a Japanese casting email and extract audition details
@@ -258,6 +253,7 @@ function buildAuditionFields(parsed: any, emailId: string, userId: string): any 
  * Called automatically after sync, or manually by user
  */
 export async function POST(request: Request) {
+  const supabaseAdmin = getSupabaseAdmin()
   try {
     const body = await request.json().catch(() => ({}))
     const {

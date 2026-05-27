@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { llm } from "@/lib/llm"
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 /**
  * Refresh a Gmail access token using the stored refresh_token
@@ -56,7 +51,7 @@ async function getValidAccessToken(connection: any): Promise<string | null> {
 
   const newExpiry = new Date(Date.now() + refreshed.expires_in * 1000)
 
-  await supabaseAdmin
+  await getSupabaseAdmin()
     .from("email_connections")
     .update({
       access_token: refreshed.access_token,
@@ -204,6 +199,7 @@ function extractHeaders(payload: any): Record<string, string> {
  * Triggered by user clicking "Sync Emails" or by cron job
  */
 export async function POST(request: Request) {
+  const supabaseAdmin = getSupabaseAdmin()
   try {
     const body = await request.json().catch(() => ({}))
     const { user_id, connection_id, force_full = false } = body

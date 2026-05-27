@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-import Stripe from "stripe"
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
+import type Stripe from "stripe"
+import { getSupabaseAdmin } from "@/lib/supabase-admin"
+import { getStripe } from "@/lib/stripe-admin"
 
 export async function POST(request: Request) {
+  const stripe = getStripe()
+  const supabaseAdmin = getSupabaseAdmin()
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
   const payload = await request.text()
   const signature = request.headers.get("stripe-signature")!
 

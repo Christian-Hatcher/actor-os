@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { getSupabaseAdmin } from "@/lib/supabase-admin"
 
 function getUserIdFromHeader(request: NextRequest): string | null {
   return request.headers.get("x-user-id")
@@ -16,6 +11,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const supabaseAdmin = getSupabaseAdmin()
   const { data, error } = await supabaseAdmin
     .from("auditions")
     .select("*")
@@ -34,6 +30,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
+  const supabaseAdmin = getSupabaseAdmin()
   const { data, error } = await supabaseAdmin
     .from("auditions")
     .insert({ ...body, user_id: userId })
@@ -52,6 +49,7 @@ export async function PUT(request: NextRequest) {
 
   const { id, ...updates } = await request.json()
 
+  const supabaseAdmin = getSupabaseAdmin()
   const { data, error } = await supabaseAdmin
     .from("auditions")
     .update(updates)
@@ -72,6 +70,7 @@ export async function DELETE(request: NextRequest) {
 
   const { id } = await request.json()
 
+  const supabaseAdmin = getSupabaseAdmin()
   const { error } = await supabaseAdmin
     .from("auditions")
     .delete()
