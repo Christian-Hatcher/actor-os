@@ -9,6 +9,16 @@ export interface Profile {
   subscription_status: "active" | "inactive" | "cancelled"
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
+  // redesign additions
+  splash_photo_url?: string | null
+  splash_mode?: "headshot" | "onset" | "stage" | null
+  currency?: string
+  city?: string | null
+  monthly_goal?: number | null
+  yearly_goal?: number | null
+  theme_id?: string
+  custom_theme?: Record<string, unknown> | null
+  preferred_mode?: "theater" | "film" | "both"
   created_at: string
   updated_at: string
 }
@@ -31,6 +41,11 @@ export interface Audition {
   resume_url: string | null
   compensation: string | null
   contract_url: string | null
+  // redesign additions (shoot-day / OT)
+  call_time?: string | null
+  est_wrap_time?: string | null
+  wrap_time?: string | null
+  ot_rate_multiplier?: number | null
   created_at: string
   updated_at: string
 }

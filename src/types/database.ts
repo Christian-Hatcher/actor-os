@@ -21,6 +21,16 @@ export interface Database {
           subscription_status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          // --- redesign additions ---
+          splash_photo_url: string | null
+          splash_mode: string | null
+          currency: string
+          city: string | null
+          monthly_goal: number | null
+          yearly_goal: number | null
+          theme_id: string
+          custom_theme: Json | null
+          preferred_mode: string
           created_at: string
           updated_at: string
         }
@@ -35,6 +45,15 @@ export interface Database {
           subscription_status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          splash_photo_url?: string | null
+          splash_mode?: string | null
+          currency?: string
+          city?: string | null
+          monthly_goal?: number | null
+          yearly_goal?: number | null
+          theme_id?: string
+          custom_theme?: Json | null
+          preferred_mode?: string
           created_at?: string
           updated_at?: string
         }
@@ -48,6 +67,15 @@ export interface Database {
           subscription_status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          splash_photo_url?: string | null
+          splash_mode?: string | null
+          currency?: string
+          city?: string | null
+          monthly_goal?: number | null
+          yearly_goal?: number | null
+          theme_id?: string
+          custom_theme?: Json | null
+          preferred_mode?: string
           updated_at?: string
         }
         Relationships: []
@@ -71,6 +99,11 @@ export interface Database {
           resume_url: string | null
           compensation: string | null
           contract_url: string | null
+          // --- redesign additions (shoot-day / OT) ---
+          call_time: string | null
+          est_wrap_time: string | null
+          wrap_time: string | null
+          ot_rate_multiplier: number | null
           created_at: string
           updated_at: string
         }
@@ -92,6 +125,10 @@ export interface Database {
           resume_url?: string | null
           compensation?: string | null
           contract_url?: string | null
+          call_time?: string | null
+          est_wrap_time?: string | null
+          wrap_time?: string | null
+          ot_rate_multiplier?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -111,6 +148,10 @@ export interface Database {
           resume_url?: string | null
           compensation?: string | null
           contract_url?: string | null
+          call_time?: string | null
+          est_wrap_time?: string | null
+          wrap_time?: string | null
+          ot_rate_multiplier?: number | null
           updated_at?: string
         }
         Relationships: []

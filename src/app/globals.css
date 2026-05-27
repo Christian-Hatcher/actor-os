@@ -175,6 +175,27 @@ body::before {
   background: color-mix(in srgb, var(--purple) 12%, transparent);
 }
 
+/* Prose briefing — proper nouns get a soft amber underline. */
+.briefing-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232, 167, 85, 0.4), transparent);
+}
+.briefing-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01));
+}
+.briefing-prose b {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--paper);
+  background: linear-gradient(180deg, transparent 65%, rgba(232, 167, 85, 0.22) 65%);
+  padding: 0 1px;
+}
+
 /* Pulsing live-ribbon dot */
 @keyframes blink {
   0%,
