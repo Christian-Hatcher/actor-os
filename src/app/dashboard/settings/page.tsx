@@ -14,16 +14,18 @@ import {
   Mail,
   RefreshCw,
   CheckCircle,
-  XCircle,
   AlertTriangle,
   ExternalLink,
   Trash2,
   Target,
   LogOut,
   Palette,
+  Calculator,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/theme-provider"
+import { useTax } from "@/hooks/use-tax"
+import type { TaxJurisdiction, USFilingStatus } from "@/lib/tax-estimator"
 import type { ActorPreferences } from "@/types"
 
 interface EmailConnection {
@@ -243,6 +245,10 @@ export default function SettingsPage() {
     await supabase.from("email_connections").delete().eq("id", id)
     fetchConnections()
   }
+
+  // Tax settings
+  const { settings: taxSettings, updateSettings: updateTaxSettings } = useTax()
+  const [taxSaved, setTaxSaved] = useState(false)
 
   const subscription = {
     tier: "monthly",
@@ -685,6 +691,177 @@ export default function SettingsPage() {
                   </span>
                 </button>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tax Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Tax Settings</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Configure how Actor OS estimates your tax liability.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {taxSaved && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                <CheckCircle className="h-4 w-4" />
+                Tax settings saved.
+              </div>
+            )}
+
+            {/* Jurisdiction */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tax Jurisdiction</label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: "us", label: "United States", desc: "SE tax + federal brackets" },
+                  { value: "jp", label: "Japan", desc: "Gensenchoushu withholding" },
+                  { value: "uk", label: "United Kingdom", desc: "Income tax + NI" },
+                  { value: "au", label: "Australia", desc: "25% flat estimate" },
+                  { value: "ca", label: "Canada", desc: "25% flat estimate" },
+                  { value: "other", label: "Other", desc: "25% flat estimate" },
+                ] as { value: TaxJurisdiction; label: string; desc: string }[]).map((j) => (
+                  <button
+                    key={j.value}
+                    type="button"
+                    onClick={() => updateTaxSettings({ jurisdiction: j.value })}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      taxSettings.jurisdiction === j.value
+                        ? "border-amber bg-amber/5 ring-1 ring-amber"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{j.label}</p>
+                    <p className="text-xs text-muted-foreground">{j.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* US Filing Status — only show for US */}
+            {taxSettings.jurisdiction === "us" && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Filing Status</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      { value: "single", label: "Single" },
+                      { value: "married_joint", label: "Married Filing Jointly" },
+                      { value: "married_separate", label: "Married Filing Separately" },
+                      { value: "head_of_household", label: "Head of Household" },
+                    ] as { value: USFilingStatus; label: string }[]).map((f) => (
+                      <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => updateTaxSettings({ filing_status: f.value })}
+                        className={`rounded-lg border p-3 text-left transition-colors ${
+                          taxSettings.filing_status === f.value
+                            ? "border-amber bg-amber/5 ring-1 ring-amber"
+                            : "border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <p className="text-sm font-medium">{f.label}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">State Tax Rate</label>
+                  <p className="text-xs text-muted-foreground">
+                    Enter your state income tax rate as a percentage (e.g. 5 for 5%).
+                  </p>
+                  <input
+                    type="number"
+                    min="0"
+                    max="15"
+                    step="0.1"
+                    value={taxSettings.state_tax_rate > 0 ? taxSettings.state_tax_rate * 100 : ""}
+                    onChange={(e) => {
+                      const pct = parseFloat(e.target.value) || 0
+                      updateTaxSettings({ state_tax_rate: pct / 100 })
+                    }}
+                    placeholder="0"
+                    className="flex h-10 w-32 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  />
+                </div>
+              </>
+            )}
+
+            <Separator />
+
+            {/* Manual Rate Override */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Manual Rate Override</label>
+              <p className="text-xs text-muted-foreground">
+                If your accountant gave you a number, enter it here. This overrides all bracket calculations.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="60"
+                  step="0.5"
+                  value={taxSettings.manual_rate !== null ? taxSettings.manual_rate * 100 : ""}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === "" || val === "0") {
+                      updateTaxSettings({ manual_rate: null })
+                    } else {
+                      updateTaxSettings({ manual_rate: parseFloat(val) / 100 })
+                    }
+                  }}
+                  placeholder="Leave blank to use brackets"
+                  className="flex h-10 w-48 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+                {taxSettings.manual_rate !== null && (
+                  <button
+                    type="button"
+                    onClick={() => updateTaxSettings({ manual_rate: null })}
+                    className="text-xs text-red-500 hover:text-red-700"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Tax Savings Reminder */}
+            <div className="flex items-center justify-between rounded-lg border px-3 py-3">
+              <div>
+                <p className="text-sm font-medium">Tax Savings Reminders</p>
+                <p className="text-xs text-muted-foreground">
+                  Show a nudge after each booking: "Set aside $X for taxes"
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={taxSettings.tax_savings_reminder}
+                onClick={() =>
+                  updateTaxSettings({
+                    tax_savings_reminder: !taxSettings.tax_savings_reminder,
+                  })
+                }
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                  taxSettings.tax_savings_reminder ? "bg-amber" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                    taxSettings.tax_savings_reminder ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
             </div>
           </CardContent>
         </Card>

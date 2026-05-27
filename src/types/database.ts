@@ -31,6 +31,7 @@ export interface Database {
           theme_id: string
           custom_theme: Json | null
           preferred_mode: string
+          tax_settings: Json | null
           created_at: string
           updated_at: string
         }
@@ -54,6 +55,7 @@ export interface Database {
           theme_id?: string
           custom_theme?: Json | null
           preferred_mode?: string
+          tax_settings?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -76,6 +78,7 @@ export interface Database {
           theme_id?: string
           custom_theme?: Json | null
           preferred_mode?: string
+          tax_settings?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -578,6 +581,45 @@ export interface Database {
           model_used?: string
           raw_response?: string | null
           processing_time_ms?: number | null
+        }
+        Relationships: []
+      }
+      tax_withholdings: {
+        Row: {
+          id: string
+          user_id: string
+          year: number
+          month: number
+          gross_income: number
+          tax_rate: number
+          estimated_tax: number
+          actually_set_aside: number
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          year: number
+          month: number
+          gross_income?: number
+          tax_rate?: number
+          estimated_tax?: number
+          actually_set_aside?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          year?: number
+          month?: number
+          gross_income?: number
+          tax_rate?: number
+          estimated_tax?: number
+          actually_set_aside?: number
+          notes?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
