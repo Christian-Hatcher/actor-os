@@ -21,6 +21,7 @@ import {
 import type { Audition } from "@/types"
 import { AccordionSection } from "./accordion-section"
 import { WeekStrip } from "./week-strip"
+import { Splash } from "./splash"
 import { Skeleton } from "@/components/ui/skeleton"
 
 function metaDate(city: string): string {
@@ -130,6 +131,7 @@ export function DashboardHome() {
 
   return (
     <div>
+      <Splash />
       {/* Greeting */}
       <div className="flex items-start justify-between pt-2.5">
         <div>
