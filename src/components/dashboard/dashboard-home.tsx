@@ -11,6 +11,7 @@ import {
   useContracts,
   usePendingApprovals,
 } from "@/hooks/use-data"
+import { useJobs } from "@/hooks/use-jobs"
 import { composeBriefing } from "@/lib/briefing"
 import {
   formatYenCompact,
@@ -103,6 +104,8 @@ export function DashboardHome() {
   const { contacts } = useContacts()
   const { contracts } = useContracts()
   const { count: approvalsCount } = usePendingApprovals()
+  const { jobs } = useJobs()
+  const activeJobs = jobs.filter((j) => j.status === "active")
 
   const name = profile?.full_name ?? null
   const city = profile?.city ?? "Tokyo"
@@ -231,6 +234,47 @@ export function DashboardHome() {
                   View all auditions <span className="font-serif">→</span>
                 </Link>
               </div>
+            </AccordionSection>
+
+            <AccordionSection
+              id="jobs"
+              title="Jobs"
+              meta={`${activeJobs.length} active`}
+              tone={activeJobs.length ? "good" : "default"}
+            >
+              {activeJobs.length > 0 ? (
+                <>
+                  <p>
+                    <b className="font-medium text-paper">{activeJobs[0].title}</b>
+                    {activeJobs[0].role_name && <> — {activeJobs[0].role_name}</>}
+                    {activeJobs.length > 1 && (
+                      <> + {activeJobs.length - 1} more on the books.</>
+                    )}
+                  </p>
+                  <div className="mt-3">
+                    <Link
+                      href="/dashboard/jobs"
+                      className="font-sans inline-flex items-center gap-1.5 rounded-[30px] border border-rule-strong px-3 py-1.5 text-xs text-paper"
+                    >
+                      View all jobs <span className="font-serif">→</span>
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="font-serif italic text-paper-faint">
+                    No active jobs. Promote a booked audition to start tracking rehearsals.
+                  </p>
+                  <div className="mt-3">
+                    <Link
+                      href="/dashboard/jobs/new"
+                      className="font-sans inline-flex items-center gap-1.5 rounded-[30px] border border-rule-strong px-3 py-1.5 text-xs text-paper"
+                    >
+                      + New job <span className="font-serif">→</span>
+                    </Link>
+                  </div>
+                </>
+              )}
             </AccordionSection>
 
             <AccordionSection

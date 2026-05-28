@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
   FileText,
@@ -9,9 +10,11 @@ import {
   MessageSquare,
   Mail,
   MapPin,
+  Briefcase,
   type LucideIcon,
 } from "lucide-react"
 import { useAudition } from "@/hooks/use-data"
+import { promoteAuditionToJob } from "@/hooks/use-jobs"
 import { auditionRibbon, type RibbonTone } from "@/lib/ribbon"
 import { formatYen, parseYen } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -109,8 +112,11 @@ function CsRow({ k, v }: { k: string; v: React.ReactNode }) {
 }
 
 export function AuditionDetail({ id }: { id: string }) {
+  const router = useRouter()
   const { audition: a, loading, error } = useAudition(id)
   const [briefOpen, setBriefOpen] = useState(false)
+  const [promoting, setPromoting] = useState(false)
+  const [promoteError, setPromoteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -319,6 +325,52 @@ export function AuditionDetail({ id }: { id: string }) {
           {isBooked ? "call sheet QR · adds to calendar" : "texts CD · shares ETA · opens maps"}
         </p>
       </div>
+
+      {/* Promote to Job — booked auditions only, and only if not already promoted */}
+      {isBooked && (
+        <div className="mt-3 px-[22px]">
+          {a.job_id ? (
+            <Link
+              href={`/dashboard/jobs/${a.job_id}`}
+              className="font-sans flex w-full items-center justify-center gap-2 rounded-[14px] border border-green/40 bg-green/[0.08] py-3 text-[14px] text-green"
+            >
+              <Briefcase className="size-4" /> Open job
+            </Link>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={async () => {
+                  setPromoting(true)
+                  setPromoteError(null)
+                  try {
+                    const job = await promoteAuditionToJob(a)
+                    router.push(`/dashboard/jobs/${job.id}`)
+                  } catch (err) {
+                    setPromoteError(
+                      err instanceof Error ? err.message : "Couldn't promote to a job",
+                    )
+                    setPromoting(false)
+                  }
+                }}
+                disabled={promoting}
+                className="font-sans flex w-full items-center justify-center gap-2 rounded-[14px] border border-amber bg-amber/[0.12] py-3 text-[14px] text-amber disabled:opacity-60"
+              >
+                <Briefcase className="size-4" />
+                {promoting ? "Creating job…" : "Promote to job"}
+              </button>
+              {promoteError && (
+                <p className="font-mono mt-1.5 text-center text-[10px] uppercase tracking-[0.14em] text-red">
+                  {promoteError}
+                </p>
+              )}
+              <p className="font-mono mt-1.5 text-center text-[9px] uppercase tracking-[0.18em] text-paper-faint">
+                opens rehearsals, scripts &amp; per-job notes
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
