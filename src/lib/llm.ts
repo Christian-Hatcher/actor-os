@@ -44,9 +44,15 @@ function getConfig(tier: LLMTier): LLMConfig {
 }
 
 async function callOllama(config: LLMConfig, messages: LLMMessage[], maxTokens: number): Promise<LLMResponse> {
+  // Ollama Cloud (and any auth-fronted Ollama proxy) requires a bearer
+  // token. Local Ollama ignores the header, so it's safe to always send
+  // when a key exists.
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (config.apiKey) headers["Authorization"] = `Bearer ${config.apiKey}`
+
   const res = await fetch(`${config.baseUrl}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       model: config.model,
       messages,
@@ -196,7 +202,7 @@ export async function llmForUser(
   if (profile?.llm_provider) {
     const config: LLMConfig = {
       provider: profile.llm_provider,
-      model: profile.llm_model || (tier === "low" ? "llama3.2:3b" : "llama3.2:3b"),
+      model: profile.llm_model || defaultModelFor(profile.llm_provider, tier),
       baseUrl: profile.llm_base_url || defaultBaseUrl(profile.llm_provider),
       apiKey: profile.llm_api_key_encrypted || undefined,
     }
@@ -207,7 +213,7 @@ export async function llmForUser(
   return llm(tier, messages, maxTokens)
 }
 
-function defaultBaseUrl(provider: string): string {
+export function defaultBaseUrl(provider: string): string {
   switch (provider) {
     case "ollama":
       return "http://localhost:11434"
@@ -217,6 +223,28 @@ function defaultBaseUrl(provider: string): string {
       return "https://api.openai.com"
     default:
       return "http://localhost:11434"
+  }
+}
+
+/**
+ * Per-provider default model. Used when a user picks a provider but
+ * hasn't selected a specific model — sending a Llama model name to
+ * Anthropic / OpenAI would 400 the request.
+ *
+ * Tier choices match the Settings dropdown (MODELS_BY_PROVIDER):
+ *   - ollama:    llama3.2:3b (cheapest)
+ *   - anthropic: Haiku for `low`, Sonnet for `high`
+ *   - openai:    4o-mini for `low`, 4o for `high`
+ */
+export function defaultModelFor(provider: string, tier: LLMTier = "low"): string {
+  switch (provider) {
+    case "anthropic":
+      return tier === "high" ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001"
+    case "openai":
+      return tier === "high" ? "gpt-4o" : "gpt-4o-mini"
+    case "ollama":
+    default:
+      return "llama3.2:3b"
   }
 }
 
