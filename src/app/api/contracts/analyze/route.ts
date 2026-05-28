@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
-import { llm } from "@/lib/llm"
+import { llmForUser } from "@/lib/llm"
 
 // Contract analysis prompt template
 const CONTRACT_ANALYSIS_PROMPT = `You are a legal analyst specializing in entertainment industry contracts. Analyze the following contract and extract structured information.
@@ -91,8 +91,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // Call LLM for analysis (provider-agnostic via llm.ts)
-    const llmResponse = await llm("high", [
+    // Call LLM for analysis. Use the contract owner's per-user provider
+    // (Settings → AI Connection). Falls back to env-var defaults if they
+    // haven't configured one.
+    const llmResponse = await llmForUser("high", contract.user_id, [
       {
         role: "user",
         content: CONTRACT_ANALYSIS_PROMPT.replace("{contractText}", textToAnalyze),

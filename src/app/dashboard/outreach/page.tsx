@@ -70,17 +70,17 @@ export default function OutreachPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <div className="h-4 w-32 bg-muted animate-pulse rounded" />
-                    <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                    <div className="h-4 w-32 bg-bg3 animate-pulse rounded" />
+                    <div className="h-3 w-24 bg-bg3 animate-pulse rounded" />
                   </div>
-                  <div className="h-3 w-12 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-12 bg-bg3 animate-pulse rounded" />
                 </div>
-                <div className="h-5 w-16 bg-muted animate-pulse rounded mt-2" />
+                <div className="h-5 w-16 bg-bg3 animate-pulse rounded mt-2" />
               </CardHeader>
               <CardContent className="grid gap-3">
-                <div className="h-4 w-48 bg-muted animate-pulse rounded" />
-                <div className="h-4 w-36 bg-muted animate-pulse rounded" />
-                <div className="h-4 w-40 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-48 bg-bg3 animate-pulse rounded" />
+                <div className="h-4 w-36 bg-bg3 animate-pulse rounded" />
+                <div className="h-4 w-40 bg-bg3 animate-pulse rounded" />
               </CardContent>
             </Card>
           ))}
@@ -88,9 +88,9 @@ export default function OutreachPage() {
       ) : filtered.length === 0 && contacts.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center py-12 text-center">
-            <Users className="h-12 w-12 text-muted-foreground mb-4" />
+            <Users className="h-12 w-12 text-paper-dim mb-4" />
             <p className="text-lg font-medium">No contacts yet</p>
-            <p className="text-sm text-muted-foreground max-w-md">
+            <p className="text-sm text-paper-dim max-w-md">
               Contacts will appear here automatically when you sync your Gmail, or you can add them manually.
             </p>
           </CardContent>
@@ -98,9 +98,9 @@ export default function OutreachPage() {
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center py-12 text-center">
-            <Users className="h-12 w-12 text-muted-foreground mb-4" />
+            <Users className="h-12 w-12 text-paper-dim mb-4" />
             <p className="text-lg font-medium">No matching contacts</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-paper-dim">
               Try a different search term.
             </p>
           </CardContent>
@@ -113,7 +113,7 @@ export default function OutreachPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-base">{contact.name}</CardTitle>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 text-xs text-paper-dim">
                       <Building2 className="h-3 w-3" />
                       {contact.company}
                     </div>
@@ -122,7 +122,7 @@ export default function OutreachPage() {
                     {Array.from({ length: contact.priority }).map((_, i) => (
                       <Star
                         key={i}
-                        className="h-3 w-3 fill-yellow-400 text-yellow-400"
+                        className="h-3 w-3 fill-amber text-amber"
                       />
                     ))}
                   </div>
@@ -132,24 +132,24 @@ export default function OutreachPage() {
 
               <CardContent className="grid gap-3">
                 <div className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <Mail className="h-4 w-4 text-paper-dim" />
                   <span className="truncate">{contact.email}</span>
                 </div>
 
                 {contact.phone && (
                   <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <Phone className="h-4 w-4 text-paper-dim" />
                     <span>{contact.phone}</span>
                   </div>
                 )}
 
                 <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <Calendar className="h-4 w-4 text-paper-dim" />
                   <span>Last contact: {contact.last_contact_date || "Never"}</span>
                 </div>
 
                 {contact.notes && (
-                  <p className="text-sm text-muted-foreground">{contact.notes}</p>
+                  <p className="text-sm text-paper-dim">{contact.notes}</p>
                 )}
 
                 <div className="flex gap-2 pt-2">

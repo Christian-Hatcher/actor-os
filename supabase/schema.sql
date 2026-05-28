@@ -448,3 +448,43 @@ alter table public.profiles add column if not exists llm_provider text default '
 alter table public.profiles add column if not exists llm_model text;
 alter table public.profiles add column if not exists llm_base_url text;
 alter table public.profiles add column if not exists llm_api_key_encrypted text;
+
+-- =====================================================================
+-- Actor preferences — long-missing from this file (table existed only in
+-- the live DB). Both Settings → Audition Preferences and the onboarding
+-- D1 challenges write rely on the `onConflict: "user_id"` upsert path,
+-- which requires a UNIQUE constraint on user_id. The create table form
+-- carries it inline; the create unique index below makes the constraint
+-- idempotent for existing DBs that already have the table without it.
+-- =====================================================================
+create table if not exists public.actor_preferences (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null unique,
+  priorities jsonb default '{}',
+  min_compensation text,
+  preferred_project_types text[] default '{}',
+  preferred_locations text[] default '{}',
+  willing_to_travel boolean default false,
+  career_goal text,
+  bio_context text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+-- Defensive: if the table already exists without the unique constraint
+-- (older live DBs), `create unique index if not exists` adds one. Unique
+-- indexes serve as conflict targets for upsert().
+create unique index if not exists actor_preferences_user_id_uidx
+  on public.actor_preferences(user_id);
+alter table public.actor_preferences enable row level security;
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'actor_preferences'
+      and policyname = 'Users own their preferences'
+  ) then
+    create policy "Users own their preferences" on public.actor_preferences
+      for all using (auth.uid() = user_id);
+  end if;
+end $$;

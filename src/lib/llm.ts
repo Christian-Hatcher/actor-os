@@ -190,14 +190,7 @@ export async function llmForUser(
   messages: LLMMessage[],
   maxTokens: number = 4000,
 ): Promise<LLMResponse> {
-  const { getSupabaseAdmin } = await import("./supabase-admin")
-  const admin = getSupabaseAdmin()
-
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("llm_provider, llm_model, llm_base_url, llm_api_key_encrypted")
-    .eq("id", userId)
-    .single()
+  const profile = await getCachedUserProfile(userId)
 
   if (profile?.llm_provider) {
     const config: LLMConfig = {
@@ -211,6 +204,52 @@ export async function llmForUser(
 
   // No user config — fall back to env-var defaults.
   return llm(tier, messages, maxTokens)
+}
+
+/**
+ * PHASE2 §B2 — cache the profile lookup for 5 minutes.
+ *
+ * Without this, every LLM call did an admin → profiles → single() round
+ * trip. The hot path is /api/gmail/sync, which fires one llmForUser per
+ * new-contact description. Caching collapses N calls to one DB hit per
+ * user per 5-minute window.
+ *
+ * Staleness window: changes to Settings → AI Connection take up to 5
+ * minutes to be picked up by a serverless instance that already has them
+ * cached. Acceptable for beta. If we need cross-replica invalidation
+ * later, the Settings save action can call _clearLLMProfileCache(userId).
+ */
+interface CachedProfileRow {
+  llm_provider: string | null
+  llm_model: string | null
+  llm_base_url: string | null
+  llm_api_key_encrypted: string | null
+}
+
+const PROFILE_CACHE_TTL_MS = 5 * 60_000
+const profileCache = new Map<string, { profile: CachedProfileRow | null; expiresAt: number }>()
+
+async function getCachedUserProfile(userId: string): Promise<CachedProfileRow | null> {
+  const now = Date.now()
+  const hit = profileCache.get(userId)
+  if (hit && hit.expiresAt > now) return hit.profile
+
+  const { getSupabaseAdmin } = await import("./supabase-admin")
+  const admin = getSupabaseAdmin()
+  const { data } = await admin
+    .from("profiles")
+    .select("llm_provider, llm_model, llm_base_url, llm_api_key_encrypted")
+    .eq("id", userId)
+    .single()
+
+  const profile = (data as CachedProfileRow | null) ?? null
+  profileCache.set(userId, { profile, expiresAt: now + PROFILE_CACHE_TTL_MS })
+  return profile
+}
+
+/** Test-only: drop the in-memory cache between cases. */
+export function _clearLLMProfileCache(): void {
+  profileCache.clear()
 }
 
 export function defaultBaseUrl(provider: string): string {

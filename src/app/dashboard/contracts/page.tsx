@@ -315,16 +315,16 @@ function ContractCard({
 
           {/* Questions to ask */}
           {contract.questions && contract.questions.length > 0 && (
-            <div className="mt-3 rounded-[10px] border border-blue-500/25 bg-blue-500/[0.04] p-3.5">
+            <div className="mt-3 rounded-[10px] border border-blue/30 bg-blue/[0.06] p-3.5">
               <div className="flex items-center gap-1.5">
-                <HelpCircle className="size-3.5 text-blue-400" />
-                <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-blue-400">
+                <HelpCircle className="size-3.5 text-blue" />
+                <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-blue">
                   Questions for Your Agent
                 </div>
               </div>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {contract.questions.map((q, i) => (
-                  <li key={i} className="font-serif pl-3 text-[14px] leading-[1.45] text-paper before:mr-2 before:content-['\2022'] before:text-blue-400">
+                  <li key={i} className="font-serif pl-3 text-[14px] leading-[1.45] text-paper before:mr-2 before:content-['\2022'] before:text-blue">
                     {q}
                   </li>
                 ))}

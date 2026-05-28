@@ -1,5 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { defaultBaseUrl, defaultModelFor, testLLMConnection } from "../llm"
+import {
+  _clearLLMProfileCache,
+  defaultBaseUrl,
+  defaultModelFor,
+  llmForUser,
+  testLLMConnection,
+} from "../llm"
+
+// Hoisted so vi.mock can see them — the factory runs before module imports.
+const { singleSpy, anthropicFetchSpy } = vi.hoisted(() => ({
+  singleSpy: vi.fn(),
+  anthropicFetchSpy: vi.fn(),
+}))
+
+vi.mock("../supabase-admin", () => ({
+  getSupabaseAdmin: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          single: singleSpy,
+        }),
+      }),
+    }),
+  }),
+}))
 
 describe("defaultBaseUrl", () => {
   it("maps known providers", () => {
@@ -122,5 +146,79 @@ describe("testLLMConnection", () => {
     if (result.ok) {
       expect(result.sample).toBe("OK")
     }
+  })
+})
+
+describe("llmForUser profile cache (PHASE2 §B2)", () => {
+  const realFetch = global.fetch
+
+  beforeEach(() => {
+    _clearLLMProfileCache()
+    singleSpy.mockReset()
+    anthropicFetchSpy.mockReset()
+    // Profile lookup returns an Anthropic-configured user. We pick
+    // Anthropic so the call goes to api.anthropic.com (where our
+    // hoisted spy lives) and we don't accidentally hit a real Ollama.
+    singleSpy.mockResolvedValue({
+      data: {
+        llm_provider: "anthropic",
+        llm_model: "claude-haiku-4-5-20251001",
+        llm_base_url: null,
+        llm_api_key_encrypted: "sk-test",
+      },
+      error: null,
+    })
+    // Successful Anthropic response shape so callProvider doesn't throw.
+    anthropicFetchSpy.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [{ text: "OK" }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+      }),
+    } as Response)
+    global.fetch = anthropicFetchSpy
+  })
+  afterEach(() => {
+    global.fetch = realFetch
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  it("two consecutive calls with the same userId share a single profile lookup", async () => {
+    await llmForUser("low", "user-abc", [{ role: "user", content: "ping" }], 16)
+    await llmForUser("low", "user-abc", [{ role: "user", content: "ping" }], 16)
+    expect(singleSpy).toHaveBeenCalledTimes(1)
+    expect(anthropicFetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it("different userIds get separate profile lookups", async () => {
+    await llmForUser("low", "user-a", [{ role: "user", content: "ping" }], 16)
+    await llmForUser("low", "user-b", [{ role: "user", content: "ping" }], 16)
+    expect(singleSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it("cache entry expires after 5 minutes", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"))
+    await llmForUser("low", "user-ttl", [{ role: "user", content: "ping" }], 16)
+    expect(singleSpy).toHaveBeenCalledTimes(1)
+
+    // Just under the TTL — still cached.
+    vi.setSystemTime(new Date("2026-01-01T00:04:59Z"))
+    await llmForUser("low", "user-ttl", [{ role: "user", content: "ping" }], 16)
+    expect(singleSpy).toHaveBeenCalledTimes(1)
+
+    // Past the TTL — re-fetches.
+    vi.setSystemTime(new Date("2026-01-01T00:05:01Z"))
+    await llmForUser("low", "user-ttl", [{ role: "user", content: "ping" }], 16)
+    expect(singleSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it("_clearLLMProfileCache forces a re-fetch on the next call", async () => {
+    await llmForUser("low", "user-clr", [{ role: "user", content: "ping" }], 16)
+    expect(singleSpy).toHaveBeenCalledTimes(1)
+    _clearLLMProfileCache()
+    await llmForUser("low", "user-clr", [{ role: "user", content: "ping" }], 16)
+    expect(singleSpy).toHaveBeenCalledTimes(2)
   })
 })
