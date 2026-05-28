@@ -14,12 +14,20 @@ interface DashboardShellProps {
 export function DashboardShell({ children }: DashboardShellProps) {
   return (
     <div className="relative min-h-screen bg-bg">
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
+
       {/* Desktop sidebar — hidden below lg */}
       <SidebarNav />
 
       {/* Main content area */}
       <div className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col lg:ml-[240px] lg:max-w-none">
-        <main className="flex-1 px-[22px] pt-6 pb-28 lg:mx-auto lg:w-full lg:max-w-[800px] lg:px-10 lg:pb-12">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 px-[22px] pt-6 pb-28 lg:mx-auto lg:w-full lg:max-w-[800px] lg:px-10 lg:pb-12 xl:max-w-[960px]"
+        >
           {children}
         </main>
       </div>
