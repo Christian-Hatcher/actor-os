@@ -21,8 +21,9 @@ const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
   EUR: { symbol: "€", locale: "de-DE", decimals: true },
 }
 
-// Module-level currency — set once from profile, used everywhere
-let _currency: CurrencyCode = "JPY"
+// Module-level currency — set from profile on login via setCurrency().
+// Safe because all consumers are "use client" components (no SSR sharing).
+let _currency: CurrencyCode = "USD"
 
 export function setCurrency(code: string) {
   const upper = code.toUpperCase() as CurrencyCode

@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await fetchProfile(session.user.id)
         } else {
           setProfile(null)
+          setCurrency("USD")
         }
       }
     )

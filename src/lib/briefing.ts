@@ -1,5 +1,5 @@
 import type { Audition, Reminder } from "@/types"
-import { currencySymbol } from "@/lib/format"
+import { currencySymbol, parsePay } from "@/lib/format"
 
 // Client-side briefing composition.
 //
@@ -44,11 +44,6 @@ function isSameDay(iso: string | null, ref: Date): boolean {
   )
 }
 
-function parsePay(comp: string | null): number {
-  if (!comp) return 0
-  const digits = comp.replace(/[^\d]/g, "")
-  return digits ? parseInt(digits, 10) : 0
-}
 
 export function composeBriefing(
   auditions: Audition[],

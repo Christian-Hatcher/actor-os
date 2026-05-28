@@ -249,7 +249,6 @@ export default function SettingsPage() {
 
   // Tax settings
   const { settings: taxSettings, updateSettings: updateTaxSettings } = useTax()
-  const [taxSaved, setTaxSaved] = useState(false)
 
   const subscription = {
     tier: "monthly",
@@ -712,15 +711,21 @@ export default function SettingsPage() {
                     key={c.code}
                     type="button"
                     onClick={async () => {
+                      if (!profile?.id) return
+                      const prev = profile.currency || "JPY"
                       setCurrency(c.code)
-                      await supabase
+                      const { error } = await supabase
                         .from("profiles")
                         .update({ currency: c.code, updated_at: new Date().toISOString() })
-                        .eq("id", profile?.id ?? "")
-                      refreshProfile()
+                        .eq("id", profile.id)
+                      if (error) {
+                        setCurrency(prev)
+                      } else {
+                        refreshProfile()
+                      }
                     }}
                     className={`rounded-lg border p-2.5 text-left transition-colors ${
-                      (profile?.currency || "JPY") === c.code
+                      (profile?.currency || "USD") === c.code
                         ? "border-amber bg-amber/5 ring-1 ring-amber"
                         : "border-border hover:bg-muted/50"
                     }`}
@@ -745,13 +750,6 @@ export default function SettingsPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {taxSaved && (
-              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
-                <CheckCircle className="h-4 w-4" />
-                Tax settings saved.
-              </div>
-            )}
-
             {/* Jurisdiction */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Tax Jurisdiction</label>
