@@ -49,6 +49,10 @@ function OnboardingInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const editMode = searchParams.get("edit") === "1"
+  // Plan param flows: /signup?plan=… → /onboarding?plan=… → /checkout?plan=…
+  // We honor it on finish so users who picked a paid plan during signup
+  // don't get dropped on the dashboard without ever seeing checkout.
+  const planParam = searchParams.get("plan")
   const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const { themeId, setThemeId, availableThemes } = useTheme()
 
@@ -190,7 +194,13 @@ function OnboardingInner() {
     }
     await saveStep(updates)
     setSaving(false)
-    router.push("/dashboard")
+
+    // If the user signed up with a paid plan and isn't already subscribed,
+    // send them to checkout. Otherwise straight to the dashboard.
+    const needsCheckout =
+      (planParam === "monthly" || planParam === "annual") &&
+      profile?.subscription_status !== "active"
+    router.push(needsCheckout ? `/checkout?plan=${planParam}` : "/dashboard")
   }
 
   // ---------------------------------------------------------------------------
