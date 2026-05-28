@@ -42,12 +42,35 @@ const US_BRACKETS_MARRIED_JOINT: [number, number][] = [
   [Infinity, 0.37],
 ]
 
-// US self-employment tax rate (Social Security 12.4% + Medicare 2.9%)
-const US_SE_TAX_RATE = 0.153
+const US_BRACKETS_MARRIED_SEPARATE: [number, number][] = [
+  [11600, 0.10],
+  [47150, 0.12],
+  [100525, 0.22],
+  [191950, 0.24],
+  [243725, 0.32],
+  [365600, 0.35],
+  [Infinity, 0.37],
+]
+
+const US_BRACKETS_HOH: [number, number][] = [
+  [16550, 0.10],
+  [63100, 0.12],
+  [100500, 0.22],
+  [191950, 0.24],
+  [243700, 0.32],
+  [609350, 0.35],
+  [Infinity, 0.37],
+]
+
+// US self-employment tax
+const US_SS_RATE = 0.124 // Social Security 12.4%
+const US_MEDICARE_RATE = 0.029 // Medicare 2.9%
 // Only 92.35% of net earnings subject to SE tax
 const US_SE_TAXABLE_PCT = 0.9235
 // Deduct half of SE tax from income
 const US_SE_DEDUCTION_PCT = 0.5
+// Social Security wage base cap (2026 approx)
+const US_SS_WAGE_BASE = 176100
 
 // Japan: freelancer withholding (gensenchoushu) — 10.21% on first ¥1M, 20.42% above
 function estimateJapanTax(annualIncome: number): number {
@@ -82,11 +105,13 @@ export interface TaxEstimate {
 }
 
 export function estimateTax(annualGross: number, settings: TaxSettings): TaxEstimate {
+  const gross = Math.max(0, annualGross)
+
   // Manual override — simplest path
   if (settings.manual_rate !== null && settings.manual_rate > 0) {
-    const tax = Math.round(annualGross * settings.manual_rate)
+    const tax = Math.round(gross * settings.manual_rate)
     return {
-      grossIncome: annualGross,
+      grossIncome: gross,
       effectiveRate: settings.manual_rate,
       estimatedTax: tax,
       breakdown: [{ label: "Manual rate", amount: tax }],
@@ -95,10 +120,10 @@ export function estimateTax(annualGross: number, settings: TaxSettings): TaxEsti
 
   switch (settings.jurisdiction) {
     case "jp": {
-      const tax = estimateJapanTax(annualGross)
+      const tax = estimateJapanTax(gross)
       return {
-        grossIncome: annualGross,
-        effectiveRate: annualGross > 0 ? tax / annualGross : 0,
+        grossIncome: gross,
+        effectiveRate: gross > 0 ? tax / gross : 0,
         estimatedTax: tax,
         breakdown: [{ label: "Withholding (gensenchoushu)", amount: tax }],
       }
@@ -107,9 +132,11 @@ export function estimateTax(annualGross: number, settings: TaxSettings): TaxEsti
     case "us": {
       const breakdown: { label: string; amount: number }[] = []
 
-      // Self-employment tax
-      const seBase = annualGross * US_SE_TAXABLE_PCT
-      const seTax = Math.round(seBase * US_SE_TAX_RATE)
+      // Self-employment tax (SS capped at wage base, Medicare uncapped)
+      const seBase = gross * US_SE_TAXABLE_PCT
+      const ssTax = Math.round(Math.min(seBase, US_SS_WAGE_BASE) * US_SS_RATE)
+      const medicareTax = Math.round(seBase * US_MEDICARE_RATE)
+      const seTax = ssTax + medicareTax
       breakdown.push({ label: "Self-employment tax", amount: seTax })
 
       // Federal income tax (after SE deduction)
@@ -117,49 +144,57 @@ export function estimateTax(annualGross: number, settings: TaxSettings): TaxEsti
       const brackets =
         settings.filing_status === "married_joint"
           ? US_BRACKETS_MARRIED_JOINT
-          : US_BRACKETS_SINGLE
+          : settings.filing_status === "married_separate"
+            ? US_BRACKETS_MARRIED_SEPARATE
+            : settings.filing_status === "head_of_household"
+              ? US_BRACKETS_HOH
+              : US_BRACKETS_SINGLE
       // Standard deduction (2026 approx)
       const standardDeduction =
-        settings.filing_status === "married_joint" ? 30000 : 15000
-      const taxableIncome = Math.max(0, annualGross - seDeduction - standardDeduction)
+        settings.filing_status === "married_joint" ? 30000
+          : settings.filing_status === "head_of_household" ? 22500
+            : 15000
+      const taxableIncome = Math.max(0, gross - seDeduction - standardDeduction)
       const federalTax = estimateUSFederalIncomeTax(taxableIncome, brackets)
       breakdown.push({ label: "Federal income tax", amount: federalTax })
 
       // State tax
-      const stateTax = Math.round(annualGross * settings.state_tax_rate)
+      const stateTax = Math.round(gross * settings.state_tax_rate)
       if (stateTax > 0) {
         breakdown.push({ label: "State tax", amount: stateTax })
       }
 
       const total = seTax + federalTax + stateTax
       return {
-        grossIncome: annualGross,
-        effectiveRate: annualGross > 0 ? total / annualGross : 0,
+        grossIncome: gross,
+        effectiveRate: gross > 0 ? total / gross : 0,
         estimatedTax: total,
         breakdown,
       }
     }
 
     case "uk": {
-      // Simplified UK: Class 4 NI (6% on 12,570–50,270, 2% above) + income tax bands
+      // Simplified UK: income tax bands + Class 4 NI
       const personalAllowance = 12570
       const basicCeiling = 50270
+      const higherCeiling = 125140
       let tax = 0
-      const taxable = Math.max(0, annualGross - personalAllowance)
+      const taxable = Math.max(0, gross - personalAllowance)
       const basicBand = Math.min(taxable, basicCeiling - personalAllowance)
-      const higherBand = Math.max(0, taxable - (basicCeiling - personalAllowance))
-      tax += basicBand * 0.20 + higherBand * 0.40
+      const higherBand = Math.min(Math.max(0, taxable - (basicCeiling - personalAllowance)), higherCeiling - basicCeiling)
+      const additionalBand = Math.max(0, taxable - (higherCeiling - personalAllowance))
+      tax += basicBand * 0.20 + higherBand * 0.40 + additionalBand * 0.45
       // Class 4 NI
-      const niBase = Math.min(Math.max(0, annualGross - 12570), 50270 - 12570)
-      const niHigher = Math.max(0, annualGross - 50270)
+      const niBase = Math.min(Math.max(0, gross - 12570), 50270 - 12570)
+      const niHigher = Math.max(0, gross - 50270)
       tax += niBase * 0.06 + niHigher * 0.02
       tax = Math.round(tax)
       return {
-        grossIncome: annualGross,
-        effectiveRate: annualGross > 0 ? tax / annualGross : 0,
+        grossIncome: gross,
+        effectiveRate: gross > 0 ? tax / gross : 0,
         estimatedTax: tax,
         breakdown: [
-          { label: "Income tax", amount: Math.round(basicBand * 0.20 + higherBand * 0.40) },
+          { label: "Income tax", amount: Math.round(basicBand * 0.20 + higherBand * 0.40 + additionalBand * 0.45) },
           { label: "National Insurance", amount: Math.round(niBase * 0.06 + niHigher * 0.02) },
         ],
       }
@@ -168,10 +203,10 @@ export function estimateTax(annualGross: number, settings: TaxSettings): TaxEsti
     default: {
       // Fallback: 25% flat estimate for unknown jurisdictions
       const rate = 0.25
-      const tax = Math.round(annualGross * rate)
+      const tax = Math.round(gross * rate)
       return {
-        grossIncome: annualGross,
-        effectiveRate: rate,
+        grossIncome: gross,
+        effectiveRate: gross > 0 ? rate : 0,
         estimatedTax: tax,
         breakdown: [{ label: "Estimated (25% flat)", amount: tax }],
       }
@@ -181,11 +216,12 @@ export function estimateTax(annualGross: number, settings: TaxSettings): TaxEsti
 
 /** Per-booking nudge: "Set aside $X from this job for taxes." */
 export function taxNudgeAmount(bookingPay: number, settings: TaxSettings): number {
+  const pay = Math.max(0, bookingPay)
   if (settings.manual_rate !== null && settings.manual_rate > 0) {
-    return Math.round(bookingPay * settings.manual_rate)
+    return Math.round(pay * settings.manual_rate)
   }
   // Quick estimate using effective rate from a rough annual projection
-  const roughAnnual = bookingPay * 12 // assume this is a typical month
+  const roughAnnual = pay * 12 // assume this is a typical month
   const estimate = estimateTax(roughAnnual, settings)
-  return Math.round(bookingPay * estimate.effectiveRate)
+  return Math.round(pay * estimate.effectiveRate)
 }

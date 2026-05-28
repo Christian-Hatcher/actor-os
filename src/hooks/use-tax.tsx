@@ -88,8 +88,10 @@ export function useTax() {
       0,
     )
 
-    // Estimate tax on YTD annualized
-    const estimate = estimateTax(ytdGross, settings)
+    // Annualize YTD gross for progressive bracket accuracy
+    const monthsElapsed = currentMonth
+    const annualizedGross = monthsElapsed > 0 ? Math.round(ytdGross / monthsElapsed * 12) : 0
+    const estimate = estimateTax(annualizedGross, settings)
     const thisMonthTax = Math.round(thisMonthGross * estimate.effectiveRate)
 
     // Total set aside this year
@@ -115,11 +117,16 @@ export function useTax() {
       })
     }
 
+    // YTD tax = annualized estimate scaled back to elapsed months
+    const ytdEstimatedTax = monthsElapsed > 0
+      ? Math.round(estimate.estimatedTax / 12 * monthsElapsed)
+      : 0
+
     return {
       ytdGross,
-      ytdEstimatedTax: estimate.estimatedTax,
+      ytdEstimatedTax,
       ytdSetAside,
-      surplus: ytdSetAside - estimate.estimatedTax,
+      surplus: ytdSetAside - ytdEstimatedTax,
       thisMonthGross,
       thisMonthTax,
       effectiveRate: estimate.effectiveRate,
@@ -133,30 +140,24 @@ export function useTax() {
       if (!user) return
       const year = new Date().getFullYear()
 
-      const { data: existing } = await supabase
-        .from("tax_withholdings")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("year", year)
-        .eq("month", month)
-        .maybeSingle()
+      // Find month gross for context
+      const monthData = summary.months.find((m) => parseInt(m.key.split("-")[1], 10) === month)
 
-      if (existing) {
-        await supabase
-          .from("tax_withholdings")
-          .update({ actually_set_aside: amount, updated_at: new Date().toISOString() })
-          .eq("id", existing.id)
-      } else {
-        await supabase.from("tax_withholdings").insert({
-          user_id: user.id,
-          year,
-          month,
-          gross_income: 0,
-          tax_rate: summary.effectiveRate,
-          estimated_tax: 0,
-          actually_set_aside: amount,
-        })
-      }
+      await supabase
+        .from("tax_withholdings")
+        .upsert(
+          {
+            user_id: user.id,
+            year,
+            month,
+            gross_income: monthData?.gross ?? 0,
+            tax_rate: summary.effectiveRate,
+            estimated_tax: monthData?.estimatedTax ?? 0,
+            actually_set_aside: amount,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,year,month" },
+        )
 
       setWithholdings((prev) => {
         const idx = prev.findIndex((w) => w.month === month && w.year === year)
@@ -168,7 +169,7 @@ export function useTax() {
         return [...prev, { year, month, actually_set_aside: amount }]
       })
     },
-    [user, summary.effectiveRate],
+    [user, summary],
   )
 
   const updateSettings = useCallback(
@@ -176,10 +177,14 @@ export function useTax() {
       const next = { ...settings, ...patch }
       setSettings(next)
       if (!user) return
-      await supabase
+      const { error } = await supabase
         .from("profiles")
         .update({ tax_settings: next, updated_at: new Date().toISOString() })
         .eq("id", user.id)
+      if (error) {
+        // Functional rollback: only revert if state hasn't changed since
+        setSettings((cur) => (cur === next ? settings : cur))
+      }
     },
     [user, settings],
   )
