@@ -1,15 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clapperboard, Loader2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnTo = searchParams.get("returnTo") || "/dashboard"
@@ -19,11 +16,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError("")
-
     const { error } = await signIn(email, password)
     if (error) {
       setError(error.message)
@@ -34,68 +30,117 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted">
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Clapperboard className="h-6 w-6" />
-          <span className="text-xl font-bold">Actor OS</span>
+    <div className="relative min-h-screen overflow-hidden bg-bg text-paper">
+      {/* Cinematic ambient glow */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232,167,85,.12), transparent 65%), radial-gradient(ellipse 60% 40% at 50% 110%, rgba(60,50,40,.18), transparent 65%)",
+        }}
+      />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[420px] flex-col px-[22px] py-12">
+        {/* Brand mark */}
+        <Link
+          href="/"
+          className="font-mono mb-12 inline-flex items-center gap-2 self-start text-[11px] uppercase tracking-[0.22em] text-paper-dim hover:text-paper"
+        >
+          <Clapperboard className="h-3.5 w-3.5 text-amber" /> Actor OS
+        </Link>
+
+        {/* Greeting */}
+        <div>
+          <div className="font-mono mb-4 text-[10px] uppercase tracking-[0.22em] text-amber">
+            Welcome back
+          </div>
+          <h1 className="font-serif text-[44px] leading-[1.02] tracking-[-0.015em]">
+            Step back into
+            <br />
+            <em className="not-italic italic text-paper-dim">your career.</em>
+          </h1>
+          <p className="font-serif mt-3 text-[15px] italic leading-[1.5] text-paper-dim">
+            Sign in to pick up where you left off.
+          </p>
         </div>
 
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle>Welcome back</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Log in to your Actor OS dashboard.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Email</label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="actor@example.com"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Password</label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Your password"
-                  required
-                />
-              </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.18em] text-paper-faint">
+              Email
+            </span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="actor@example.com"
+              required
+              autoComplete="email"
+              className="font-sans rounded-[10px] border border-rule-strong bg-bg2 px-3.5 py-3 text-[15px] text-paper outline-none focus:border-amber"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.18em] text-paper-faint">
+              Password
+            </span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+              className="font-sans rounded-[10px] border border-rule-strong bg-bg2 px-3.5 py-3 text-[15px] text-paper outline-none focus:border-amber"
+            />
+          </label>
 
-              {error && (
-                <p className="text-sm text-red-600">{error}</p>
-              )}
+          {error && (
+            <div className="rounded-[10px] border border-red/40 bg-red/[0.08] px-3 py-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-red">
+                {error}
+              </p>
+            </div>
+          )}
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Logging in...
-                  </>
-                ) : (
-                  "Log In"
-                )}
-              </Button>
-            </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="font-serif mt-2 inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-paper py-3.5 text-[20px] text-bg disabled:opacity-60"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
+              </>
+            ) : (
+              <>
+                Sign in <span>→</span>
+              </>
+            )}
+          </button>
+        </form>
 
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Don&apos;t have an account?{" "}
-              <Link href="/signup" className="text-primary hover:underline">
-                Sign up
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+        <p className="font-mono mt-6 text-center text-[10px] uppercase tracking-[0.18em] text-paper-faint">
+          New here?{" "}
+          <Link href="/signup" className="text-amber">
+            Start your trial
+          </Link>
+        </p>
+
+        <div className="mt-auto pt-12 text-center">
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-paper-faint">
+            © At Home Reelz K.K. · Tokyo
+          </p>
+        </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
   )
 }
