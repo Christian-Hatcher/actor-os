@@ -11,7 +11,7 @@ import {
   useContracts,
   usePendingApprovals,
 } from "@/hooks/use-data"
-import { composeBriefing } from "@/lib/briefing"
+import { composeBriefing, timeOfDayGreeting } from "@/lib/briefing"
 import {
   formatPayCompact,
   initials,
@@ -142,7 +142,7 @@ export function DashboardHome() {
           <h1 className="font-serif text-[40px] leading-none tracking-[-0.015em]">
             {name ? (
               <>
-                Good morning,
+                {timeOfDayGreeting()},
                 <br />
                 <em className="text-paper-dim not-italic italic">{name.split(" ")[0]}.</em>
               </>

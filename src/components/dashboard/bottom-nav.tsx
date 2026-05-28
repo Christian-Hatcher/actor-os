@@ -40,7 +40,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-rule px-1 pt-2 pb-3.5 backdrop-blur-2xl"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-rule px-1 pt-2 pb-3.5 backdrop-blur-2xl lg:hidden"
       style={{ background: "color-mix(in srgb, var(--bg) 85%, transparent)" }}
       aria-label="Primary"
     >

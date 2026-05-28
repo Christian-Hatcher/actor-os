@@ -27,7 +27,7 @@ function bold(s: string): string {
   return `<b>${escapeHtml(s)}</b>`
 }
 
-function timeOfDayGreeting(d = new Date()): string {
+export function timeOfDayGreeting(d = new Date()): string {
   const h = d.getHours()
   if (h < 12) return "Good morning"
   if (h < 18) return "Good afternoon"
