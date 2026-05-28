@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
+import { setCurrency } from "@/lib/format"
 import type { User } from "@supabase/supabase-js"
 import type { Database } from "@/types/database"
 
@@ -56,7 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("*")
       .eq("id", userId)
       .single()
-    if (data) setProfile(data)
+    if (data) {
+      setProfile(data)
+      if (data.currency) setCurrency(data.currency)
+    }
   }
 
   async function refreshProfile() {

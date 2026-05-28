@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/theme-provider"
 import { useTax } from "@/hooks/use-tax"
+import { setCurrency, type CurrencyCode } from "@/lib/format"
 import type { TaxJurisdiction, USFilingStatus } from "@/lib/tax-estimator"
 import type { ActorPreferences } from "@/types"
 
@@ -38,7 +39,7 @@ interface EmailConnection {
 }
 
 export default function SettingsPage() {
-  const { signOut } = useAuth()
+  const { signOut, profile, refreshProfile } = useAuth()
   const { themeId, setThemeId, availableThemes } = useTheme()
   const searchParams = useSearchParams()
   const emailError = searchParams.get("email_error")
@@ -691,6 +692,43 @@ export default function SettingsPage() {
                   </span>
                 </button>
               ))}
+            </div>
+
+            <Separator className="my-4" />
+
+            {/* Currency */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Currency</label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { code: "USD", label: "US Dollar", symbol: "$" },
+                  { code: "JPY", label: "Japanese Yen", symbol: "¥" },
+                  { code: "GBP", label: "British Pound", symbol: "£" },
+                  { code: "EUR", label: "Euro", symbol: "€" },
+                  { code: "AUD", label: "Australian Dollar", symbol: "A$" },
+                  { code: "CAD", label: "Canadian Dollar", symbol: "C$" },
+                ] as { code: CurrencyCode; label: string; symbol: string }[]).map((c) => (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={async () => {
+                      setCurrency(c.code)
+                      await supabase
+                        .from("profiles")
+                        .update({ currency: c.code, updated_at: new Date().toISOString() })
+                        .eq("id", profile?.id ?? "")
+                      refreshProfile()
+                    }}
+                    className={`rounded-lg border p-2.5 text-left transition-colors ${
+                      (profile?.currency || "JPY") === c.code
+                        ? "border-amber bg-amber/5 ring-1 ring-amber"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{c.symbol} {c.label}</p>
+                  </button>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

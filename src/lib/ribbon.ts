@@ -1,5 +1,5 @@
 import type { Audition } from "@/types"
-import { parseYen, formatYenCompact } from "@/lib/format"
+import { parsePay, formatPayCompact } from "@/lib/format"
 
 export type RibbonTone = "amber" | "red" | "green" | "grey" | "none"
 
@@ -51,7 +51,7 @@ export function auditionRibbon(a: Audition, now = new Date()): RibbonState {
   if (a.status === "booked" && shootStart) {
     if (wrap && now > wrap) {
       const overMs = now.getTime() - wrap.getTime()
-      const rate = parseYen(a.compensation)
+      const rate = parsePay(a.compensation)
       const mult = a.ot_rate_multiplier ?? 1.5
       // Base hourly ~ comp / 8h day; OT = hours × hourly × multiplier.
       const hourly = rate > 0 ? rate / 8 : 0
@@ -61,7 +61,7 @@ export function auditionRibbon(a: Audition, now = new Date()): RibbonState {
       return {
         tone: "amber",
         text: `OT · ${h}h ${m}m`,
-        owed: `+${formatYenCompact(owedAmt)}`,
+        owed: `+${formatPayCompact(owedAmt)}`,
         pulse: true,
       }
     }

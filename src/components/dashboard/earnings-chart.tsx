@@ -1,7 +1,7 @@
 "use client"
 
 import type { MonthBucket } from "@/hooks/use-earnings"
-import { formatYenCompact } from "@/lib/format"
+import { formatPayCompact } from "@/lib/format"
 
 interface EarningsChartProps {
   buckets: MonthBucket[]
@@ -70,7 +70,7 @@ export function EarningsChart({ buckets }: EarningsChartProps) {
         ))}
       </div>
       <div className="font-mono mt-1 text-right text-[9px] uppercase tracking-[0.1em] text-paper-faint">
-        peak {formatYenCompact(max)}
+        peak {formatPayCompact(max)}
       </div>
     </div>
   )

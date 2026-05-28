@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import type { Audition } from "@/types"
-import { parseYen, isActiveAudition } from "@/lib/format"
+import { parsePay, isActiveAudition } from "@/lib/format"
 
 export type EarningsRange = "3M" | "6M" | "YTD" | "ALL"
 
@@ -88,7 +88,7 @@ export function useEarnings(auditions: Audition[], range: EarningsRange = "6M") 
     for (const a of auditions) {
       const b = byKey.get(monthKey(anchorDate(a)))
       if (!b) continue
-      const v = parseYen(a.compensation)
+      const v = parsePay(a.compensation)
       if (a.status === "booked") b.banked += v
       else if (isActiveAudition(a)) b.potential += v
     }
@@ -125,7 +125,7 @@ export function useEarnings(auditions: Audition[], range: EarningsRange = "6M") 
     }
 
     const breakdown: BreakdownRow[] = thisMonth
-      .map((a) => ({ audition: a, pay: parseYen(a.compensation) }))
+      .map((a) => ({ audition: a, pay: parsePay(a.compensation) }))
       .sort((x, y) => y.pay - x.pay)
 
     return { buckets, banked, potential, deltaPct, stats, breakdown, monthLabel: now.toLocaleDateString("en-US", { month: "long" }) }

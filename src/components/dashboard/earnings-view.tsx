@@ -8,7 +8,7 @@ import { useAuditions } from "@/hooks/use-data"
 import { useEarnings, type EarningsRange } from "@/hooks/use-earnings"
 import { EarningsChart } from "./earnings-chart"
 import { TaxKeeper } from "./tax-keeper"
-import { formatYen, formatYenCompact, isActiveAudition } from "@/lib/format"
+import { formatPay, formatPayCompact, parsePay, isActiveAudition, currencySymbol } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Audition } from "@/types"
 
@@ -108,7 +108,7 @@ export function EarningsView() {
   const yearlyGoal = profile?.yearly_goal ?? 0
   const yearBanked = auditions
     .filter((a) => a.status === "booked" && new Date(a.shoot_date || a.created_at).getFullYear() === new Date().getFullYear())
-    .reduce((s, a) => s + (Number(String(a.compensation).replace(/[^\d]/g, "")) || 0), 0)
+    .reduce((s, a) => s + parsePay(a.compensation), 0)
   const goalPct = yearlyGoal > 0 ? yearBanked / yearlyGoal : 0
 
   return (
@@ -178,18 +178,18 @@ export function EarningsView() {
         /* ===== Goal mode ===== */
         <div className="mt-6">
           <h1 className="font-serif text-center text-[34px] leading-[1.1]">
-            Hit {yearlyGoal > 0 ? formatYenCompact(yearlyGoal) : "your goal"} by Dec 31.
+            Hit {yearlyGoal > 0 ? formatPayCompact(yearlyGoal) : "your goal"} by Dec 31.
           </h1>
           <div className="mt-4 flex justify-center">
             <GoalRing pct={goalPct} />
           </div>
           <p className="font-mono mt-2 text-center text-[11px] uppercase tracking-[0.12em] text-green">
-            {formatYen(yearBanked)} banked · {Math.round(goalPct * 100)}% of goal
+            {formatPay(yearBanked)} banked · {Math.round(goalPct * 100)}% of goal
           </p>
           <div className="mt-6 grid grid-cols-2 gap-2">
-            <StatCell n={formatYenCompact(Math.round(yearBanked / (new Date().getMonth() + 1)))} label="Avg / month" />
+            <StatCell n={formatPayCompact(Math.round(yearBanked / (new Date().getMonth() + 1)))} label="Avg / month" />
             <StatCell
-              n={yearlyGoal > 0 ? formatYenCompact(Math.round(yearlyGoal / 12)) : "—"}
+              n={yearlyGoal > 0 ? formatPayCompact(Math.round(yearlyGoal / 12)) : "—"}
               label="Target / month"
             />
             <StatCell n={String(auditions.filter((a) => a.status === "booked").length)} label="Booked" tone="green" />
@@ -212,7 +212,7 @@ export function EarningsView() {
               {monthLabel} · banked
             </div>
             <div className="font-serif mt-1.5 text-[64px] leading-none tracking-[-0.02em] text-green">
-              <span className="align-[14px] mr-1.5 text-[34px] text-paper-faint">¥</span>
+              <span className="align-[14px] mr-1.5 text-[34px] text-paper-faint">{currencySymbol()}</span>
               {banked.toLocaleString("en-US")}
             </div>
             <div className="font-mono mt-2 text-[11px] tracking-[0.08em] text-paper-dim">
@@ -222,7 +222,7 @@ export function EarningsView() {
                 </span>
               )}{" "}
               {deltaPct !== null && "on last month · "}
-              <span className="text-paper-faint">{formatYenCompact(potential)} still in play</span>
+              <span className="text-paper-faint">{formatPayCompact(potential)} still in play</span>
             </div>
           </div>
 
@@ -247,7 +247,7 @@ export function EarningsView() {
             <StatCell n={String(stats.bookedCount)} label="Booked" tone="green" />
             <StatCell n={String(stats.pendingCount)} label="Pending" />
             <StatCell n={String(stats.passedCount)} label="Passed" tone="red" />
-            <StatCell n={formatYenCompact(stats.otTotal)} label="OT" tone="amber" />
+            <StatCell n={formatPayCompact(stats.otTotal)} label="OT" tone="amber" />
           </div>
 
           {/* Month strip */}
@@ -277,7 +277,7 @@ export function EarningsView() {
                     </span>
                   </div>
                   <div className="font-mono text-[12.5px] tracking-[0.02em] text-paper">
-                    {formatYen(b.banked)}
+                    {formatPay(b.banked)}
                   </div>
                   <div className="relative h-1.5 overflow-hidden rounded bg-white/[0.06]">
                     <i
@@ -350,7 +350,7 @@ export function EarningsView() {
                           tone === "passed" && "text-red line-through",
                         )}
                       >
-                        {pay > 0 ? formatYen(pay) : "—"}
+                        {pay > 0 ? formatPay(pay) : "—"}
                       </span>
                       <span className={`chip ${a.status === "callback" ? "cb" : isActiveAudition(a) ? "sub" : tone}`}>
                         {a.status}

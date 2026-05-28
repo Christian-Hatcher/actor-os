@@ -13,7 +13,7 @@ import {
 } from "@/hooks/use-data"
 import { composeBriefing } from "@/lib/briefing"
 import {
-  formatYenCompact,
+  formatPayCompact,
   initials,
   isActiveAudition,
   rollupEarnings,
@@ -236,12 +236,12 @@ export function DashboardHome() {
             <AccordionSection
               id="earnings"
               title="Earnings"
-              meta={`${formatYenCompact(banked)} / ${formatYenCompact(banked + potential)}`}
+              meta={`${formatPayCompact(banked)} / ${formatPayCompact(banked + potential)}`}
               tone="good"
             >
               <p>
-                <b className="font-medium text-green">{formatYenCompact(banked)} banked.</b>{" "}
-                {potential > 0 && <>{formatYenCompact(potential)} still in play.</>}
+                <b className="font-medium text-green">{formatPayCompact(banked)} banked.</b>{" "}
+                {potential > 0 && <>{formatPayCompact(potential)} still in play.</>}
               </p>
               <div className="mt-3">
                 <Link

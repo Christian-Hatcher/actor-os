@@ -1,4 +1,5 @@
 import type { Audition, Reminder } from "@/types"
+import { currencySymbol } from "@/lib/format"
 
 // Client-side briefing composition.
 //
@@ -43,7 +44,7 @@ function isSameDay(iso: string | null, ref: Date): boolean {
   )
 }
 
-function parseYen(comp: string | null): number {
+function parsePay(comp: string | null): number {
   if (!comp) return 0
   const digits = comp.replace(/[^\d]/g, "")
   return digits ? parseInt(digits, 10) : 0
@@ -97,13 +98,14 @@ export function composeBriefing(
   // Earnings note — banked (booked) vs potential (everything still alive).
   const banked = auditions
     .filter((a) => a.status === "booked")
-    .reduce((sum, a) => sum + parseYen(a.compensation), 0)
+    .reduce((sum, a) => sum + parsePay(a.compensation), 0)
   const potential = auditions
     .filter((a) => a.status === "submitted" || a.status === "callback" || a.status === "pinned")
-    .reduce((sum, a) => sum + parseYen(a.compensation), 0)
+    .reduce((sum, a) => sum + parsePay(a.compensation), 0)
 
   if (banked || potential) {
-    const fmt = (n: number) => `¥${Math.round(n / 1000)}k`
+    const sym = currencySymbol()
+    const fmt = (n: number) => `${sym}${Math.round(n / 1000)}k`
     sentences.push(
       `${bold(fmt(banked) + " banked")} this month${potential ? `, ${bold(fmt(potential))} still in play` : ""}.`,
     )

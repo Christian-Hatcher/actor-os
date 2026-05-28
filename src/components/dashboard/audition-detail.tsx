@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import { useAudition } from "@/hooks/use-data"
 import { auditionRibbon, type RibbonTone } from "@/lib/ribbon"
-import { formatYen, parseYen } from "@/lib/format"
+import { formatPay, parsePay, currencySymbol } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Audition } from "@/types"
 
@@ -153,7 +153,7 @@ export function AuditionDetail({ id }: { id: string }) {
     (whenDate && when && when.length > 10
       ? whenDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
       : "—")
-  const pay = parseYen(a.compensation)
+  const pay = parsePay(a.compensation)
 
   const tel = a.casting_director ? `tel:` : undefined
 
@@ -231,7 +231,7 @@ export function AuditionDetail({ id }: { id: string }) {
           <div className="font-serif mt-1 text-[30px] leading-none tracking-[-0.01em] text-green">
             {pay > 0 ? (
               <>
-                <span className="align-[3px] mr-0.5 text-[18px] text-paper-faint">¥</span>
+                <span className="align-[3px] mr-0.5 text-[18px] text-paper-faint">{currencySymbol()}</span>
                 {pay.toLocaleString("en-US")}
               </>
             ) : (

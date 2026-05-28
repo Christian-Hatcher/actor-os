@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTax } from "@/hooks/use-tax"
-import { formatYen, formatYenCompact } from "@/lib/format"
+import { formatPay, formatPayCompact } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 function SetAsideInput({
@@ -27,7 +27,7 @@ function SetAsideInput({
         }}
         className="font-mono text-[12px] text-paper-dim hover:text-paper transition-colors"
       >
-        {current > 0 ? formatYen(current) : "Log →"}
+        {current > 0 ? formatPay(current) : "Log →"}
       </button>
     )
   }
@@ -86,10 +86,10 @@ export function TaxKeeper() {
           Set aside this month
         </div>
         <div className="font-serif mt-2 text-[56px] leading-none tracking-[-0.02em] text-amber">
-          {formatYen(summary.thisMonthTax)}
+          {formatPay(summary.thisMonthTax)}
         </div>
         <div className="font-mono mt-2 text-[11px] tracking-[0.08em] text-paper-dim">
-          {ratePct}% effective rate · {formatYenCompact(summary.thisMonthGross)} gross this month
+          {ratePct}% effective rate · {formatPayCompact(summary.thisMonthGross)} gross this month
         </div>
       </div>
 
@@ -102,7 +102,7 @@ export function TaxKeeper() {
               Total earned
             </div>
             <div className="font-serif mt-0.5 text-[22px] text-paper">
-              {formatYenCompact(summary.ytdGross)}
+              {formatPayCompact(summary.ytdGross)}
             </div>
           </div>
           <div>
@@ -110,7 +110,7 @@ export function TaxKeeper() {
               Tax owed (est.)
             </div>
             <div className="font-serif mt-0.5 text-[22px] text-red">
-              {formatYenCompact(summary.ytdEstimatedTax)}
+              {formatPayCompact(summary.ytdEstimatedTax)}
             </div>
           </div>
           <div>
@@ -118,7 +118,7 @@ export function TaxKeeper() {
               Actually saved
             </div>
             <div className="font-serif mt-0.5 text-[22px] text-green">
-              {formatYenCompact(summary.ytdSetAside)}
+              {formatPayCompact(summary.ytdSetAside)}
             </div>
           </div>
           <div>
@@ -132,7 +132,7 @@ export function TaxKeeper() {
               )}
             >
               {surplusPositive ? "+" : ""}
-              {formatYenCompact(summary.surplus)}
+              {formatPayCompact(summary.surplus)}
             </div>
           </div>
         </div>
@@ -180,13 +180,13 @@ export function TaxKeeper() {
               className="flex items-center justify-between border-t border-rule py-2 first:border-0 first:pt-0"
             >
               <span className="font-sans text-[13px] text-paper-dim">{item.label}</span>
-              <span className="font-mono text-[12px] text-paper">{formatYen(item.amount)}</span>
+              <span className="font-mono text-[12px] text-paper">{formatPay(item.amount)}</span>
             </div>
           ))}
           <div className="flex items-center justify-between border-t border-rule-strong pt-2 mt-1">
             <span className="font-sans text-[13px] font-medium text-paper">Total estimated</span>
             <span className="font-mono text-[13px] font-medium text-red">
-              {formatYen(summary.ytdEstimatedTax)}
+              {formatPay(summary.ytdEstimatedTax)}
             </span>
           </div>
         </div>
@@ -209,7 +209,7 @@ export function TaxKeeper() {
                 <div>
                   <div className="font-serif text-[15px] text-paper">{m.label}</div>
                   <div className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-paper-faint">
-                    {formatYenCompact(m.gross)} gross · {formatYenCompact(m.estimatedTax)} owed
+                    {formatPayCompact(m.gross)} gross · {formatPayCompact(m.estimatedTax)} owed
                   </div>
                 </div>
                 <div className="text-right">
@@ -225,7 +225,7 @@ export function TaxKeeper() {
                     diff >= 0 ? "text-green" : "text-red",
                   )}
                 >
-                  {m.setSAside > 0 ? (diff >= 0 ? `+${formatYenCompact(diff)}` : formatYenCompact(diff)) : "—"}
+                  {m.setSAside > 0 ? (diff >= 0 ? `+${formatPayCompact(diff)}` : formatPayCompact(diff)) : "—"}
                 </div>
               </div>
             )

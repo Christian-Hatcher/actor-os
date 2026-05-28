@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/hooks/use-auth"
 import { useAuditions } from "@/hooks/use-data"
-import { parseYen } from "@/lib/format"
+import { parsePay } from "@/lib/format"
 import {
   estimateTax,
   DEFAULT_TAX_SETTINGS,
@@ -76,7 +76,7 @@ export function useTax() {
       const d = new Date(a.shoot_date || a.created_at)
       return d.getFullYear() === currentYear
     })
-    const ytdGross = ytdAuditions.reduce((sum, a) => sum + parseYen(a.compensation), 0)
+    const ytdGross = ytdAuditions.reduce((sum, a) => sum + parsePay(a.compensation), 0)
 
     // This month's income
     const thisMonthAuditions = ytdAuditions.filter((a) => {
@@ -84,7 +84,7 @@ export function useTax() {
       return d.getMonth() + 1 === currentMonth
     })
     const thisMonthGross = thisMonthAuditions.reduce(
-      (sum, a) => sum + parseYen(a.compensation),
+      (sum, a) => sum + parsePay(a.compensation),
       0,
     )
 
@@ -104,7 +104,7 @@ export function useTax() {
         const d = new Date(a.shoot_date || a.created_at)
         return d.getMonth() + 1 === m
       })
-      const gross = monthAuditions.reduce((sum, a) => sum + parseYen(a.compensation), 0)
+      const gross = monthAuditions.reduce((sum, a) => sum + parsePay(a.compensation), 0)
       const estimatedTax = Math.round(gross * estimate.effectiveRate)
       const saved = withholdings.find((w) => w.month === m)?.actually_set_aside || 0
       const date = new Date(currentYear, m - 1)
