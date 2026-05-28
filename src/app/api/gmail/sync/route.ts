@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
-import { llm } from "@/lib/llm"
+import { llmForUser } from "@/lib/llm"
 
 /**
  * Refresh a Gmail access token using the stored refresh_token
@@ -363,11 +363,12 @@ export async function POST(request: Request) {
                 .select("id")
                 .single()
 
-              // Fire-and-forget: generate a 1-sentence description via LLM
+              // Fire-and-forget: generate a 1-sentence description via LLM.
+              // Respects the connection owner's per-user provider config.
               if (newContact) {
                 ;(async () => {
                   try {
-                    const desc = await llm("low", [
+                    const desc = await llmForUser("low", connection.user_id, [
                       { role: "user", content: `Write a 1-sentence professional description of this contact based on what we know. Name: ${fromName}. Email domain: ${senderEmail.split("@")[1]}. Subject of their email: ${subject}. Keep it under 20 words.` },
                     ], 100)
                     if (desc.content) {
