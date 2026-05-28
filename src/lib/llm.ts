@@ -149,7 +149,14 @@ export async function llm(
   maxTokens: number = 4000
 ): Promise<LLMResponse> {
   const config = getConfig(tier)
+  return callProvider(config, messages, maxTokens)
+}
 
+async function callProvider(
+  config: LLMConfig,
+  messages: LLMMessage[],
+  maxTokens: number,
+): Promise<LLMResponse> {
   switch (config.provider) {
     case "ollama":
       return callOllama(config, messages, maxTokens)
@@ -159,5 +166,88 @@ export async function llm(
       return callOpenAI(config, messages, maxTokens)
     default:
       throw new Error(`Unknown LLM provider: ${config.provider}`)
+  }
+}
+
+/**
+ * GOAL §4 — per-user LLM provider.
+ *
+ * If the user has llm_provider set on their profile, use their config.
+ * Otherwise fall back to the system env vars (Christian's Ollama Cloud).
+ *
+ * SERVER-ONLY: this imports the Supabase admin client. Never call from a
+ * client component — the API key would leak through the bundle.
+ */
+export async function llmForUser(
+  tier: LLMTier,
+  userId: string,
+  messages: LLMMessage[],
+  maxTokens: number = 4000,
+): Promise<LLMResponse> {
+  const { getSupabaseAdmin } = await import("./supabase-admin")
+  const admin = getSupabaseAdmin()
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("llm_provider, llm_model, llm_base_url, llm_api_key_encrypted")
+    .eq("id", userId)
+    .single()
+
+  if (profile?.llm_provider) {
+    const config: LLMConfig = {
+      provider: profile.llm_provider,
+      model: profile.llm_model || (tier === "low" ? "llama3.2:3b" : "llama3.2:3b"),
+      baseUrl: profile.llm_base_url || defaultBaseUrl(profile.llm_provider),
+      apiKey: profile.llm_api_key_encrypted || undefined,
+    }
+    return callProvider(config, messages, maxTokens)
+  }
+
+  // No user config — fall back to env-var defaults.
+  return llm(tier, messages, maxTokens)
+}
+
+function defaultBaseUrl(provider: string): string {
+  switch (provider) {
+    case "ollama":
+      return "http://localhost:11434"
+    case "anthropic":
+      return "https://api.anthropic.com"
+    case "openai":
+      return "https://api.openai.com"
+    default:
+      return "http://localhost:11434"
+  }
+}
+
+/**
+ * One-shot test ping used by the Settings → AI Connection card.
+ * Calls the provider with a tiny prompt and returns the response so the
+ * UI can show success / failure with a clear error.
+ */
+export async function testLLMConnection(input: {
+  provider: "ollama" | "anthropic" | "openai"
+  model: string
+  baseUrl?: string
+  apiKey?: string
+}): Promise<{ ok: true; sample: string } | { ok: false; error: string }> {
+  try {
+    const config: LLMConfig = {
+      provider: input.provider,
+      model: input.model,
+      baseUrl: input.baseUrl || defaultBaseUrl(input.provider),
+      apiKey: input.apiKey,
+    }
+    const res = await callProvider(
+      config,
+      [
+        { role: "system", content: "Reply with exactly: OK" },
+        { role: "user", content: "ping" },
+      ],
+      16,
+    )
+    return { ok: true, sample: res.content.slice(0, 80) }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 }

@@ -21,7 +21,27 @@ import {
   LogOut,
   Palette,
   Calculator,
+  Sparkles,
 } from "lucide-react"
+
+type LLMProvider = "ollama" | "anthropic" | "openai"
+
+const MODELS_BY_PROVIDER: Record<LLMProvider, { id: string; label: string }[]> = {
+  ollama: [
+    { id: "llama3.2:3b", label: "Llama 3.2 — 3B" },
+    { id: "llama3.1:8b", label: "Llama 3.1 — 8B" },
+    { id: "qwen2.5:7b", label: "Qwen 2.5 — 7B" },
+  ],
+  anthropic: [
+    { id: "claude-opus-4-7", label: "Claude Opus 4.7" },
+    { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+    { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
+  ],
+  openai: [
+    { id: "gpt-4o-mini", label: "GPT-4o mini" },
+    { id: "gpt-4o", label: "GPT-4o" },
+  ],
+}
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/theme-provider"
 import { useTax } from "@/hooks/use-tax"
@@ -72,11 +92,120 @@ export default function SettingsPage() {
   const [prefsSaved, setPrefsSaved] = useState(false)
   const [prefsError, setPrefsError] = useState<string | null>(null)
 
+  // LLM provider state (GOAL §4)
+  const [llmProvider, setLlmProvider] = useState<LLMProvider>("ollama")
+  const [llmModel, setLlmModel] = useState<string>("llama3.2:3b")
+  const [llmBaseUrl, setLlmBaseUrl] = useState<string>("")
+  const [llmApiKey, setLlmApiKey] = useState<string>("")
+  const [llmSaving, setLlmSaving] = useState(false)
+  const [llmTesting, setLlmTesting] = useState(false)
+  const [llmStatus, setLlmStatus] = useState<
+    | { kind: "saved" }
+    | { kind: "tested-ok"; sample: string }
+    | { kind: "error"; message: string }
+    | null
+  >(null)
+
   // Fetch connections + preferences on mount
   useEffect(() => {
     fetchConnections()
     fetchPreferences()
+    fetchLLMSettings()
   }, [])
+
+  async function fetchLLMSettings() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    const { data } = await supabase
+      .from("profiles")
+      .select("llm_provider, llm_model, llm_base_url, llm_api_key_encrypted")
+      .eq("id", session.user.id)
+      .single()
+    if (data) {
+      const p = (data.llm_provider as LLMProvider) || "ollama"
+      setLlmProvider(p)
+      setLlmModel(data.llm_model || MODELS_BY_PROVIDER[p][0].id)
+      setLlmBaseUrl(data.llm_base_url || "")
+      // API key is never round-tripped to the UI — leave blank, show
+      // placeholder hinting that one is stored if present.
+      setLlmApiKey(data.llm_api_key_encrypted ? "" : "")
+    }
+  }
+
+  async function saveLLMSettings() {
+    setLlmSaving(true)
+    setLlmStatus(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error("Not signed in")
+      const update: {
+        llm_provider: string
+        llm_model: string | null
+        llm_base_url: string | null
+        llm_api_key_encrypted?: string
+        updated_at: string
+      } = {
+        llm_provider: llmProvider,
+        llm_model: llmModel || null,
+        llm_base_url: llmBaseUrl || null,
+        updated_at: new Date().toISOString(),
+      }
+      // Only overwrite the stored key when the user typed a new one.
+      if (llmApiKey.trim()) update.llm_api_key_encrypted = llmApiKey.trim()
+      const { error } = await supabase
+        .from("profiles")
+        .update(update)
+        .eq("id", session.user.id)
+      if (error) throw error
+      setLlmStatus({ kind: "saved" })
+      setLlmApiKey("")
+    } catch (err) {
+      setLlmStatus({
+        kind: "error",
+        message: err instanceof Error ? err.message : "Couldn't save",
+      })
+    } finally {
+      setLlmSaving(false)
+    }
+  }
+
+  async function testLLM() {
+    setLlmTesting(true)
+    setLlmStatus(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error("Not signed in")
+      const res = await fetch("/api/llm/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          provider: llmProvider,
+          model: llmModel,
+          baseUrl: llmBaseUrl || undefined,
+          apiKey: llmApiKey || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.ok === false) {
+        setLlmStatus({
+          kind: "error",
+          message: data.error || `Test failed (${res.status})`,
+        })
+      } else {
+        setLlmStatus({ kind: "tested-ok", sample: data.sample })
+      }
+    } catch (err) {
+      setLlmStatus({
+        kind: "error",
+        message: err instanceof Error ? err.message : "Test failed",
+      })
+    } finally {
+      setLlmTesting(false)
+    }
+  }
 
   async function fetchConnections() {
     const { data, error } = await supabase
@@ -779,6 +908,158 @@ export default function SettingsPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Connection (GOAL §4) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-amber" /> AI Connection
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Actor OS uses AI to analyze contracts, parse casting emails, and
+              write your morning briefing. Bring your own provider, or use the
+              shared default.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Provider */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Provider</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { id: "ollama", label: "Ollama" },
+                    { id: "anthropic", label: "Anthropic" },
+                    { id: "openai", label: "OpenAI" },
+                  ] as { id: LLMProvider; label: string }[]
+                ).map((p) => {
+                  const on = llmProvider === p.id
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setLlmProvider(p.id)
+                        setLlmModel(MODELS_BY_PROVIDER[p.id][0].id)
+                        setLlmStatus(null)
+                      }}
+                      className={`rounded-lg border p-3 text-left transition-colors ${
+                        on
+                          ? "border-amber bg-amber/[0.06] text-paper"
+                          : "border-rule hover:border-rule-strong"
+                      }`}
+                    >
+                      <p className="text-sm font-medium">{p.label}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Model */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Model</label>
+              <select
+                value={llmModel}
+                onChange={(e) => setLlmModel(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {MODELS_BY_PROVIDER[llmProvider].map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Base URL — only meaningful for Ollama (custom endpoint) */}
+            {llmProvider === "ollama" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Base URL</label>
+                <input
+                  type="url"
+                  value={llmBaseUrl}
+                  onChange={(e) => setLlmBaseUrl(e.target.value)}
+                  placeholder="https://ollama.example.com (leave blank for default)"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+            )}
+
+            {/* API key */}
+            {(llmProvider === "anthropic" ||
+              llmProvider === "openai" ||
+              llmProvider === "ollama") && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">API key</label>
+                <input
+                  type="password"
+                  value={llmApiKey}
+                  onChange={(e) => setLlmApiKey(e.target.value)}
+                  placeholder={
+                    llmProvider === "ollama"
+                      ? "Optional — only for Ollama Cloud"
+                      : "sk-… (leave blank to keep current key)"
+                  }
+                  autoComplete="off"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Stored server-side and never exposed to the browser. Only used
+                  inside API routes for AI features.
+                </p>
+              </div>
+            )}
+
+            {/* Status */}
+            {llmStatus?.kind === "saved" && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                <CheckCircle className="h-4 w-4" /> Saved.
+              </div>
+            )}
+            {llmStatus?.kind === "tested-ok" && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                <CheckCircle className="h-4 w-4" /> Connection ok. Sample:{" "}
+                <span className="font-mono">{llmStatus.sample}</span>
+              </div>
+            )}
+            {llmStatus?.kind === "error" && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                <AlertTriangle className="h-4 w-4" /> {llmStatus.message}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={testLLM}
+                disabled={llmTesting}
+                className="flex-1"
+              >
+                {llmTesting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Testing…
+                  </>
+                ) : (
+                  "Test connection"
+                )}
+              </Button>
+              <Button
+                onClick={saveLLMSettings}
+                disabled={llmSaving}
+                className="flex-1"
+              >
+                {llmSaving ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>

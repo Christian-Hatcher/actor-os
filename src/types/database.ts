@@ -32,6 +32,10 @@ export interface Database {
           custom_theme: Json | null
           preferred_mode: string
           tax_settings: Json | null
+          llm_provider: string | null
+          llm_model: string | null
+          llm_base_url: string | null
+          llm_api_key_encrypted: string | null
           created_at: string
           updated_at: string
         }
@@ -56,6 +60,10 @@ export interface Database {
           custom_theme?: Json | null
           preferred_mode?: string
           tax_settings?: Json | null
+          llm_provider?: string | null
+          llm_model?: string | null
+          llm_base_url?: string | null
+          llm_api_key_encrypted?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -79,6 +87,10 @@ export interface Database {
           custom_theme?: Json | null
           preferred_mode?: string
           tax_settings?: Json | null
+          llm_provider?: string | null
+          llm_model?: string | null
+          llm_base_url?: string | null
+          llm_api_key_encrypted?: string | null
           updated_at?: string
         }
         Relationships: []

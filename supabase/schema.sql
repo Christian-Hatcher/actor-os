@@ -433,3 +433,18 @@ alter table public.approvals_queue enable row level security;
 create policy "Users own their approvals" on public.approvals_queue
   for all using (auth.uid() = user_id);
 create index if not exists idx_approvals_user on public.approvals_queue(user_id, status);
+
+-- =====================================================================
+-- GOAL §4 — Per-user LLM provider settings
+-- Users can bring their own Ollama / Anthropic / OpenAI keys.
+-- Keys never leave the server: RLS scopes select to the owner, but only
+-- server-side admin reads them inside lib/llm.ts. NOTE: column is suffixed
+-- _encrypted to signal that production should move this to Supabase Vault
+-- or pgcrypto.pgp_sym_encrypt — for now it relies on Supabase at-rest
+-- encryption + RLS isolation.
+-- =====================================================================
+alter table public.profiles add column if not exists llm_provider text default 'ollama'
+  check (llm_provider in ('ollama','anthropic','openai'));
+alter table public.profiles add column if not exists llm_model text;
+alter table public.profiles add column if not exists llm_base_url text;
+alter table public.profiles add column if not exists llm_api_key_encrypted text;

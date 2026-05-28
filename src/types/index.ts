@@ -19,6 +19,12 @@ export interface Profile {
   theme_id?: string
   custom_theme?: Record<string, unknown> | null
   preferred_mode?: "theater" | "film" | "both"
+  // GOAL §4 — per-user LLM provider settings. Server-only fields; never
+  // expose llm_api_key_encrypted to the client outside the Settings page.
+  llm_provider?: "ollama" | "anthropic" | "openai" | null
+  llm_model?: string | null
+  llm_base_url?: string | null
+  llm_api_key_encrypted?: string | null
   created_at: string
   updated_at: string
 }
