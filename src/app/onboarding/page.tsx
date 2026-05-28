@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Clapperboard, Loader2, Mail, Check, ChevronRight, ChevronLeft, Camera, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,8 +45,10 @@ const PREFERRED_MODES = [
 // Component
 // ---------------------------------------------------------------------------
 
-export default function OnboardingPage() {
+function OnboardingInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editMode = searchParams.get("edit") === "1"
   const { user, profile, loading: authLoading, refreshProfile } = useAuth()
   const { themeId, setThemeId, availableThemes } = useTheme()
 
@@ -93,6 +95,14 @@ export default function OnboardingPage() {
       router.push("/login")
     }
   }, [authLoading, user, router])
+
+  // Skip onboarding for users who've already finished setup. Pass
+  // ?edit=1 to bypass the redirect and re-edit their profile.
+  useEffect(() => {
+    if (!authLoading && user && profile?.city && !editMode) {
+      router.push("/dashboard")
+    }
+  }, [authLoading, user, profile, editMode, router])
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -709,5 +719,19 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       </span>
       <span className="text-sm font-medium text-[var(--paper)]">{value}</span>
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-bg">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber border-t-transparent" />
+        </div>
+      }
+    >
+      <OnboardingInner />
+    </Suspense>
   )
 }
