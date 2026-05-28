@@ -433,3 +433,95 @@ alter table public.approvals_queue enable row level security;
 create policy "Users own their approvals" on public.approvals_queue
   for all using (auth.uid() = user_id);
 create index if not exists idx_approvals_user on public.approvals_queue(user_id, status);
+
+-- =====================================================================
+-- V2 migration — Jobs + Rehearsals + Scripts (SPEC-V2-FEATURES.md)
+-- Safe to re-run: all additions use IF NOT EXISTS / DO blocks.
+-- =====================================================================
+
+-- 1. Jobs: the central post-booking entity. A booked audition can be
+--    promoted to a job, or a job can be created directly (off-platform booking).
+create table if not exists public.jobs (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  audition_id uuid references public.auditions(id) on delete set null,
+  title text not null,
+  type text not null default 'film'
+    check (type in ('theater','film','commercial','voiceover','other')),
+  venue_or_location text,
+  director text,
+  production_company text,
+  role_name text,
+  status text not null default 'active'
+    check (status in ('active','wrapped','archived')),
+  start_date date,
+  end_date date,
+  compensation text,
+  contract_id uuid references public.contracts(id) on delete set null,
+  notes text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.jobs enable row level security;
+create policy "Users own their jobs" on public.jobs
+  for all using (auth.uid() = user_id);
+create index if not exists idx_jobs_user_status on public.jobs(user_id, status);
+create index if not exists idx_jobs_audition on public.jobs(audition_id);
+
+-- Auditions ↔ Jobs backlink (optional convenience; a job already references audition)
+alter table public.auditions add column if not exists job_id uuid
+  references public.jobs(id) on delete set null;
+
+-- 2. Rehearsal logs: per-job journal entries.
+create table if not exists public.rehearsal_logs (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  job_id uuid references public.jobs(id) on delete cascade not null,
+  date date not null default current_date,
+  duration_minutes integer,
+  type text check (type in
+    ('table_read','blocking','run_through','tech_rehearsal','dress_rehearsal','put_in','other')),
+  summary text,
+  director_notes text,
+  personal_notes text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.rehearsal_logs enable row level security;
+create policy "Users own their rehearsal logs" on public.rehearsal_logs
+  for all using (auth.uid() = user_id);
+create index if not exists idx_rehearsals_job_date on public.rehearsal_logs(job_id, date desc);
+
+-- 3. Scripts: file references (PDF/DOCX/TXT) stored privately.
+create table if not exists public.scripts (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  job_id uuid references public.jobs(id) on delete cascade not null,
+  title text not null,
+  file_url text,
+  file_type text check (file_type in ('pdf','txt','docx')),
+  file_size_bytes bigint,
+  uploaded_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.scripts enable row level security;
+create policy "Users own their scripts" on public.scripts
+  for all using (auth.uid() = user_id);
+create index if not exists idx_scripts_job on public.scripts(job_id);
+
+-- 4. Script annotations: blocking / character / director notes pinned to a script.
+create table if not exists public.script_annotations (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  script_id uuid references public.scripts(id) on delete cascade not null,
+  page_number integer,
+  line_reference text,
+  annotation_type text check (annotation_type in
+    ('blocking','character_note','director_note','emotion','prop','cue','general')),
+  content text not null,
+  color text default 'yellow',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+alter table public.script_annotations enable row level security;
+create policy "Users own their script annotations" on public.script_annotations
+  for all using (auth.uid() = user_id);
+create index if not exists idx_annotations_script on public.script_annotations(script_id, page_number);

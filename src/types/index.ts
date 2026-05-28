@@ -46,6 +46,8 @@ export interface Audition {
   est_wrap_time?: string | null
   wrap_time?: string | null
   ot_rate_multiplier?: number | null
+  // V2: backlink to a job (booked audition → job promotion)
+  job_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -175,4 +177,79 @@ export interface OutreachLog {
   method: "email" | "call" | "meeting" | "other"
   notes: string | null
   created_at: string
+}
+
+export interface Job {
+  id: string
+  user_id: string
+  audition_id: string | null
+  title: string
+  type: "theater" | "film" | "commercial" | "voiceover" | "other"
+  venue_or_location: string | null
+  director: string | null
+  production_company: string | null
+  role_name: string | null
+  status: "active" | "wrapped" | "archived"
+  start_date: string | null
+  end_date: string | null
+  compensation: string | null
+  contract_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type RehearsalType =
+  | "table_read"
+  | "blocking"
+  | "run_through"
+  | "tech_rehearsal"
+  | "dress_rehearsal"
+  | "put_in"
+  | "other"
+
+export interface RehearsalLog {
+  id: string
+  user_id: string
+  job_id: string
+  date: string
+  duration_minutes: number | null
+  type: RehearsalType | null
+  summary: string | null
+  director_notes: string | null
+  personal_notes: string | null
+  created_at: string
+}
+
+export interface Script {
+  id: string
+  user_id: string
+  job_id: string
+  title: string
+  file_url: string | null
+  file_type: "pdf" | "txt" | "docx" | null
+  file_size_bytes: number | null
+  uploaded_at: string
+}
+
+export type AnnotationType =
+  | "blocking"
+  | "character_note"
+  | "director_note"
+  | "emotion"
+  | "prop"
+  | "cue"
+  | "general"
+
+export interface ScriptAnnotation {
+  id: string
+  user_id: string
+  script_id: string
+  page_number: number | null
+  line_reference: string | null
+  annotation_type: AnnotationType | null
+  content: string
+  color: string | null
+  created_at: string
+  updated_at: string
 }

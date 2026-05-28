@@ -104,6 +104,7 @@ export interface Database {
           est_wrap_time: string | null
           wrap_time: string | null
           ot_rate_multiplier: number | null
+          job_id: string | null
           created_at: string
           updated_at: string
         }
@@ -129,6 +130,7 @@ export interface Database {
           est_wrap_time?: string | null
           wrap_time?: string | null
           ot_rate_multiplier?: number | null
+          job_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -152,6 +154,7 @@ export interface Database {
           est_wrap_time?: string | null
           wrap_time?: string | null
           ot_rate_multiplier?: number | null
+          job_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -616,6 +619,162 @@ export interface Database {
           willing_to_travel?: boolean
           career_goal?: string | null
           bio_context?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      jobs: {
+        Row: {
+          id: string
+          user_id: string
+          audition_id: string | null
+          title: string
+          type: string
+          venue_or_location: string | null
+          director: string | null
+          production_company: string | null
+          role_name: string | null
+          status: string
+          start_date: string | null
+          end_date: string | null
+          compensation: string | null
+          contract_id: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          audition_id?: string | null
+          title: string
+          type?: string
+          venue_or_location?: string | null
+          director?: string | null
+          production_company?: string | null
+          role_name?: string | null
+          status?: string
+          start_date?: string | null
+          end_date?: string | null
+          compensation?: string | null
+          contract_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          audition_id?: string | null
+          title?: string
+          type?: string
+          venue_or_location?: string | null
+          director?: string | null
+          production_company?: string | null
+          role_name?: string | null
+          status?: string
+          start_date?: string | null
+          end_date?: string | null
+          compensation?: string | null
+          contract_id?: string | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rehearsal_logs: {
+        Row: {
+          id: string
+          user_id: string
+          job_id: string
+          date: string
+          duration_minutes: number | null
+          type: string | null
+          summary: string | null
+          director_notes: string | null
+          personal_notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          job_id: string
+          date?: string
+          duration_minutes?: number | null
+          type?: string | null
+          summary?: string | null
+          director_notes?: string | null
+          personal_notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          date?: string
+          duration_minutes?: number | null
+          type?: string | null
+          summary?: string | null
+          director_notes?: string | null
+          personal_notes?: string | null
+        }
+        Relationships: []
+      }
+      scripts: {
+        Row: {
+          id: string
+          user_id: string
+          job_id: string
+          title: string
+          file_url: string | null
+          file_type: string | null
+          file_size_bytes: number | null
+          uploaded_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          job_id: string
+          title: string
+          file_url?: string | null
+          file_type?: string | null
+          file_size_bytes?: number | null
+          uploaded_at?: string
+        }
+        Update: {
+          title?: string
+          file_url?: string | null
+          file_type?: string | null
+          file_size_bytes?: number | null
+        }
+        Relationships: []
+      }
+      script_annotations: {
+        Row: {
+          id: string
+          user_id: string
+          script_id: string
+          page_number: number | null
+          line_reference: string | null
+          annotation_type: string | null
+          content: string
+          color: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          script_id: string
+          page_number?: number | null
+          line_reference?: string | null
+          annotation_type?: string | null
+          content: string
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          page_number?: number | null
+          line_reference?: string | null
+          annotation_type?: string | null
+          content?: string
+          color?: string | null
           updated_at?: string
         }
         Relationships: []
