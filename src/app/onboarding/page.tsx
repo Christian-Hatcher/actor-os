@@ -74,6 +74,10 @@ function OnboardingInner() {
   const [monthlyGoal, setMonthlyGoal] = useState("")
   const [currency, setCurrencyState] = useState<CurrencyCode>("USD")
   const [challenges, setChallenges] = useState<string[]>([])
+  // Surfaces a D1 upsert failure inline above the Continue button. We
+  // still advance the step (challenges are non-essential), but the user
+  // sees that their picks didn't make it.
+  const [challengesError, setChallengesError] = useState<string | null>(null)
 
   // Step 4: Connect Email — handled by redirect
   // Step 5: Theme — uses useTheme
@@ -165,24 +169,38 @@ function OnboardingInner() {
       // write them to actor_preferences.bio_context as a one-line
       // prefix. Only seed when bio_context is empty so re-running
       // onboarding via ?edit=1 doesn't clobber a user-written bio.
+      setChallengesError(null)
       if (challenges.length > 0 && user) {
-        const summary = `Onboarding focus: ${challenges.join(", ").toLowerCase()}.`
-        const { data: existing } = await supabase
-          .from("actor_preferences")
-          .select("bio_context")
-          .eq("user_id", user.id)
-          .maybeSingle()
-        if (!existing?.bio_context) {
-          await supabase
+        try {
+          const summary = `Onboarding focus: ${challenges.join(", ")}.`
+          const { data: existing, error: selectError } = await supabase
             .from("actor_preferences")
-            .upsert(
-              {
-                user_id: user.id,
-                bio_context: summary,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "user_id" },
-            )
+            .select("bio_context")
+            .eq("user_id", user.id)
+            .maybeSingle()
+          if (selectError) throw selectError
+          if (!existing?.bio_context) {
+            const { error: upsertError } = await supabase
+              .from("actor_preferences")
+              .upsert(
+                {
+                  user_id: user.id,
+                  bio_context: summary,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "user_id" },
+              )
+            if (upsertError) throw upsertError
+          }
+        } catch (err) {
+          // Non-blocking — log + surface inline so the user sees that
+          // their picks didn't make it, but still advance onboarding.
+          console.error("Failed to save onboarding challenges:", err)
+          setChallengesError(
+            err instanceof Error
+              ? `Couldn't save your focus picks (${err.message}). You can edit them later in Settings.`
+              : "Couldn't save your focus picks. You can edit them later in Settings.",
+          )
         }
       }
     } else if (step === 5) {
@@ -701,6 +719,13 @@ function OnboardingInner() {
       {/* Bottom navigation */}
       {step < TOTAL_STEPS && (
         <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg)]/95 backdrop-blur-sm border-t border-[var(--rule)] px-4 py-4">
+          {challengesError && (
+            <div className="max-w-lg mx-auto mb-3 rounded-lg border border-[var(--amber)]/40 bg-[var(--amber)]/[0.06] px-3 py-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--amber)]">
+                {challengesError}
+              </p>
+            </div>
+          )}
           <div className="max-w-lg mx-auto flex items-center gap-3">
             {step > 1 && (
               <Button
