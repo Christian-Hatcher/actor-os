@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ActorOS — Splash Motion</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  :root{
+    --bg:#0a0908;
+    --paper:#f4efe6;
+    --paper-dim:#a8a298;
+    --paper-faint:#6e6a62;
+    --amber:#e8a755;
+    --green:#3aa86b;
+    --rule:#26231f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0; background:#1a1814; color:var(--paper); font-family:"Inter", system-ui; min-height:100vh;}
+  body{
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(60,50,40,.18), transparent 50%),
+      radial-gradient(ellipse at 90% 100%, rgba(40,30,20,.2), transparent 50%);
+  }
+  header.top{
+    display:flex; justify-content:space-between; align-items:flex-end; padding:22px 32px 18px; border-bottom:1px solid var(--rule);
+  }
+  .brand{display:flex; align-items:center; gap:14px}
+  .ao-mark{font-family:"Instrument Serif", serif; font-size:34px; line-height:.85; letter-spacing:-.02em;}
+  .brand h1{font-family:"Instrument Serif", serif; font-weight:400; font-size:24px; margin:0; line-height:1}
+  .brand .t1{font-family:"JetBrains Mono"; font-size:10px; letter-spacing:.2em; color:var(--paper-dim); text-transform:uppercase; margin-bottom:4px;}
+  .top-meta{font-family:"JetBrains Mono"; font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;}
+  .top-meta .dot{display:inline-block; width:6px; height:6px; background:var(--green); border-radius:50%; margin-right:6px; box-shadow:0 0 8px var(--green);}
+
+  main{padding:38px 32px;}
+
+  /* Stage wrapper — phone-frame */
+  #stage-wrap{
+    display:flex; justify-content:center; padding:40px 0 20px;
+  }
+  .phone-bezel{
+    position:relative; width:340px;
+    padding:10px;
+    border-radius:48px;
+    background:linear-gradient(180deg, #1a1815, #0e0d0b);
+    box-shadow:
+      0 30px 80px rgba(0,0,0,.5),
+      0 0 0 1px rgba(255,255,255,.04) inset,
+      0 1px 0 rgba(255,255,255,.06) inset;
+  }
+  .phone-bezel::before{
+    content:""; position:absolute; top:18px; left:50%; transform:translateX(-50%);
+    width:96px; height:24px; background:#000; border-radius:14px; z-index:50;
+  }
+  #stage{
+    width:100%; aspect-ratio: 9 / 19.5;
+    border-radius:40px; overflow:hidden;
+    background:#000;
+  }
+  #stage > div{ border-radius:40px !important; overflow:hidden !important; }
+
+  .notes{
+    max-width:1180px; margin:24px auto 0;
+    display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px;
+  }
+  .note{
+    border:1px solid var(--rule); border-radius:12px; padding:14px 16px;
+    background:rgba(255,255,255,.02);
+  }
+  .note .lbl{font-family:"JetBrains Mono"; font-size:10px; letter-spacing:.2em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:6px;}
+  .note .body{font-family:"Inter"; font-size:13.5px; line-height:1.55; color:var(--paper-dim);}
+  .note .body b{color:var(--paper); font-weight:500;}
+  .note .body code{font-family:"JetBrains Mono"; font-size:11.5px; background:rgba(255,255,255,.05); padding:1px 5px; border-radius:4px;}
+
+  /* timeline strip */
+  .timeline{
+    max-width:1180px; margin:24px auto 0;
+    border:1px solid var(--rule); border-radius:12px; padding:18px 22px;
+    background:rgba(255,255,255,.015);
+  }
+  .timeline .lbl{font-family:"JetBrains Mono"; font-size:10px; letter-spacing:.2em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:14px;}
+  .tl-bars{position:relative; height:120px;}
+  .tl-row{position:absolute; left:120px; right:0; height:22px; display:flex; align-items:center;}
+  .tl-row .name{position:absolute; left:-120px; top:0; height:22px; display:flex; align-items:center; font-family:"JetBrains Mono"; font-size:10px; letter-spacing:.08em; color:var(--paper-dim); text-transform:uppercase;}
+  .tl-bar{position:absolute; height:14px; border-radius:7px;}
+  .tl-axis{position:absolute; left:120px; right:0; bottom:0; height:18px; display:flex; align-items:flex-start; font-family:"JetBrains Mono"; font-size:10px; color:var(--paper-faint);}
+  .tl-axis span{position:absolute; transform:translateX(-50%); padding-top:6px; border-top:1px solid var(--rule);}
+  .tl-now{
+    position:absolute; left:120px; top:0; bottom:18px; width:2px; background:var(--amber);
+    box-shadow:0 0 10px var(--amber);
+    z-index:5; pointer-events:none;
+  }
+
+  footer{padding:60px 32px; max-width:1180px; margin:0 auto; font-family:"Inter"; font-size:13.5px; color:var(--paper-dim); line-height:1.65;}
+  footer h3{font-family:"Instrument Serif", serif; color:var(--paper); font-weight:400; font-size:26px; margin:24px 0 6px;}
+  footer ul{margin:0; padding-left:18px;}
+  footer b{color:var(--paper); font-weight:500;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="ao-mark">AO</span>
+    <div>
+      <div class="t1">ACTOROS · MOTION</div>
+      <h1>Splash — Cold open</h1>
+    </div>
+  </div>
+  <div class="top-meta"><span class="dot"></span>2.5s splash · portrait · ivory locked</div>
+</header>
+
+<main>
+  <div id="stage-wrap">
+    <div class="phone-bezel">
+      <div id="stage"></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <div class="lbl">When it plays</div>
+      <div class="body">First cold-open of the day only. Subsequent opens skip directly to the dashboard. State persists in <code>localStorage</code> under <code>last_splash_date</code>. Tap anywhere mid-sequence to skip.</div>
+    </div>
+    <div class="note">
+      <div class="lbl">Sequence</div>
+      <div class="body">Black → letterbox bars in → photo fades in behind bars → slate metadata types in → <b>AO</b> mark pops in bottom-left letterspaced wide → tight → hold → cross-fade to briefing.</div>
+    </div>
+    <div class="note">
+      <div class="lbl">Audio (optional)</div>
+      <div class="body">Defaults <b>off</b>. Faint film-reel click on bar reveal, low sustained tone under photo, click-clack as slate metadata types in. Settings can re-enable.</div>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="lbl">Timeline</div>
+    <div class="tl-bars" id="tl-bars">
+      <div class="tl-row" style="top:0"><span class="name">Letterbox</span><span class="tl-bar" style="left:0%; width:9%; background:#444"></span></div>
+      <div class="tl-row" style="top:24px"><span class="name">Photo</span><span class="tl-bar" style="left:6%; width:24%; background:#7d6c52"></span></div>
+      <div class="tl-row" style="top:48px"><span class="name">Slate text</span><span class="tl-bar" style="left:16%; width:16%; background:var(--amber); opacity:.8"></span></div>
+      <div class="tl-row" style="top:72px"><span class="name">AO mark</span><span class="tl-bar" style="left:26%; width:18%; background:#fff"></span></div>
+      <div class="tl-row" style="top:96px"><span class="name">→ Dashboard</span><span class="tl-bar" style="left:60%; width:20%; background:var(--green)"></span></div>
+      <div class="tl-axis">
+        <span style="left:0%">0.0s</span>
+        <span style="left:20%">1.0s</span>
+        <span style="left:40%">2.0s</span>
+        <span style="left:60%">3.0s</span>
+        <span style="left:80%">4.0s</span>
+        <span style="left:100%">5.0s</span>
+      </div>
+      <div class="tl-now" id="tl-now" style="left:120px;"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <h3>Decisions in this motion</h3>
+  <ul>
+    <li><b>Letterbox bars</b> draw in vertically (not horizontally) — feels like a curtain rising.</li>
+    <li><b>Photo</b> arrives with a slight 1.04 → 1.0 scale-down so it lands rather than zooms.</li>
+    <li><b>Slate metadata</b> types char-by-char in mono, like a real digital slate.</li>
+    <li><b>AO mark</b> letterspaced wide → tight is the signature gesture — wide letterspacing reads "title card," tight reads "logo." Going from one to the other is the brand moment.</li>
+    <li><b>Cross-fade to briefing</b> at 2.0s — the splash hands you off to "Good morning, Christian."</li>
+    <li><b>No audio by default</b> — actors open the app on set, in lobbies, on trains. Silence is the right default.</li>
+  </ul>
+
+  <h3>Caveats</h3>
+  <ul>
+    <li>Photo block is a hatched placeholder — fed by the actor's onboarded headshot / on-set still / stage still.</li>
+    <li>Slate metadata is illustrative; production build pulls real date, project, and an "ACTOROS" mark.</li>
+    <li>Animation duration loops at 3.5s for inspection. Production duration is 1.4s + 0.6s cross-fade.</li>
+  </ul>
+</footer>
+
+<script type="text/babel" src="animations.jsx"></script>
+
+<script type="text/babel">
+// Splash motion scene
+
+const TOTAL = 5.0; // loop duration — slower, more cinematic
+
+function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+function easeOutQuart(t){ return 1 - Math.pow(1 - t, 4); }
+function easeOutExpo(t){ return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+function easeInOutCubic(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
+function easeInOutQuart(t){ return t < 0.5 ? 8*t*t*t*t : 1 - Math.pow(-2*t+2,4)/2; }
+function easeInQuad(t){ return t*t; }
+function lerp(a,b,t){ return a + (b-a)*t; }
+function clamp01(t){ return Math.max(0, Math.min(1, t)); }
+
+function typedText(text, t, start, dur){
+  const local = clamp01((t - start) / dur);
+  const eased = easeInOutCubic(local);
+  const n = Math.floor(text.length * eased);
+  return text.slice(0, n);
+}
+
+function SplashScene(){
+  const t = useTime();
+
+  // === SPLASH ===
+  // Letterbox: 0.0 → 0.55s (slower draw)
+  const barH = lerp(0, 44, easeOutQuart(clamp01(t / 0.55)));
+
+  // Photo: 0.3 → 1.5s (long, breathing)
+  const photoT = clamp01((t - 0.3) / 1.2);
+  const photoOpacity = easeOutCubic(photoT);
+  const photoScale = lerp(1.06, 1.0, easeOutQuart(photoT));
+
+  // Vignette fades in with photo
+  const vignetteOpacity = lerp(0, 1, easeOutCubic(photoT));
+
+  // Slate text: 0.8 → 1.6s
+  const slateOpacity = easeOutCubic(clamp01((t - 0.8) / 0.4));
+
+  // AO mark: 1.3 → 2.4s — the signature gesture, slow & deliberate
+  const aoT = clamp01((t - 1.3) / 1.1);
+  const aoOpacity = easeOutCubic(clamp01((t - 1.3) / 0.6));
+  const aoLetter = lerp(60, -6, easeInOutQuart(aoT)); // px letter-spacing
+  const aoY = lerp(14, 0, easeOutQuart(aoT));
+
+  // Subtitle + tap to begin: 1.9 → 2.6s
+  const subT = clamp01((t - 1.9) / 0.7);
+  const subOpacity = easeOutCubic(subT);
+
+  // Hold: 2.6 → 3.2s (the "look at me" pause)
+
+  // Cross-fade to dashboard: 3.2 → 4.4s (long, soft)
+  const dashT = clamp01((t - 3.2) / 1.2);
+  const dashOpacity = easeInOutCubic(dashT);
+  const splashOpacity = 1 - dashOpacity;
+
+  // Dashboard content reveal (staggered after cross-fade starts)
+  const dashGreetT = clamp01((t - 3.5) / 0.7);
+  const dashBriefT = clamp01((t - 3.9) / 0.7);
+  const greetY = lerp(20, 0, easeOutQuart(dashGreetT));
+  const briefY = lerp(20, 0, easeOutQuart(dashBriefT));
+
+  return (
+    <div style={{position:'absolute', inset:0, background:'#000', overflow:'hidden'}}>
+
+      {/* === SPLASH LAYER === */}
+      <div style={{position:'absolute', inset:0, opacity: splashOpacity}}>
+
+        {/* Photo */}
+        <div style={{
+          position:'absolute', inset:`${barH}px 0`,
+          opacity: photoOpacity,
+          transform:`scale(${photoScale})`,
+          transformOrigin:'center',
+          background: `
+            radial-gradient(ellipse 60% 50% at 50% 38%, rgba(140,100,70,.45), transparent 65%),
+            repeating-linear-gradient(135deg, #2a241d 0 12px, #1d1814 12px 24px)
+          `,
+        }}>
+          <div style={{
+            position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)',
+            fontFamily:'JetBrains Mono', fontSize:10, letterSpacing:'.22em',
+            color: 'rgba(255,255,255,.32)', textTransform:'uppercase',
+            padding:'7px 12px', border:'1px solid rgba(255,255,255,.18)', borderRadius:5,
+            whiteSpace:'nowrap',
+          }}>
+            full-bleed still
+          </div>
+        </div>
+
+        {/* Vignette */}
+        <div style={{
+          position:'absolute', inset:`${barH}px 0`,
+          opacity: vignetteOpacity,
+          background: 'linear-gradient(180deg, rgba(0,0,0,.6) 0 12%, transparent 32% 68%, rgba(0,0,0,.92) 100%)',
+          pointerEvents:'none',
+        }}/>
+
+        {/* Top letterbox — 2 items only, avoiding the notch */}
+        <div style={{
+          position:'absolute', top:0, left:0, right:0, height: barH,
+          background:'#000', display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'0 18px', color:'#8a8580', fontFamily:'JetBrains Mono', fontSize:8.5,
+          letterSpacing:'.18em', textTransform:'uppercase',
+          borderBottom:'1px solid #111',
+        }}>
+          <span style={{opacity: slateOpacity}}>{typedText('SCN 01 · TK 03', t, 0.85, 0.7)}</span>
+          <span style={{opacity: slateOpacity}}>{typedText('23.976 FPS', t, 1.1, 0.6)}</span>
+        </div>
+
+        {/* Bottom letterbox */}
+        <div style={{
+          position:'absolute', bottom:0, left:0, right:0, height: barH,
+          background:'#000', display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'0 18px', color:'#8a8580', fontFamily:'JetBrains Mono', fontSize:8.5,
+          letterSpacing:'.18em', textTransform:'uppercase',
+          borderTop:'1px solid #111',
+        }}>
+          <span style={{opacity: slateOpacity}}>{typedText('1.85 : 1', t, 0.95, 0.5)}</span>
+          <span style={{opacity: slateOpacity}}>{typedText('TYO · 27 MAY 26', t, 1.1, 0.6)}</span>
+          <span style={{opacity: slateOpacity}}>{typedText('ACTOROS', t, 1.25, 0.5)}</span>
+        </div>
+
+        {/* AO mark — bottom-left, big */}
+        <div style={{
+          position:'absolute', left:18, bottom: 64,
+          opacity: aoOpacity,
+          fontFamily:'Instrument Serif', fontWeight:400,
+          fontSize: 120,
+          lineHeight: 0.78,
+          color: '#f4efe6',
+          letterSpacing: `${aoLetter}px`,
+          transform:`translateY(${aoY}px)`,
+          textShadow:'0 2px 24px rgba(0,0,0,.5)',
+          willChange:'transform, opacity, letter-spacing',
+        }}>AO</div>
+
+        {/* ACTOR · OS subtitle */}
+        <div style={{
+          position:'absolute', left:22, bottom: 52,
+          opacity: subOpacity,
+          fontFamily:'JetBrains Mono', fontSize:9, letterSpacing:'.42em',
+          color:'#bbb',
+        }}>A C T O R &middot; O S</div>
+
+        {/* tap to begin */}
+        <div style={{
+          position:'absolute', right:18, bottom: 64,
+          opacity: subOpacity * 0.7,
+          fontFamily:'JetBrains Mono', fontSize:8.5, letterSpacing:'.18em',
+          color:'#777', textTransform:'uppercase',
+        }}>tap to begin</div>
+
+      </div>
+
+      {/* === DASHBOARD HAND-OFF LAYER === */}
+      <div style={{
+        position:'absolute', inset:0,
+        opacity: dashOpacity,
+        background:'#0a0908',
+        padding:'68px 24px 24px',
+        overflow:'hidden',
+      }}>
+        {/* meta line */}
+        <div style={{
+          fontFamily:'JetBrains Mono', fontSize:9.5, letterSpacing:'.2em', color:'#8a857c', textTransform:'uppercase',
+          marginBottom:14,
+          opacity: dashGreetT,
+        }}>
+          <span style={{display:'inline-block', width:5, height:5, background:'#3aa86b', borderRadius:'50%', marginRight:7, verticalAlign:1, boxShadow:'0 0 8px #3aa86b'}}/>
+          TUE · 27 MAY · TOKYO
+        </div>
+
+        {/* greeting */}
+        <div style={{
+          fontFamily:'Instrument Serif', fontSize: 44, lineHeight: 1, letterSpacing:'-.015em', color:'#f4efe6',
+          opacity: dashGreetT,
+          transform: `translateY(${greetY}px)`,
+        }}>
+          Good morning,<br/>
+          <span style={{fontStyle:'italic', color:'#a8a298'}}>Christian.</span>
+        </div>
+
+        {/* briefing card */}
+        <div style={{
+          marginTop: 22,
+          padding: '18px 18px 16px',
+          background:'linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.01))',
+          border:'1px solid #26231f', borderRadius:14,
+          position:'relative',
+          opacity: dashBriefT,
+          transform: `translateY(${briefY}px)`,
+        }}>
+          <div style={{position:'absolute', top:0, left:18, right:18, height:1, background:'linear-gradient(90deg, transparent, rgba(232,167,85,.45), transparent)'}}/>
+          <div style={{fontFamily:'JetBrains Mono', fontSize:9.5, letterSpacing:'.2em', color:'#e8a755', textTransform:'uppercase', marginBottom:10}}>
+            Today's briefing
+          </div>
+          <div style={{fontFamily:'Instrument Serif', fontStyle:'italic', fontSize:17, lineHeight:1.5, color:'#f4efe6'}}>
+            You start with a <b style={{fontStyle:'normal', fontWeight:500, background:'linear-gradient(180deg, transparent 70%, rgba(232,167,85,.25) 70%)'}}>callback for Toyota CM</b> at <b style={{fontStyle:'normal', fontWeight:500, background:'linear-gradient(180deg, transparent 70%, rgba(232,167,85,.25) 70%)'}}>10:30 in Roppongi</b>…
+          </div>
+        </div>
+      </div>
+
+      {/* Time read-out (debug) */}
+      <div style={{
+        position:'absolute', top:8, right:14,
+        fontFamily:'JetBrains Mono', fontSize:9, letterSpacing:'.1em',
+        color:'rgba(255,255,255,.22)', pointerEvents:'none',
+      }}>
+        {t.toFixed(2)}s
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  const [t, setT] = React.useState(0);
+  React.useEffect(() => {
+    let raf;
+    const tick = () => {
+      try {
+        const v = parseFloat(localStorage.getItem('animstage:t') || '0');
+        if (isFinite(v)) setT(v);
+      } catch {}
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  React.useEffect(() => {
+    const el = document.getElementById('tl-now');
+    if (!el) return;
+    const bars = document.getElementById('tl-bars');
+    if (!bars) return;
+    const totalW = bars.clientWidth - 120;
+    const pct = clamp01(t / TOTAL);
+    el.style.left = (120 + totalW * pct) + 'px';
+  }, [t]);
+
+  return (
+    <Stage width={390} height={844} duration={TOTAL} background="#000" loop={true} persistKey="actoros-splash-v2">
+      <SplashScene />
+    </Stage>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('stage'));
+root.render(<App />);
+</script>
+
+</body>
+</html>

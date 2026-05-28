@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ActorOS — Self-Tapes</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0a0908;
+    --bg2:#141210;
+    --bg3:#1c1916;
+    --paper:#f4efe6;
+    --paper-dim:#a8a298;
+    --paper-faint:#6e6a62;
+    --rule:#26231f;
+    --rule-strong:#36322c;
+    --green:#3aa86b;
+    --amber:#e8a755;
+    --blue:#6ab3e8;
+    --red:#e8625a;
+    --purple:#b69de0;
+
+    --serif:"Instrument Serif", serif;
+    --sans:"Inter", system-ui, sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, monospace;
+  }
+  *{box-sizing:border-box; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
+  html,body{margin:0; background:var(--bg); color:var(--paper); font-family:var(--sans); font-weight:400;}
+  body{
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(60,50,40,.16), transparent 50%),
+      radial-gradient(ellipse at 90% 100%, rgba(40,30,20,.18), transparent 50%);
+    background-attachment:fixed; min-height:100vh;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(circle at 0 0, rgba(255,255,255,.012) 1px, transparent 1px),
+      radial-gradient(circle at 7px 9px, rgba(255,255,255,.01) 1px, transparent 1px);
+    background-size: 3px 3px, 5px 5px;
+    mix-blend-mode:overlay; opacity:.7;
+  }
+
+  header.top{
+    position:relative; z-index:2;
+    padding:22px 32px 18px;
+    display:flex; align-items:flex-end; justify-content:space-between; gap:24px;
+    border-bottom:1px solid var(--rule);
+  }
+  .brand{display:flex; align-items:center; gap:14px}
+  .ao-mark{font-family:var(--serif); font-size:34px; line-height:.85; letter-spacing:-.02em;}
+  .brand-meta{display:flex; flex-direction:column; gap:2px}
+  .brand-meta .t1{font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-dim); text-transform:uppercase}
+  .brand-meta .t2{font-family:var(--serif); font-size:24px; line-height:1; letter-spacing:-.01em}
+
+  nav.frames{display:flex; gap:4px; padding:4px; border:1px solid var(--rule); border-radius:30px; background:rgba(20,18,16,.5); backdrop-filter: blur(8px);}
+  nav.frames button{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; background:transparent; border:none; padding:7px 14px 6px; cursor:pointer; color:var(--paper-dim); border-radius:30px; white-space:nowrap;}
+  nav.frames button.active{background:var(--paper); color:var(--bg);}
+  nav.frames button:hover:not(.active){color:var(--paper);}
+
+  .top-meta{font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;}
+  .top-meta .dot{width:6px;height:6px;background:var(--green);border-radius:50%; display:inline-block; box-shadow:0 0 8px rgba(58,168,107,.4); margin-right:6px;}
+
+  main{position:relative; z-index:1; padding:48px 32px 100px;}
+  .frame-set{display:none}
+  .frame-set.active{display:block}
+  .canvas-row{display:flex; gap:48px; justify-content:center; flex-wrap:wrap; align-items:flex-start;}
+
+  /* phone */
+  .device{position:relative; width:380px; border-radius:46px; background:linear-gradient(180deg, #1a1815, #0e0d0b); padding:10px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04) inset, 0 1px 0 rgba(255,255,255,.06) inset;}
+  .device-inner{border-radius:38px; overflow:hidden; background:var(--bg2); position:relative; height:820px;}
+  .device-inner::before{content:""; position:absolute; top:10px; left:50%; transform:translateX(-50%); width:108px; height:30px; background:#000; border-radius:18px; z-index:50;}
+  .device-label{position:absolute; top:-30px; left:24px; font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;}
+  .device-caption{margin-top:18px; max-width:380px; font-family:var(--sans); font-size:13px; color:var(--paper-dim); line-height:1.55; padding-left:6px;}
+  .device-caption b{color:var(--paper); font-weight:500}
+
+  .statusbar{display:flex; justify-content:space-between; align-items:center; padding: 14px 26px 0; font-family:var(--mono); font-size:11px; color:var(--paper); height:42px;}
+  .statusbar .right{display:flex; gap:6px; align-items:center;}
+  .statusbar .signal{display:inline-flex; gap:2px;}
+  .statusbar .signal i{width:3px; background:var(--paper); border-radius:1px;}
+  .statusbar .signal i:nth-child(1){height:3px} .statusbar .signal i:nth-child(2){height:5px} .statusbar .signal i:nth-child(3){height:7px} .statusbar .signal i:nth-child(4){height:9px}
+  .battery{width:22px; height:11px; border:1px solid var(--paper); border-radius:3px; position:relative; padding:1px;}
+  .battery::after{content:""; position:absolute; right:-3px; top:3px; width:2px; height:5px; background:var(--paper); border-radius:0 1px 1px 0;}
+  .battery i{display:block; height:100%; width:78%; background:var(--paper); border-radius:1px;}
+
+  .scroll{height:calc(820px - 42px); overflow-y:auto; padding:14px 22px 100px; scrollbar-width:none;}
+  .scroll::-webkit-scrollbar{display:none}
+
+  /* page header */
+  .meta-line{font-family:var(--mono); font-size:10px; letter-spacing:.22em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:8px;}
+  .meta-line .live{display:inline-block; width:5px; height:5px; background:var(--green); border-radius:50%; margin-right:6px; vertical-align:1px; box-shadow:0 0 8px var(--green);}
+  h1.title{font-family:var(--serif); font-weight:400; font-size:40px; line-height:1; letter-spacing:-.015em; margin:0;}
+  h1.title em{font-style:italic; color:var(--paper-dim);}
+
+  /* segmented filter */
+  .seg{display:inline-flex; padding:3px; border:1px solid var(--rule); border-radius:30px; background:rgba(255,255,255,.02); margin-top:18px; margin-bottom:8px;}
+  .seg span{padding:6px 12px 5px; font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--paper-dim); border-radius:30px; cursor:pointer;}
+  .seg span.on{background:var(--paper); color:var(--bg);}
+
+  /* tape card */
+  .tape{
+    margin-top:14px;
+    border:1px solid var(--rule); border-radius:14px; overflow:hidden;
+    background:linear-gradient(180deg, rgba(255,255,255,.015), transparent);
+  }
+  .tape.urgent{border-color:rgba(232,98,90,.3); background:linear-gradient(180deg, rgba(232,98,90,.06), transparent 50%);}
+  .tape.submitted{border-color:rgba(58,168,107,.22); background:linear-gradient(180deg, rgba(58,168,107,.05), transparent 50%);}
+
+  /* preview area */
+  .tape .preview{
+    height:170px; position:relative; overflow:hidden;
+    border-bottom:1px solid var(--rule);
+    background:#000;
+  }
+  .tape .preview.empty{
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 10px, transparent 10px 20px),
+      #181614;
+    display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px;
+  }
+  .tape .preview.empty .pulse{
+    width:48px; height:48px; border-radius:50%;
+    border:1.5px dashed var(--rule-strong); display:grid; place-items:center;
+    color:var(--paper-dim);
+  }
+  .tape .preview.empty .pulse svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6;}
+  .tape .preview.empty .lbl{font-family:var(--mono); font-size:10px; letter-spacing:.16em; color:var(--paper-faint); text-transform:uppercase;}
+
+  .tape .preview.has{
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 38%, rgba(140,100,70,.4), transparent 65%),
+      repeating-linear-gradient(135deg, #1f1a14 0 14px, #14110d 14px 28px);
+  }
+  .tape .preview.has .play{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:54px; height:54px; border-radius:50%; background:rgba(244,239,230,.92);
+    display:grid; place-items:center; cursor:pointer;
+  }
+  .tape .preview.has .play::after{content:""; border:9px solid transparent; border-left-color:var(--bg); margin-left:3px;}
+  .tape .preview.has .ph{position:absolute; bottom:10px; left:12px; font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:rgba(255,255,255,.45); text-transform:uppercase;}
+  .tape .preview .runtime{position:absolute; top:10px; right:12px; font-family:var(--mono); font-size:10px; color:rgba(255,255,255,.85); background:rgba(0,0,0,.45); backdrop-filter:blur(6px); padding:2px 7px; border-radius:30px;}
+
+  .tape .body{padding:14px 16px;}
+  .tape .row1{display:flex; flex-direction:column; gap:6px;}
+  .tape .row1 > div{min-width:0;}
+  .tape .row1 > .chip{order:-1; align-self:flex-end;}
+  .tape .row1 .project{font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase;}
+  .tape .row1 .scene{font-family:var(--serif); font-size:22px; line-height:1.1; color:var(--paper); margin-top:3px;}
+  .tape .row1 .scene em{font-style:italic; color:var(--paper-dim);}
+
+  .chip{display:inline-flex; align-items:center; gap:4px; font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; padding:3px 8px; border-radius:30px; background:rgba(255,255,255,.05); color:var(--paper-dim); border:1px solid var(--rule); white-space:nowrap; flex-shrink:0;}
+  .chip.due{color:var(--red); border-color:rgba(232,98,90,.4); background:rgba(232,98,90,.08)}
+  .chip.pend{color:var(--amber); border-color:rgba(232,167,85,.4); background:rgba(232,167,85,.08)}
+  .chip.sub{color:var(--green); border-color:rgba(58,168,107,.4); background:rgba(58,168,107,.08)}
+  .chip.dot::before{content:""; display:inline-block; width:5px; height:5px; border-radius:50%; background:currentColor;}
+
+  .tape .row2{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    font-family:var(--mono); font-size:10px; letter-spacing:.08em; color:var(--paper-dim);
+    margin-top:8px;
+  }
+  .tape .row2 .sep{width:3px; height:3px; background:var(--paper-faint); border-radius:50%; opacity:.5;}
+
+  .tape .actions{display:flex; gap:8px; margin-top:14px;}
+  .tape .actions .btn{
+    flex:1; padding:9px 0; text-align:center;
+    border:1px solid var(--rule-strong); background:transparent; color:var(--paper);
+    font-family:var(--sans); font-size:13px; font-weight:500;
+    border-radius:10px; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .tape .actions .btn.primary{background:var(--paper); color:var(--bg); border-color:var(--paper);}
+  .tape .actions .btn.danger{background:var(--red); color:#fff; border-color:var(--red);}
+
+  /* feedback card (inside tape) */
+  .fb{
+    margin-top:14px; padding:12px 14px;
+    border:1px solid rgba(232,167,85,.22); border-radius:11px;
+    background:linear-gradient(180deg, rgba(232,167,85,.07), rgba(232,167,85,.015) 60%);
+    position:relative;
+  }
+  .fb::before{content:""; position:absolute; top:0; left:14px; right:14px; height:1px; background:linear-gradient(90deg, transparent, rgba(232,167,85,.45), transparent);}
+  .fb .lbl{font-family:var(--mono); font-size:9.5px; letter-spacing:.2em; color:var(--amber); text-transform:uppercase; margin-bottom:6px;}
+  .fb .who{font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:6px;}
+  .fb .body{font-family:var(--serif); font-style:italic; font-size:15.5px; line-height:1.5; color:var(--paper);}
+  .fb .body b{font-style:normal; font-weight:500; background:linear-gradient(180deg, transparent 70%, rgba(232,167,85,.22) 70%);}
+
+  /* Add card */
+  .addcard{
+    margin-top:14px; padding:24px 16px; text-align:center;
+    border:1.5px dashed var(--rule-strong); border-radius:14px;
+    cursor:pointer; color:var(--paper-dim);
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+  }
+  .addcard svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6;}
+  .addcard .h{font-family:var(--serif); font-size:18px; color:var(--paper);}
+  .addcard .s{font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;}
+
+  /* News bottom nav */
+  .botnav.news{position:absolute; bottom:0; left:0; right:0; z-index:4; background:rgba(10,9,8,.85); backdrop-filter:blur(24px); border-top:1px solid var(--rule); display:flex; padding:8px 4px 14px;}
+  .botnav.news a{flex:1; padding:6px 4px 2px; text-decoration:none; font-family:var(--sans); font-size:9.5px; font-weight:500; color:var(--paper-faint); text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px;}
+  .botnav.news a.on{color:var(--amber);}
+  .botnav.news a.on .ic{color:var(--amber);}
+  .botnav.news .ic{width:22px; height:22px; color:var(--paper-faint); display:inline-flex; align-items:center; justify-content:center;}
+  .botnav.news .ic svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6;}
+
+  /* Back link */
+  .back{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-dim); text-transform:uppercase; cursor:pointer; background:transparent; border:none; padding:0;}
+  .back::before{content:"\2190"; font-family:var(--serif); font-size:14px; line-height:1; color:var(--paper);}
+
+  /* tape detail page */
+  .detail-head{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-top:4px;}
+  .ribbon{display:inline-flex; align-items:center; gap:8px; background:rgba(232,98,90,.12); color:var(--red); border:1px solid rgba(232,98,90,.4); padding:5px 12px 4px; border-radius:30px; font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap;}
+  .ribbon::before{content:""; display:inline-block; width:5px; height:5px; background:currentColor; border-radius:50%; box-shadow:0 0 8px currentColor; animation: blink 1.6s ease-in-out infinite;}
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  /* big player */
+  .player{
+    margin-top:14px; border-radius:14px; overflow:hidden; border:1px solid var(--rule);
+    position:relative; aspect-ratio: 9/14;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 38%, rgba(140,100,70,.45), transparent 65%),
+      repeating-linear-gradient(135deg, #1f1a14 0 14px, #14110d 14px 28px);
+  }
+  .player .play{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:64px; height:64px; border-radius:50%; background:rgba(244,239,230,.92); display:grid; place-items:center; cursor:pointer;}
+  .player .play::after{content:""; border:11px solid transparent; border-left-color:var(--bg); margin-left:4px;}
+  .player .ph{position:absolute; bottom:14px; left:14px; font-family:var(--mono); font-size:9.5px; letter-spacing:.18em; color:rgba(255,255,255,.45); text-transform:uppercase;}
+  .player .meta{position:absolute; top:14px; left:14px; display:flex; gap:6px;}
+  .player .runtime{position:absolute; top:14px; right:14px; font-family:var(--mono); font-size:11px; color:rgba(255,255,255,.85); background:rgba(0,0,0,.45); backdrop-filter:blur(6px); padding:3px 9px; border-radius:30px;}
+  .scrubber{position:absolute; left:14px; right:14px; bottom:14px; height:3px; background:rgba(255,255,255,.2); border-radius:3px;}
+  .scrubber i{position:absolute; left:0; top:0; bottom:0; width:30%; background:var(--paper);}
+  .scrubber em{position:absolute; left:30%; top:50%; width:10px; height:10px; background:var(--paper); border-radius:50%; transform:translate(-50%,-50%); font-style:normal;}
+
+  /* takes carousel */
+  .takes-row{display:flex; gap:8px; overflow-x:auto; padding:14px 22px; scrollbar-width:none;}
+  .takes-row::-webkit-scrollbar{display:none}
+  .take-thumb{
+    flex:0 0 auto; width:96px; aspect-ratio:9/14;
+    border-radius:9px; border:1px solid var(--rule-strong);
+    background:repeating-linear-gradient(135deg, #1f1a14 0 8px, #14110d 8px 16px);
+    position:relative; cursor:pointer;
+  }
+  .take-thumb .n{position:absolute; top:6px; left:6px; font-family:var(--mono); font-size:9px; color:var(--paper-dim); letter-spacing:.1em;}
+  .take-thumb .dur{position:absolute; bottom:6px; right:6px; font-family:var(--mono); font-size:9px; color:var(--paper-dim);}
+  .take-thumb.sel{border-color:var(--amber); box-shadow:0 0 0 1px var(--amber);}
+  .take-thumb.sel .n{color:var(--amber);}
+
+  /* metadata block (looks like callsheet) */
+  .meta-block{
+    margin:14px 22px 0; border:1px solid var(--rule); border-radius:14px;
+    background:linear-gradient(180deg, rgba(255,255,255,.015), transparent);
+    overflow:hidden;
+  }
+  .mr{display:grid; grid-template-columns: 108px 1fr; column-gap:18px; padding:11px 18px; border-top:1px solid var(--rule); align-items:baseline;}
+  .mr:first-child{border-top:none;}
+  .mr .k{font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase;}
+  .mr .v{font-family:var(--sans); font-size:13px; color:var(--paper);}
+  .mr .v b{font-weight:500;}
+
+  /* Recording overlay */
+  .rec-stage{
+    position:absolute; inset:0;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 45%, rgba(40,30,20,.6), transparent 70%),
+      repeating-linear-gradient(135deg, #1a1612 0 14px, #100e0b 14px 28px);
+  }
+  .rec-stage .silhouette{
+    position:absolute; top:18%; left:50%; transform:translateX(-50%);
+    width:160px; height:280px; opacity:.18;
+    background: radial-gradient(circle at 50% 22%, rgba(255,255,255,.6) 0 22%, transparent 28%),
+                radial-gradient(ellipse 60% 50% at 50% 70%, rgba(255,255,255,.5), transparent 65%);
+  }
+  .rec-grid{position:absolute; inset:0; pointer-events:none;
+    background:
+      linear-gradient(90deg, transparent 33%, rgba(255,255,255,.08) 33% 33.2%, transparent 33.4%),
+      linear-gradient(90deg, transparent 66%, rgba(255,255,255,.08) 66% 66.2%, transparent 66.4%),
+      linear-gradient(0deg, transparent 33%, rgba(255,255,255,.08) 33% 33.2%, transparent 33.4%),
+      linear-gradient(0deg, transparent 66%, rgba(255,255,255,.08) 66% 66.2%, transparent 66.4%);
+  }
+  .rec-top{
+    position:absolute; top:14px; left:14px; right:14px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .rec-rec{
+    display:inline-flex; align-items:center; gap:8px; padding:6px 12px;
+    background:rgba(0,0,0,.55); backdrop-filter:blur(8px); border-radius:30px;
+    font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:#fff; text-transform:uppercase;
+    border:1px solid rgba(232,98,90,.45);
+  }
+  .rec-rec::before{content:""; display:inline-block; width:8px; height:8px; background:var(--red); border-radius:50%; box-shadow:0 0 10px var(--red); animation: blink 1.2s ease-in-out infinite;}
+  .rec-time{font-family:var(--mono); font-size:11px; color:#fff; background:rgba(0,0,0,.55); backdrop-filter:blur(8px); padding:5px 10px; border-radius:30px;}
+  .rec-sides{
+    position:absolute; left:14px; right:14px; bottom:120px;
+    background:rgba(10,9,8,.85); backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.1);
+    border-radius:12px; padding:12px 14px;
+    max-height:120px; overflow:hidden;
+  }
+  .rec-sides .lbl{font-family:var(--mono); font-size:9.5px; letter-spacing:.2em; color:var(--amber); text-transform:uppercase; margin-bottom:5px;}
+  .rec-sides .body{font-family:var(--serif); font-style:italic; font-size:14px; line-height:1.45; color:var(--paper);}
+  .rec-sides .body .who{font-style:normal; font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase; margin-right:6px;}
+
+  .rec-ctrl{
+    position:absolute; bottom:30px; left:0; right:0;
+    display:flex; justify-content:space-between; align-items:center; padding:0 30px;
+  }
+  .rec-btn{
+    width:74px; height:74px; border-radius:50%;
+    border:3px solid rgba(255,255,255,.85); background:transparent;
+    display:grid; place-items:center; cursor:pointer;
+  }
+  .rec-btn::after{content:""; width:32px; height:32px; background:var(--red); border-radius:6px;}
+  .rec-side-btn{
+    width:48px; height:48px; border-radius:50%;
+    background:rgba(0,0,0,.45); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.18);
+    display:grid; place-items:center; color:#fff; cursor:pointer;
+  }
+  .rec-side-btn svg{width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.6;}
+  .rec-side-btn.flip svg{stroke-width:1.6;}
+
+  /* spec card */
+  .spec-card{
+    border:1px solid var(--rule); border-radius:14px; padding:20px 22px;
+    background:linear-gradient(180deg, rgba(255,255,255,.015), transparent);
+    max-width:380px;
+  }
+  .spec-card h4{font-family:var(--serif); font-size:22px; margin:0 0 8px; font-weight:400; color:var(--paper);}
+  .spec-card .lbl{font-family:var(--mono); font-size:10px; letter-spacing:.2em; color:var(--paper-faint); text-transform:uppercase; margin-top:14px; margin-bottom:6px;}
+  .spec-card ol, .spec-card ul{margin:0; padding-left:18px; font-size:13px; line-height:1.55; color:var(--paper-dim);}
+  .spec-card li{margin-bottom:3px;}
+  .spec-card b{color:var(--paper); font-weight:500;}
+  .spec-card .sep{height:1px; background:var(--rule); margin:14px 0;}
+  .spec-card code{font-family:var(--mono); font-size:11px; background:rgba(255,255,255,.05); padding:1px 5px; border-radius:4px;}
+
+  /* desktop */
+  .desk{width:100%; max-width:1400px; margin:0 auto; border-radius:18px; overflow:hidden; background:var(--bg2); border:1px solid var(--rule-strong); box-shadow:0 40px 100px rgba(0,0,0,.5);}
+  .desk-bar{display:flex; align-items:center; gap:8px; padding:12px 18px; background:#0e0d0b; border-bottom:1px solid var(--rule);}
+  .desk-bar .dots{display:flex; gap:7px; margin-right:14px;}
+  .desk-bar .dots i{width:11px; height:11px; border-radius:50%; background:#2c2823; border:1px solid #1c1916;}
+  .desk-bar .url{font-family:var(--mono); font-size:11px; color:var(--paper-dim); padding:5px 12px; border-radius:20px; background:rgba(255,255,255,.03); border:1px solid var(--rule);}
+  .desk-body{display:grid; grid-template-columns: 240px 1fr;}
+  .desk-side{padding:22px 18px; border-right:1px solid var(--rule);}
+  .desk-side .ao-mark{font-size:28px; margin-bottom:24px;}
+  .desk-side .nav-item{display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; font-family:var(--sans); font-size:13px; color:var(--paper-dim); margin-bottom:2px; cursor:pointer;}
+  .desk-side .nav-item.on{background:rgba(255,255,255,.05); color:var(--paper);}
+  .desk-main{padding:34px 38px 50px;}
+  .desk-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; margin-top:24px;}
+
+  footer.foot{padding: 60px 32px; font-family:var(--sans); color:var(--paper-dim); font-size:13px; max-width:1100px; margin:0 auto; line-height:1.65;}
+  footer.foot h3{font-family:var(--serif); font-size:30px; margin:32px 0 8px; color:var(--paper); font-weight:400;}
+  footer.foot ul{margin:0; padding-left:22px;}
+  footer.foot li{margin-bottom:4px;}
+  footer.foot b{color:var(--paper); font-weight:500;}
+
+  @media (max-width:980px){
+    .desk-body{grid-template-columns:1fr;}
+    .desk-side{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="ao-mark">AO</span>
+    <div class="brand-meta">
+      <span class="t1">ACTOROS · HI-FI</span>
+      <span class="t2">Self-tapes</span>
+    </div>
+  </div>
+  <nav class="frames" id="frames">
+    <button data-f="list" class="active">List</button>
+    <button data-f="detail">Tape detail</button>
+    <button data-f="record">Recording</button>
+    <button data-f="feedback">With feedback</button>
+    <button data-f="desk">Desktop</button>
+  </nav>
+  <div class="top-meta"><span class="dot"></span>TYO · MAY 27</div>
+</header>
+
+<main>
+
+  <!-- ====== LIST ====== -->
+  <section class="frame-set active" id="set-list">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block">
+          <span class="device-label">01 · self-tapes · list</span>
+          <div class="device">
+            <div class="device-inner">
+              <div class="statusbar"><span>9:18</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+              <div class="scroll">
+
+                <div class="meta-line"><span class="live"></span>TUE · 27 MAY · 2 DUE</div>
+                <h1 class="title">Self-tapes</h1>
+
+                <div class="seg">
+                  <span class="on">Active</span>
+                  <span>Submitted</span>
+                  <span>All</span>
+                </div>
+
+                <!-- urgent: LOST10 -->
+                <div class="tape urgent">
+                  <div class="preview empty">
+                    <div class="pulse">
+                      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+                    </div>
+                    <div class="lbl">not recorded</div>
+                  </div>
+                  <div class="body">
+                    <div class="row1">
+                      <div>
+                        <div class="project">LOST10 · TBS Drama · Ep 04</div>
+                        <div class="scene">Ninja Scene <em>— sides 14</em></div>
+                      </div>
+                      <span class="chip due dot">Due today · 15:00</span>
+                    </div>
+                    <div class="row2">
+                      <span>w/ Yuki</span><span class="sep"></span>
+                      <span>2 takes max</span><span class="sep"></span>
+                      <span>≤ 90s</span>
+                    </div>
+                    <div class="actions">
+                      <button class="btn primary">Record now</button>
+                      <button class="btn">Upload</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- pending: Shokz -->
+                <div class="tape">
+                  <div class="preview has">
+                    <div class="play"></div>
+                    <span class="runtime">0:48</span>
+                    <span class="ph">TAKE 02 · saved draft</span>
+                  </div>
+                  <div class="body">
+                    <div class="row1">
+                      <div>
+                        <div class="project">Shokz Earphone · Athletic Spec</div>
+                        <div class="scene">Sprint &amp; Setup</div>
+                      </div>
+                      <span class="chip pend dot">Due Fri · 3d</span>
+                    </div>
+                    <div class="row2">
+                      <span>solo</span><span class="sep"></span>
+                      <span>3 takes saved</span><span class="sep"></span>
+                      <span>≤ 60s</span>
+                    </div>
+                    <div class="actions">
+                      <button class="btn primary">Review &amp; submit</button>
+                      <button class="btn">Reshoot</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- submitted: Toyota first round -->
+                <div class="tape submitted">
+                  <div class="preview has">
+                    <div class="play"></div>
+                    <span class="runtime">1:12</span>
+                    <span class="ph">TAKE 04 · submitted may 22</span>
+                  </div>
+                  <div class="body">
+                    <div class="row1">
+                      <div>
+                        <div class="project">Toyota CM · Crown Highway</div>
+                        <div class="scene">First read</div>
+                      </div>
+                      <span class="chip sub dot" style="flex-shrink:0">Callback ✓</span>
+                    </div>
+                    <div class="row2">
+                      <span>w/ Mira</span><span class="sep"></span>
+                      <span>opened by Watanabe</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- add new -->
+                <div class="addcard">
+                  <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                  <div class="h">New self-tape</div>
+                  <div class="s">Pick from auditions · or start blank</div>
+                </div>
+
+                <div style="height:80px"></div>
+              </div>
+
+              <div class="botnav news">
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z" stroke-linejoin="round"/><path d="M15 4v4h4M8 12h8M8 16h8M8 8h4"/></svg></span>Today</a>
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 11h18M6 7l3-3M11 7l3-3M16 7l3-3"/></svg></span>Auditions</a>
+                <a href="#" class="on"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/><path d="M16 11l5-3v8l-5-3z" stroke-linejoin="round"/><circle cx="7" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span>Tapes</a>
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16v-7M16 16v-2M20 16V8"/></svg></span>Earnings</a>
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>Me</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption">Each card is a project + scene + status. <b>Red border</b> = due today (not yet recorded). <b>Amber chip</b> = pending. <b>Green</b> = submitted, with the callback ✓ if the CD already responded.</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>List vocabulary</h4>
+        <div class="lbl">Card states</div>
+        <ul>
+          <li><b>Empty</b> — hatched preview with target/record dot icon and "not recorded" label.</li>
+          <li><b>Draft</b> — has takes but not yet submitted. Shows latest take preview.</li>
+          <li><b>Submitted</b> — green outline. Shows submitted take + "opened by CD" if seen.</li>
+          <li><b>Callback ✓</b> — chip flips to confirm the result.</li>
+        </ul>
+
+        <div class="lbl">Constraints surfaced on every card</div>
+        <ul>
+          <li>Scene partner (or "solo")</li>
+          <li>Max takes allowed by the agency</li>
+          <li>Max runtime (≤ 60s, ≤ 90s, etc.)</li>
+        </ul>
+
+        <div class="sep"></div>
+        <div class="lbl">Source of truth</div>
+        <ul>
+          <li>Each tape <b>links to an audition</b> when one exists (most cases). Tapes can also exist standalone (auditions added later).</li>
+          <li>Pulling sides PDF from the audition surfaces them inside the recording flow.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== TAPE DETAIL ====== -->
+  <section class="frame-set" id="set-detail">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block">
+          <span class="device-label">02 · tape detail · LOST10 ninja</span>
+          <div class="device">
+            <div class="device-inner">
+              <div class="statusbar"><span>9:22</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+              <div class="scroll" style="padding:14px 0 100px;">
+
+                <div class="detail-head" style="padding:0 22px;">
+                  <button class="back">Self-tapes</button>
+                  <span class="ribbon">Due today · 5h 38m</span>
+                </div>
+
+                <div style="padding:14px 22px 6px;">
+                  <div class="meta-line">LOST10 · TBS DRAMA · EP 04</div>
+                  <h1 class="title" style="font-size:34px;">Ninja Scene<br/><em>sides 14</em></h1>
+                </div>
+
+                <!-- Player -->
+                <div style="padding:0 22px;">
+                  <div class="player">
+                    <span class="runtime">0:48 / 1:30</span>
+                    <span class="ph">TAKE 03 · selected</span>
+                    <div class="play"></div>
+                    <div class="scrubber"><i></i><em></em></div>
+                  </div>
+                </div>
+
+                <!-- takes carousel -->
+                <div class="takes-row">
+                  <div class="take-thumb"><span class="n">TAKE 01</span><span class="dur">1:08</span></div>
+                  <div class="take-thumb"><span class="n">TAKE 02</span><span class="dur">1:21</span></div>
+                  <div class="take-thumb sel"><span class="n">TAKE 03</span><span class="dur">0:48</span></div>
+                  <div class="take-thumb" style="border-style:dashed; background:transparent;"><span class="n" style="color:var(--paper-faint)">+ NEW</span></div>
+                </div>
+
+                <!-- spec block -->
+                <div class="meta-block">
+                  <div class="mr"><span class="k">Scene</span><span class="v">Ninja #2 — rooftop chase</span></div>
+                  <div class="mr"><span class="k">Partner</span><span class="v">Yuki <b>(in person)</b></span></div>
+                  <div class="mr"><span class="k">Constraints</span><span class="v">2 takes max · ≤ 90s · MP4 1080p</span></div>
+                  <div class="mr"><span class="k">Submit to</span><span class="v">K. Watanabe · Cast Power Tokyo</span></div>
+                  <div class="mr"><span class="k">Brief</span><span class="v">Sides PDF · 2 pages</span></div>
+                </div>
+
+                <!-- Director's note -->
+                <div style="margin:14px 22px 0;" class="fb">
+                  <div class="lbl">Director's note</div>
+                  <div class="body">Watanabe wants the <b>silent approach</b> &mdash; restraint in the eyes, no audible footfalls. Two clean takes, no commentary.</div>
+                </div>
+
+                <!-- Actions -->
+                <div style="margin:18px 22px 0; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                  <button class="btn" style="padding:11px 0; font-family:var(--sans); font-size:13px; font-weight:500; border:1px solid var(--rule-strong); background:transparent; color:var(--paper); border-radius:11px; cursor:pointer;">Reshoot</button>
+                  <button class="btn" style="padding:11px 0; font-family:var(--sans); font-size:13px; font-weight:500; border:1px solid var(--rule-strong); background:transparent; color:var(--paper); border-radius:11px; cursor:pointer;">Trim</button>
+                </div>
+                <button class="btn" style="margin:8px 22px 0; padding:14px 0; font-family:var(--serif); font-size:20px; background:var(--paper); color:var(--bg); border:none; border-radius:12px; cursor:pointer; width:calc(100% - 44px); display:flex; align-items:center; justify-content:center; gap:8px;">
+                  Submit Take 03 <span style="font-family:var(--serif); font-size:22px;">→</span>
+                </button>
+                <div style="padding:8px 22px 0; text-align:center; font-family:var(--mono); font-size:10px; color:var(--paper-faint); letter-spacing:.14em; text-transform:uppercase;">
+                  emails CD · logs in outreach · syncs to drive
+                </div>
+
+              </div>
+
+              <div class="botnav news">
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/></svg></span>Today</a>
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/></svg></span>Auditions</a>
+                <a href="#" class="on"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/><path d="M16 11l5-3v8l-5-3z" stroke-linejoin="round"/></svg></span>Tapes</a>
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/></svg></span>Earnings</a>
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>Me</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption">Player up top with portrait aspect (matches the way self-tapes are shot). Takes carousel — current selection lit amber. Spec block in mono key/value matches the audition page. Submit ships it everywhere at once.</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>Submit flow</h4>
+        <ol>
+          <li>Pick which take to send (default = latest).</li>
+          <li>Trim if needed — sets in/out points.</li>
+          <li>Tap <b>Submit Take 03</b>.</li>
+          <li>App emails the CD with the take, logs the submission in Outreach, syncs the file to Drive/iCloud, and marks the audition as <code>submitted</code>.</li>
+        </ol>
+        <div class="sep"></div>
+        <div class="lbl">Recording constraints honored</div>
+        <ul>
+          <li>Hard caps on <b>takes</b> and <b>runtime</b> — set per audition. Submit button greys out if violated.</li>
+          <li>Auto-suggest reframe if shot in wrong aspect.</li>
+          <li>Audio gain check before submit; warn on clipping.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== RECORDING ====== -->
+  <section class="frame-set" id="set-record">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block">
+          <span class="device-label">03 · recording · in progress</span>
+          <div class="device">
+            <div class="device-inner">
+              <div class="rec-stage">
+                <div class="silhouette"></div>
+                <div class="rec-grid"></div>
+              </div>
+
+              <div class="statusbar" style="position:absolute; top:0; left:0; right:0; z-index:10; color:#fff;"><span>9:24</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+
+              <div class="rec-top" style="top:54px;">
+                <span class="rec-rec">REC · TAKE 04</span>
+                <span class="rec-time">0:42 / 1:30</span>
+              </div>
+
+              <!-- sides drawer with the script visible while recording -->
+              <div class="rec-sides">
+                <div class="lbl">Sides · Scene 14</div>
+                <div class="body">
+                  <span class="who">Yuki</span>You shouldn't have come back.<br/>
+                  <span class="who">Me</span><b>I had to.</b> She didn't leave me a choice.
+                </div>
+              </div>
+
+              <div class="rec-ctrl">
+                <button class="rec-side-btn flip" title="Switch camera">
+                  <svg viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3l-2-2H8l-2 2H5a2 2 0 0 0-2 2z"/><path d="M9 13a3 3 0 1 0 6 0 3 3 0 0 0-6 0z"/><path d="M16 9l2-1"/></svg>
+                </button>
+
+                <button class="rec-btn"></button>
+
+                <button class="rec-side-btn" title="Audio meter">
+                  <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 19v2M9 21h6"/></svg>
+                </button>
+              </div>
+
+              <!-- bottom mini bar (subtle) -->
+              <div style="position:absolute; bottom:0; left:0; right:0; padding:8px 20px 12px; text-align:center;
+                background:linear-gradient(0deg, rgba(0,0,0,.6), transparent);">
+                <span style="font-family:var(--mono); font-size:9px; letter-spacing:.16em; color:rgba(255,255,255,.55); text-transform:uppercase;">long-press to stop · tap once to mark a beat</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption"><b>Recording UI.</b> 9:16 portrait fills the screen, sides slide up so you can read the line. Audio meter on the right tells you when you're clipping. Pulsing REC ribbon top-left.</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>Recording rules</h4>
+        <div class="lbl">What's on screen</div>
+        <ul>
+          <li><b>Sides drawer</b> at the bottom — script visible while you act. Drag down to dismiss.</li>
+          <li><b>Audio meter</b> — turns red on clip.</li>
+          <li><b>Rule-of-thirds grid</b> always on (light).</li>
+          <li><b>Camera flip</b> for solo work.</li>
+          <li><b>Timer</b> top-right, against the configured max runtime.</li>
+        </ul>
+
+        <div class="lbl">When to stop</div>
+        <ul>
+          <li><b>Long-press</b> the big red button to end. (Prevents accidental stops.)</li>
+          <li><b>Tap once</b> = bookmark a beat — surfaces in trim editor.</li>
+          <li>Auto-stop at runtime cap with a 3-second warning.</li>
+        </ul>
+
+        <div class="sep"></div>
+        <div class="lbl">After stop</div>
+        <ol>
+          <li>Take appears in the takes carousel.</li>
+          <li>Returns to <b>tape detail</b> page with new take selected.</li>
+          <li>If hit take limit, prompt to delete oldest take before re-recording.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== WITH FEEDBACK ====== -->
+  <section class="frame-set" id="set-feedback">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block">
+          <span class="device-label">04 · submitted · with feedback</span>
+          <div class="device">
+            <div class="device-inner">
+              <div class="statusbar"><span>9:41</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+              <div class="scroll" style="padding:14px 0 100px;">
+
+                <div class="detail-head" style="padding:0 22px;">
+                  <button class="back">Self-tapes</button>
+                  <span class="ribbon" style="background:rgba(58,168,107,.12); color:var(--green); border-color:rgba(58,168,107,.4);">Callback ✓</span>
+                </div>
+
+                <div style="padding:14px 22px 6px;">
+                  <div class="meta-line">TOYOTA CM · CROWN HIGHWAY · 1ST READ</div>
+                  <h1 class="title" style="font-size:34px;">First read<br/><em>submitted 22 May</em></h1>
+                </div>
+
+                <div style="padding:0 22px;">
+                  <div class="player">
+                    <span class="runtime">1:12</span>
+                    <span class="ph">SUBMITTED TAKE</span>
+                    <div class="play"></div>
+                    <div class="scrubber"><i style="width:62%; background:var(--green)"></i><em style="left:62%; background:var(--green)"></em></div>
+                  </div>
+                </div>
+
+                <!-- feedback timeline -->
+                <div class="fb" style="margin:18px 22px 0;">
+                  <div class="who">K. WATANABE · 23 MAY · 11:04</div>
+                  <div class="body">"<b>Strong choices.</b> Bring the same restraint to round two &mdash; want to see the smile take with <b>steadier eyes</b>. We'll bring you back Tuesday."</div>
+                </div>
+
+                <div class="fb" style="margin:10px 22px 0; border-color:rgba(58,168,107,.22); background:linear-gradient(180deg, rgba(58,168,107,.07), rgba(58,168,107,.015) 60%);">
+                  <div class="lbl" style="color:var(--green);">Outcome</div>
+                  <div class="body" style="font-style:normal; font-family:var(--sans); font-size:14px;">
+                    <b style="color:var(--green); font-weight:500">Callback booked.</b> Tuesday 27 May · 10:30 · Roppongi Studio.
+                  </div>
+                </div>
+
+                <!-- your own annotations -->
+                <div style="margin:14px 22px 0;" class="fb" >
+                  <div class="lbl">My notes</div>
+                  <div class="body">Pacing was right. <b>Drop the head-tilt</b> at 0:38. Bring black tee + stunt boots Tuesday.</div>
+                </div>
+
+                <div style="margin:18px 22px 0; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                  <button style="padding:11px 0; font-family:var(--sans); font-size:13px; font-weight:500; border:1px solid var(--rule-strong); background:transparent; color:var(--paper); border-radius:11px; cursor:pointer;">Re-watch</button>
+                  <button style="padding:11px 0; font-family:var(--sans); font-size:13px; font-weight:500; border:1px solid var(--paper); background:var(--paper); color:var(--bg); border-radius:11px; cursor:pointer;">Open callback →</button>
+                </div>
+
+              </div>
+
+              <div class="botnav news">
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/></svg></span>Today</a>
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/></svg></span>Auditions</a>
+                <a href="#" class="on"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/><path d="M16 11l5-3v8l-5-3z" stroke-linejoin="round"/></svg></span>Tapes</a>
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/></svg></span>Earnings</a>
+                <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>Me</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption">After the CD responds. Green ribbon, green scrubber. <b>CD's feedback in italic</b>, outcome card in green, your own notes underneath. Tap "Open callback →" to jump to the audition page.</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>Post-submission states</h4>
+        <ul>
+          <li><b>Opened</b> — CD viewed but hasn't replied. Player border subtly tinted blue.</li>
+          <li><b>Feedback received</b> — italic note from CD appears, parsed automatically from their email reply.</li>
+          <li><b>Callback ✓</b> — green outcome card with the next audition's details.</li>
+          <li><b>Passed</b> — red outcome card (gentle). Still keeps the feedback for craft.</li>
+        </ul>
+        <div class="sep"></div>
+        <div class="lbl">My notes</div>
+        <ul>
+          <li>Actor's private retrospective per tape.</li>
+          <li>Threaded by take if multiple — "drop head-tilt at 0:38" attaches to that timecode.</li>
+          <li>Searchable across all tapes — actor's craft journal.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== DESKTOP ====== -->
+  <section class="frame-set" id="set-desk">
+    <div class="desk">
+      <div class="desk-bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="url">actoros.app/tapes</div>
+        <div style="margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--paper-faint); letter-spacing:.18em">TUE · MAY 27</div>
+      </div>
+      <div class="desk-body">
+        <aside class="desk-side">
+          <div class="ao-mark">AO</div>
+          <div class="nav-item">Home</div>
+          <div class="nav-item">Auditions</div>
+          <div class="nav-item on">Self-tapes</div>
+          <div class="nav-item">Contracts</div>
+          <div class="nav-item">Outreach</div>
+          <div class="nav-item">Relationships</div>
+          <div class="nav-item">Needs approval</div>
+          <div class="nav-item">Earnings</div>
+          <div class="nav-item">Calendar</div>
+          <div class="nav-item">Settings</div>
+        </aside>
+
+        <div class="desk-main">
+          <div class="meta-line"><span class="live"></span>TUE · 27 MAY · 2 DUE</div>
+          <h1 class="title" style="font-size:56px;">Self-tapes</h1>
+
+          <div style="display:flex; gap:8px; margin-top:18px; align-items:center;">
+            <div class="seg" style="margin:0;">
+              <span class="on">Active · 2</span>
+              <span>Submitted · 8</span>
+              <span>All · 14</span>
+            </div>
+            <button style="margin-left:auto; padding:9px 16px; font-family:var(--sans); font-size:13px; font-weight:500; background:var(--paper); color:var(--bg); border:none; border-radius:30px; cursor:pointer;">+ New self-tape</button>
+          </div>
+
+          <div class="desk-grid">
+            <div class="tape urgent">
+              <div class="preview empty" style="height:220px;">
+                <div class="pulse"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg></div>
+                <div class="lbl">not recorded</div>
+              </div>
+              <div class="body">
+                <div class="row1">
+                  <div><div class="project">LOST10 · TBS · Ep 04</div><div class="scene">Ninja Scene</div></div>
+                  <span class="chip due dot">Due today · 15:00</span>
+                </div>
+                <div class="row2"><span>w/ Yuki</span><span class="sep"></span><span>2 takes · ≤ 90s</span></div>
+                <div class="actions"><button class="btn primary">Record now</button><button class="btn">Upload</button></div>
+              </div>
+            </div>
+
+            <div class="tape">
+              <div class="preview has" style="height:220px;">
+                <div class="play"></div>
+                <span class="runtime">0:48</span>
+                <span class="ph">TAKE 02 · draft</span>
+              </div>
+              <div class="body">
+                <div class="row1">
+                  <div><div class="project">Shokz Earphone · Athletic</div><div class="scene">Sprint &amp; Setup</div></div>
+                  <span class="chip pend dot">Due Fri</span>
+                </div>
+                <div class="row2"><span>solo</span><span class="sep"></span><span>3 takes saved</span></div>
+                <div class="actions"><button class="btn primary">Review &amp; submit</button><button class="btn">Reshoot</button></div>
+              </div>
+            </div>
+
+            <div class="tape submitted">
+              <div class="preview has" style="height:220px;">
+                <div class="play"></div>
+                <span class="runtime">1:12</span>
+                <span class="ph">SUBMITTED MAY 22</span>
+              </div>
+              <div class="body">
+                <div class="row1">
+                  <div><div class="project">Toyota CM · Crown Highway</div><div class="scene">First read</div></div>
+                  <span class="chip sub dot">Callback ✓</span>
+                </div>
+                <div class="row2"><span>w/ Mira</span><span class="sep"></span><span>Watanabe responded May 23</span></div>
+                <div class="fb" style="margin-top:10px; padding:10px 12px;">
+                  <div class="who" style="margin-bottom:4px;">K. WATANABE · 23 MAY</div>
+                  <div class="body" style="font-size:13.5px;">"Strong choices. Want to see the <b>smile take</b> with steadier eyes Tuesday."</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p style="margin-top:30px; max-width:760px; font-family:var(--sans); font-size:13px; color:var(--paper-dim); line-height:1.6;">Desktop grid scales the same card. Pre-shoot context (CD's feedback on a prior tape) collapses into the card itself when relevant — surfacing the through-line.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <h3>Self-tapes — what's in this hi-fi</h3>
+  <ul>
+    <li><b>List view</b> — three card states (empty / draft / submitted), constraints surfaced (partner, take cap, runtime).</li>
+    <li><b>Tape detail</b> — portrait player + takes carousel + audition-style metadata + submit flow.</li>
+    <li><b>Recording UI</b> — sides drawer (script visible), audio meter, rule-of-thirds, long-press to stop.</li>
+    <li><b>Submitted with feedback</b> — CD's reply parsed inline, callback ✓ outcome, actor's private notes.</li>
+    <li><b>Desktop</b> — 3-column grid using the same card.</li>
+  </ul>
+
+  <h3>Locked decisions</h3>
+  <ul>
+    <li>Tapes belong to auditions; CD/Constraints/Partner are pulled, not retyped.</li>
+    <li>Submit emails the CD, logs Outreach, syncs to cloud, updates audition status — one tap.</li>
+    <li>CD's reply gets parsed into the feedback card automatically; manual fallback for forwarded texts.</li>
+    <li>Actor's notes are private, timecode-attachable, and searchable across all tapes.</li>
+  </ul>
+
+  <h3>What's next</h3>
+  <ul>
+    <li><b>Day drilldown</b> hi-fi (from briefing CTA)</li>
+    <li><b>Earnings fullscreen</b> (horizontal month-scroll)</li>
+    <li><b>Relationships / Vault</b></li>
+    <li><b>Needs approval</b> multi-source queue</li>
+  </ul>
+</footer>
+
+<script>
+  const tabs = document.querySelectorAll('#frames button');
+  const sets = document.querySelectorAll('.frame-set');
+  tabs.forEach(b => b.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    const f = b.dataset.f;
+    sets.forEach(s => s.classList.toggle('active', s.id === 'set-' + f));
+    window.scrollTo({top:0});
+  }));
+</script>
+
+</body>
+</html>

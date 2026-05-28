@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ActorOS — Earnings</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0a0908; --bg2:#141210; --bg3:#1c1916;
+    --paper:#f4efe6; --paper-dim:#a8a298; --paper-faint:#6e6a62;
+    --rule:#26231f; --rule-strong:#36322c;
+    --green:#3aa86b; --green-soft:rgba(58,168,107,.14);
+    --amber:#e8a755; --blue:#6ab3e8; --red:#e8625a; --purple:#b69de0;
+    --grey:#5a554d;
+    --serif:"Instrument Serif", serif;
+    --sans:"Inter", system-ui, sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, monospace;
+  }
+  *{box-sizing:border-box; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
+  html,body{margin:0; background:var(--bg); color:var(--paper); font-family:var(--sans); font-weight:400;}
+  body{
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(60,80,60,.14), transparent 50%),
+      radial-gradient(ellipse at 90% 100%, rgba(40,30,20,.18), transparent 50%);
+    background-attachment:fixed; min-height:100vh;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(circle at 0 0, rgba(255,255,255,.012) 1px, transparent 1px),
+      radial-gradient(circle at 7px 9px, rgba(255,255,255,.01) 1px, transparent 1px);
+    background-size: 3px 3px, 5px 5px;
+    mix-blend-mode:overlay; opacity:.7;
+  }
+
+  /* Top chrome */
+  header.top{position:relative; z-index:2; padding:22px 32px 18px; display:flex; align-items:flex-end; justify-content:space-between; gap:24px; border-bottom:1px solid var(--rule);}
+  .brand{display:flex; align-items:center; gap:14px}
+  .ao-mark{font-family:var(--serif); font-size:34px; line-height:.85; letter-spacing:-.02em;}
+  .brand-meta{display:flex; flex-direction:column; gap:2px}
+  .brand-meta .t1{font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-dim); text-transform:uppercase}
+  .brand-meta .t2{font-family:var(--serif); font-size:24px; line-height:1; letter-spacing:-.01em}
+  nav.frames{display:flex; gap:4px; padding:4px; border:1px solid var(--rule); border-radius:30px; background:rgba(20,18,16,.5); backdrop-filter: blur(8px);}
+  nav.frames button{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; background:transparent; border:none; padding:7px 14px 6px; cursor:pointer; color:var(--paper-dim); border-radius:30px; white-space:nowrap;}
+  nav.frames button.active{background:var(--paper); color:var(--bg);}
+  nav.frames button:hover:not(.active){color:var(--paper);}
+  .top-meta{font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;}
+  .top-meta .dot{width:6px;height:6px;background:var(--green);border-radius:50%; display:inline-block; box-shadow:0 0 8px rgba(58,168,107,.4); margin-right:6px;}
+
+  main{position:relative; z-index:1; padding:48px 32px 100px;}
+  .frame-set{display:none}
+  .frame-set.active{display:block}
+  .canvas-row{display:flex; gap:48px; justify-content:center; flex-wrap:wrap; align-items:flex-start;}
+
+  /* phone */
+  .device{position:relative; width:380px; border-radius:46px; background:linear-gradient(180deg, #1a1815, #0e0d0b); padding:10px;
+    box-shadow:0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04) inset, 0 1px 0 rgba(255,255,255,.06) inset;}
+  .device-inner{border-radius:38px; overflow:hidden; background:var(--bg2); position:relative; height:820px;}
+  .device-inner::before{content:""; position:absolute; top:10px; left:50%; transform:translateX(-50%); width:108px; height:30px; background:#000; border-radius:18px; z-index:50;}
+  .device-label{position:absolute; top:-30px; left:24px; font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;}
+  .device-caption{margin-top:18px; max-width:380px; font-family:var(--sans); font-size:13px; color:var(--paper-dim); line-height:1.55; padding-left:6px;}
+  .device-caption b{color:var(--paper); font-weight:500}
+
+  .statusbar{display:flex; justify-content:space-between; align-items:center; padding: 14px 26px 0; font-family:var(--mono); font-size:11px; color:var(--paper); height:42px;}
+  .statusbar .right{display:flex; gap:6px; align-items:center;}
+  .statusbar .signal{display:inline-flex; gap:2px;}
+  .statusbar .signal i{width:3px; background:var(--paper); border-radius:1px;}
+  .statusbar .signal i:nth-child(1){height:3px} .statusbar .signal i:nth-child(2){height:5px} .statusbar .signal i:nth-child(3){height:7px} .statusbar .signal i:nth-child(4){height:9px}
+  .battery{width:22px; height:11px; border:1px solid var(--paper); border-radius:3px; position:relative; padding:1px;}
+  .battery::after{content:""; position:absolute; right:-3px; top:3px; width:2px; height:5px; background:var(--paper); border-radius:0 1px 1px 0;}
+  .battery i{display:block; height:100%; width:78%; background:var(--paper); border-radius:1px;}
+  .scroll{height:calc(820px - 42px); overflow-y:auto; padding:0 0 100px; scrollbar-width:none;}
+  .scroll::-webkit-scrollbar{display:none}
+
+  .head-row{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 22px 8px;}
+  .back{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-dim); text-transform:uppercase; cursor:pointer; background:transparent; border:none; padding:0;}
+  .back::before{content:"\2190"; font-family:var(--serif); font-size:14px; line-height:1; color:var(--paper);}
+
+  .meta-line{font-family:var(--mono); font-size:10px; letter-spacing:.22em; color:var(--paper-faint); text-transform:uppercase;}
+  .meta-line .live{display:inline-block; width:5px; height:5px; background:var(--green); border-radius:50%; margin-right:6px; vertical-align:1px; box-shadow:0 0 8px var(--green);}
+
+  /* Big number hero */
+  .hero{padding:6px 22px 0;}
+  .hero .label{font-family:var(--mono); font-size:10px; letter-spacing:.22em; color:var(--paper-faint); text-transform:uppercase;}
+  .hero .amt{font-family:var(--serif); font-size:64px; line-height:1; letter-spacing:-.02em; color:var(--green); margin-top:6px;}
+  .hero .amt .ccy{color:var(--paper-faint); font-size:34px; vertical-align:14px; margin-right:6px;}
+  .hero .delta{margin-top:8px; font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:var(--paper-dim);}
+  .hero .delta .pct{color:var(--green);}
+  .hero .delta .of{color:var(--paper-faint);}
+
+  /* Segmented control */
+  .seg{display:inline-flex; padding:3px; border:1px solid var(--rule); border-radius:30px; background:rgba(255,255,255,.02);}
+  .seg span{padding:5px 14px 4px; font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--paper-dim); border-radius:30px; cursor:pointer;}
+  .seg span.on{background:var(--paper); color:var(--bg);}
+
+  /* Chart */
+  .chart-wrap{margin:14px 22px 0; padding:18px 14px 14px; border:1px solid var(--rule); border-radius:14px; background:linear-gradient(180deg, rgba(58,168,107,.04), transparent 70%); position:relative;}
+  .chart-wrap .legend{position:absolute; top:14px; right:16px; font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase; display:flex; gap:14px;}
+  .chart-wrap .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .chart-wrap .legend i{width:14px; height:2px; background:currentColor; border-radius:2px;}
+  .chart-wrap .legend .banked{color:var(--green);}
+  .chart-wrap .legend .pot{color:var(--paper-dim);}
+  .chart-wrap .legend .pot i{border-top:1.5px dashed var(--paper-dim); background:transparent; height:0;}
+
+  .chart-svg{width:100%; height:170px; display:block; margin-top:4px;}
+  .month-axis{display:flex; justify-content:space-between; font-family:var(--mono); font-size:9.5px; letter-spacing:.08em; color:var(--paper-faint); margin-top:4px; text-transform:uppercase;}
+
+  /* Month strip (horizontal scroll) */
+  .month-strip-wrap{margin-top:14px;}
+  .month-strip-wrap .header{padding:0 22px 8px; display:flex; justify-content:space-between; align-items:baseline;}
+  .month-strip-wrap .header .lbl{font-family:var(--mono); font-size:10px; letter-spacing:.22em; color:var(--paper-faint); text-transform:uppercase;}
+  .month-strip-wrap .header .hint{font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; color:var(--paper-faint); text-transform:uppercase;}
+  .month-strip{display:flex; gap:10px; overflow-x:auto; padding:0 22px 4px; scrollbar-width:none;}
+  .month-strip::-webkit-scrollbar{display:none}
+  .month-card{
+    flex:0 0 auto; width:128px; padding:14px;
+    border:1px solid var(--rule); border-radius:12px; background:rgba(255,255,255,.02);
+    display:flex; flex-direction:column; gap:8px;
+    cursor:pointer; transition: background .15s, border-color .15s;
+  }
+  .month-card:hover{background:rgba(255,255,255,.04);}
+  .month-card.cur{border-color:rgba(58,168,107,.35); background:linear-gradient(180deg, rgba(58,168,107,.07), rgba(58,168,107,.01) 60%);}
+  .month-card .top{display:flex; justify-content:space-between; align-items:baseline;}
+  .month-card .name{font-family:var(--serif); font-size:20px; line-height:1; color:var(--paper);}
+  .month-card .yr{font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase;}
+  .month-card .amt{font-family:var(--mono); font-size:12.5px; color:var(--paper); letter-spacing:.02em;}
+  .month-card .amt .ccy{color:var(--paper-faint); margin-right:2px;}
+  .month-card .bar{height:6px; background:rgba(255,255,255,.06); border-radius:3px; position:relative; overflow:hidden;}
+  .month-card .bar i{position:absolute; left:0; top:0; bottom:0; background:var(--green); border-radius:3px;}
+  .month-card .delta{font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase;}
+  .month-card .delta.up{color:var(--green);}
+  .month-card .delta.dn{color:var(--red);}
+  .month-card .delta.flat{color:var(--paper-faint);}
+
+  /* breakdown card */
+  .breakdown{margin:18px 22px 0; border:1px solid var(--rule); border-radius:14px; background:linear-gradient(180deg, rgba(255,255,255,.015), transparent); overflow:hidden;}
+  .breakdown .head{display:flex; justify-content:space-between; align-items:baseline; padding:14px 18px 8px;}
+  .breakdown .head .title{font-family:var(--serif); font-size:22px; line-height:1; color:var(--paper);}
+  .breakdown .head .meta{font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--paper-dim); text-transform:uppercase;}
+  .br-row{display:grid; grid-template-columns: 1fr auto; column-gap:14px; padding:11px 18px; border-top:1px solid var(--rule); align-items:center;}
+  .br-row .info{min-width:0;}
+  .br-row .proj{font-family:var(--serif); font-size:16px; line-height:1.15; color:var(--paper); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .br-row .sub{font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; color:var(--paper-faint); text-transform:uppercase; margin-top:3px;}
+  .br-row .right{text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:3px;}
+  .br-row .pay{font-family:var(--mono); font-size:13px; color:var(--paper);}
+  .br-row.bk .pay{color:var(--green);}
+  .br-row.passed .pay{color:var(--red);}
+  .br-row.passed .proj, .br-row.passed .sub{color:var(--paper-faint);}
+
+  .chip{display:inline-flex; align-items:center; gap:4px; font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; padding:3px 8px; border-radius:30px; background:rgba(255,255,255,.05); color:var(--paper-dim); border:1px solid var(--rule); white-space:nowrap; flex-shrink:0;}
+  .chip.cb{color:var(--amber); border-color:rgba(232,167,85,.3); background:rgba(232,167,85,.07)}
+  .chip.sub{color:var(--blue); border-color:rgba(106,179,232,.3); background:rgba(106,179,232,.07)}
+  .chip.bk{color:var(--green); border-color:rgba(58,168,107,.32); background:rgba(58,168,107,.07)}
+  .chip.ot{color:var(--amber); border-color:rgba(232,167,85,.32); background:rgba(232,167,85,.08)}
+
+  /* Stat strip (horizontal scroll) */
+  .stat-grid{
+    display:flex; gap:8px; margin:14px 0 0;
+    padding:0 22px 4px;
+    overflow-x:auto; scrollbar-width:none;
+  }
+  .stat-grid::-webkit-scrollbar{display:none}
+  .stat-cell{
+    flex:0 0 auto; min-width:110px;
+    padding:12px 14px; text-align:left;
+    border:1px solid var(--rule); border-radius:11px;
+    background:rgba(255,255,255,.018);
+  }
+  .stat-cell .n{font-family:var(--serif); font-size:22px; line-height:1; color:var(--paper); white-space:nowrap;}
+  .stat-cell .n.green{color:var(--green);} .stat-cell .n.red{color:var(--red);} .stat-cell .n.amber{color:var(--amber);}
+  .stat-cell .lbl{font-family:var(--mono); font-size:9px; letter-spacing:.12em; color:var(--paper-faint); text-transform:uppercase; margin-top:6px; white-space:nowrap;}
+
+  /* Goal ring */
+  .goal-ring-wrap{display:flex; justify-content:center; padding:18px 22px 8px;}
+  .goal-ring{width:200px; height:200px; position:relative;}
+  .goal-ring svg{width:100%; height:100%;}
+  .goal-ring .inner{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; text-shadow:0 1px 8px rgba(10,9,8,.9), 0 0 14px rgba(10,9,8,.7);}
+  .goal-ring .inner .num{font-family:var(--serif); font-size:38px; line-height:1; color:var(--paper);}
+  .goal-ring .inner .pct{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--green); text-transform:uppercase; margin-top:6px;}
+  .goal-ring .inner .of{font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; color:var(--paper-dim); text-transform:uppercase; margin-top:4px;}
+
+  /* News bottom nav */
+  .botnav.news{position:absolute; bottom:0; left:0; right:0; z-index:4; background:rgba(10,9,8,.85); backdrop-filter:blur(24px); border-top:1px solid var(--rule); display:flex; padding:8px 4px 14px;}
+  .botnav.news a{flex:1; padding:6px 4px 2px; text-decoration:none; font-family:var(--sans); font-size:9.5px; font-weight:500; color:var(--paper-faint); text-align:center; display:flex; flex-direction:column; align-items:center; gap:4px;}
+  .botnav.news a.on{color:var(--amber);}
+  .botnav.news a.on .ic{color:var(--amber);}
+  .botnav.news .ic{width:22px; height:22px; color:var(--paper-faint); display:inline-flex; align-items:center; justify-content:center;}
+  .botnav.news .ic svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6;}
+
+  /* spec card */
+  .spec-card{border:1px solid var(--rule); border-radius:14px; padding:20px 22px; background:linear-gradient(180deg, rgba(255,255,255,.015), transparent); max-width:380px;}
+  .spec-card h4{font-family:var(--serif); font-size:22px; margin:0 0 8px; font-weight:400; color:var(--paper);}
+  .spec-card .lbl{font-family:var(--mono); font-size:10px; letter-spacing:.2em; color:var(--paper-faint); text-transform:uppercase; margin-top:14px; margin-bottom:6px;}
+  .spec-card ol, .spec-card ul{margin:0; padding-left:18px; font-size:13px; line-height:1.55; color:var(--paper-dim);}
+  .spec-card li{margin-bottom:3px;}
+  .spec-card b{color:var(--paper); font-weight:500;}
+  .spec-card .sep{height:1px; background:var(--rule); margin:14px 0;}
+
+  /* desktop */
+  .desk{width:100%; max-width:1400px; margin:0 auto; border-radius:18px; overflow:hidden; background:var(--bg2); border:1px solid var(--rule-strong); box-shadow:0 40px 100px rgba(0,0,0,.5);}
+  .desk-bar{display:flex; align-items:center; gap:8px; padding:12px 18px; background:#0e0d0b; border-bottom:1px solid var(--rule);}
+  .desk-bar .dots{display:flex; gap:7px; margin-right:14px;}
+  .desk-bar .dots i{width:11px; height:11px; border-radius:50%; background:#2c2823; border:1px solid #1c1916;}
+  .desk-bar .url{font-family:var(--mono); font-size:11px; color:var(--paper-dim); padding:5px 12px; border-radius:20px; background:rgba(255,255,255,.03); border:1px solid var(--rule);}
+  .desk-body{display:grid; grid-template-columns:240px 1fr;}
+  .desk-side{padding:22px 18px; border-right:1px solid var(--rule);}
+  .desk-side .ao-mark{font-size:28px; margin-bottom:24px;}
+  .desk-side .nav-item{display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; font-family:var(--sans); font-size:13px; color:var(--paper-dim); margin-bottom:2px; cursor:pointer;}
+  .desk-side .nav-item.on{background:rgba(255,255,255,.05); color:var(--paper);}
+  .desk-main{padding:34px 38px 50px;}
+  .desk-hero{display:grid; grid-template-columns:1.4fr 1fr; gap:30px; margin-top:18px;}
+  .desk-amt{font-family:var(--serif); font-size:96px; line-height:1; letter-spacing:-.025em; color:var(--green); margin-top:8px;}
+  .desk-amt .ccy{color:var(--paper-faint); font-size:52px; vertical-align:18px; margin-right:8px;}
+  .desk-chart{height:240px; border:1px solid var(--rule); border-radius:14px; background:linear-gradient(180deg, rgba(58,168,107,.04), transparent 70%); padding:18px;}
+  .desk-month-strip{display:flex; gap:10px; overflow-x:auto; margin-top:24px; padding-bottom:4px; scrollbar-width:none;}
+  .desk-month-strip::-webkit-scrollbar{display:none}
+  .desk-month-strip .month-card{width:152px;}
+  .desk-bottom{display:grid; grid-template-columns:1.4fr 1fr; gap:24px; margin-top:30px;}
+
+  footer.foot{padding:60px 32px; font-family:var(--sans); color:var(--paper-dim); font-size:13px; max-width:1100px; margin:0 auto; line-height:1.65;}
+  footer.foot h3{font-family:var(--serif); font-size:30px; margin:32px 0 8px; color:var(--paper); font-weight:400;}
+  footer.foot ul{margin:0; padding-left:22px;}
+  footer.foot li{margin-bottom:4px;}
+  footer.foot b{color:var(--paper); font-weight:500;}
+  @media (max-width:980px){.desk-body{grid-template-columns:1fr;} .desk-side{display:none;} .desk-hero, .desk-bottom{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="ao-mark">AO</span>
+    <div class="brand-meta">
+      <span class="t1">ACTOROS · HI-FI</span>
+      <span class="t2">Earnings</span>
+    </div>
+  </div>
+  <nav class="frames" id="frames">
+    <button data-f="overview" class="active">Overview</button>
+    <button data-f="month">Month deep-dive</button>
+    <button data-f="goal">Goal mode</button>
+    <button data-f="desk">Desktop</button>
+  </nav>
+  <div class="top-meta"><span class="dot"></span>TYO · MAY 27 · ¥ 312k MAY</div>
+</header>
+
+<main>
+
+  <!-- ============================ OVERVIEW ============================ -->
+  <section class="frame-set active" id="set-overview">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block;">
+          <span class="device-label">01 · earnings overview</span>
+          <div class="device"><div class="device-inner">
+            <div class="statusbar"><span>9:18</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+            <div class="scroll">
+
+              <div class="head-row">
+                <button class="back">Dashboard</button>
+                <div class="seg"><span>3M</span><span class="on">6M</span><span>YTD</span></div>
+              </div>
+
+              <div class="hero">
+                <div class="label">May · banked</div>
+                <div class="amt"><span class="ccy">¥</span>312,000</div>
+                <div class="delta">
+                  <span class="pct">↑ 27%</span> on April &nbsp;·&nbsp;
+                  <span class="of">¥ 168k still in play</span>
+                </div>
+              </div>
+
+              <!-- Chart -->
+              <div class="chart-wrap">
+                <div class="legend">
+                  <span class="banked"><i></i>banked</span>
+                  <span class="pot"><i></i>potential</span>
+                </div>
+                <svg class="chart-svg" viewBox="0 0 320 160" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="gFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0" stop-color="#3aa86b" stop-opacity=".35"/>
+                      <stop offset="1" stop-color="#3aa86b" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- grid -->
+                  <line x1="0" y1="32" x2="320" y2="32" stroke="#26231f" stroke-dasharray="2 4"/>
+                  <line x1="0" y1="72" x2="320" y2="72" stroke="#26231f" stroke-dasharray="2 4"/>
+                  <line x1="0" y1="112" x2="320" y2="112" stroke="#26231f" stroke-dasharray="2 4"/>
+                  <!-- y labels -->
+                  <text x="6" y="28" font-family="JetBrains Mono" font-size="9" fill="#6e6a62">¥600k</text>
+                  <text x="6" y="68" font-family="JetBrains Mono" font-size="9" fill="#6e6a62">¥400k</text>
+                  <text x="6" y="108" font-family="JetBrains Mono" font-size="9" fill="#6e6a62">¥200k</text>
+                  <!-- potential ceiling -->
+                  <polyline fill="none" stroke="#8d8579" stroke-width="1.5" stroke-dasharray="5 4" points="0,118 55,108 110,90 165,72 220,58 275,42 320,28"/>
+                  <!-- banked area -->
+                  <polyline fill="url(#gFill)" stroke="#3aa86b" stroke-width="2.4" points="0,138 55,132 110,118 165,98 220,82 275,68 320,58 320,160 0,160"/>
+                  <circle cx="320" cy="58" r="4" fill="#3aa86b"/>
+                  <circle cx="320" cy="58" r="9" fill="#3aa86b" opacity=".22"/>
+                  <text x="305" y="50" font-family="JetBrains Mono" font-size="8.5" fill="#3aa86b" text-anchor="end">NOW</text>
+                </svg>
+                <div class="month-axis">
+                  <span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span>
+                </div>
+              </div>
+
+              <!-- Stat grid -->
+              <div class="stat-grid">
+                <div class="stat-cell"><div class="n green">2</div><div class="lbl">Booked</div></div>
+                <div class="stat-cell"><div class="n">3</div><div class="lbl">Pending</div></div>
+                <div class="stat-cell"><div class="n red">1</div><div class="lbl">Passed</div></div>
+                <div class="stat-cell"><div class="n amber">¥48k</div><div class="lbl">OT</div></div>
+              </div>
+
+              <!-- Month strip -->
+              <div class="month-strip-wrap">
+                <div class="header">
+                  <div class="lbl">By month</div>
+                  <div class="hint">Swipe ← →</div>
+                </div>
+                <div class="month-strip">
+                  <div class="month-card">
+                    <div class="top"><div class="name">Dec</div><div class="yr">'25</div></div>
+                    <div class="amt"><span class="ccy">¥</span>180,000</div>
+                    <div class="bar"><i style="width:90%"></i></div>
+                    <div class="delta flat">90% booked</div>
+                  </div>
+                  <div class="month-card">
+                    <div class="top"><div class="name">Jan</div><div class="yr">'26</div></div>
+                    <div class="amt"><span class="ccy">¥</span>95,000</div>
+                    <div class="bar"><i style="width:30%"></i></div>
+                    <div class="delta dn">↓ 47%</div>
+                  </div>
+                  <div class="month-card">
+                    <div class="top"><div class="name">Feb</div><div class="yr">'26</div></div>
+                    <div class="amt"><span class="ccy">¥</span>240,000</div>
+                    <div class="bar"><i style="width:55%"></i></div>
+                    <div class="delta up">↑ 152%</div>
+                  </div>
+                  <div class="month-card">
+                    <div class="top"><div class="name">Mar</div><div class="yr">'26</div></div>
+                    <div class="amt"><span class="ccy">¥</span>205,000</div>
+                    <div class="bar"><i style="width:58%"></i></div>
+                    <div class="delta dn">↓ 15%</div>
+                  </div>
+                  <div class="month-card">
+                    <div class="top"><div class="name">Apr</div><div class="yr">'26</div></div>
+                    <div class="amt"><span class="ccy">¥</span>246,000</div>
+                    <div class="bar"><i style="width:70%"></i></div>
+                    <div class="delta up">↑ 20%</div>
+                  </div>
+                  <div class="month-card cur">
+                    <div class="top"><div class="name">May</div><div class="yr">'26</div></div>
+                    <div class="amt"><span class="ccy">¥</span>312,000</div>
+                    <div class="bar"><i style="width:65%"></i></div>
+                    <div class="delta up">↑ 27%</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Breakdown -->
+              <div class="breakdown">
+                <div class="head">
+                  <div class="title">May · breakdown</div>
+                  <div class="meta">5 projects</div>
+                </div>
+                <div class="br-row bk">
+                  <div class="info">
+                    <div class="proj">LOST10 — TBS Drama</div>
+                    <div class="sub">Booked · Fri 30 May</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 180,000</div><span class="chip bk">BK</span></div>
+                </div>
+                <div class="br-row bk">
+                  <div class="info">
+                    <div class="proj">Shokz Earphone CM</div>
+                    <div class="sub">Booked · Jun 8</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 132,000</div><span class="chip bk">BK</span></div>
+                </div>
+                <div class="br-row">
+                  <div class="info">
+                    <div class="proj">Toyota CM — Crown Highway</div>
+                    <div class="sub">Callback Tue · pending</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 220,000</div><span class="chip cb">CB</span></div>
+                </div>
+                <div class="br-row">
+                  <div class="info">
+                    <div class="proj">P-Co. Home Appliance</div>
+                    <div class="sub">Submitted · awaiting</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 80,000</div><span class="chip sub">SUB</span></div>
+                </div>
+                <div class="br-row passed">
+                  <div class="info">
+                    <div class="proj">Asahi CM</div>
+                    <div class="sub">Passed · May 18</div>
+                  </div>
+                  <div class="right"><div class="pay">— ¥ 120k</div></div>
+                </div>
+              </div>
+
+              <div style="height:80px"></div>
+            </div>
+
+            <div class="botnav news">
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4M8 12h8M8 16h8M8 8h4"/></svg></span>Today</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M3 11h18M6 7l3-3M11 7l3-3M16 7l3-3"/></svg></span>Auditions</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/><path d="M16 11l5-3v8l-5-3z"/><circle cx="7" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span>Tapes</a>
+              <a href="#" class="on"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16v-7M16 16v-2M20 16V8"/></svg></span>Earnings</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>Me</a>
+            </div>
+          </div></div>
+        </div>
+        <p class="device-caption">Big banked number up top. Area chart shows <b>green banked</b> against <b>dashed grey potential</b>. Four-cell stat strip surfaces OT earnings. Month strip swipes horizontally. Breakdown lists every project that contributed (or didn't).</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>What's locked</h4>
+        <ul>
+          <li><b>Two lines</b> — green solid (banked) vs grey dashed (potential if every audition booked). The gap is money on the table.</li>
+          <li><b>Hero amount</b> = current month banked, with delta vs prior month.</li>
+          <li><b>Stat grid</b> — booked count (green), pending (paper), passed (red), <b>OT earned</b> (amber).</li>
+          <li><b>Month strip</b> — horizontal scroll, current month highlighted green. Each card has trend arrow.</li>
+          <li><b>Breakdown</b> — per-project rows. Passed shows lost amount with strike-through gray.</li>
+        </ul>
+        <div class="sep"></div>
+        <div class="lbl">Sources</div>
+        <ul>
+          <li><b>Booked</b> — contract signed + shoot wrapped → pay rolls in.</li>
+          <li><b>OT</b> — overtime tracked from each booked shoot's wrap timer.</li>
+          <li><b>Pending</b> — callbacks &amp; submissions still in play.</li>
+          <li><b>Passed</b> — auditions you didn't get (the negative tally helps tune your strategy).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ MONTH DEEP-DIVE ============================ -->
+  <section class="frame-set" id="set-month">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block;">
+          <span class="device-label">02 · month deep-dive · may 2026</span>
+          <div class="device"><div class="device-inner">
+            <div class="statusbar"><span>9:24</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+            <div class="scroll">
+
+              <div class="head-row">
+                <button class="back">Earnings</button>
+                <div style="font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--paper-dim); text-transform:uppercase;">‹ Apr &nbsp; · &nbsp; Jun ›</div>
+              </div>
+
+              <div class="hero">
+                <div class="label">May 2026 · banked</div>
+                <div class="amt"><span class="ccy">¥</span>312,000</div>
+                <div class="delta">
+                  <span class="of">of <b style="color:var(--paper-dim)">¥ 480,000 potential</b></span> &nbsp;·&nbsp;
+                  <span class="pct">65%</span>
+                </div>
+              </div>
+
+              <!-- progress bar -->
+              <div style="margin:18px 22px 0;">
+                <div style="height:10px; background:rgba(255,255,255,.06); border-radius:5px; position:relative; overflow:hidden;">
+                  <div style="position:absolute; left:0; top:0; bottom:0; width:65%; background:var(--green); border-radius:5px;"></div>
+                  <div style="position:absolute; left:65%; top:-3px; bottom:-3px; width:1.5px; background:var(--paper);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; color:var(--paper-faint); text-transform:uppercase; margin-top:6px;">
+                  <span>¥0</span><span style="color:var(--paper)">you · ¥312k</span><span>¥480k</span>
+                </div>
+              </div>
+
+              <!-- 4 stat -->
+              <div class="stat-grid">
+                <div class="stat-cell"><div class="n green">2</div><div class="lbl">Booked</div></div>
+                <div class="stat-cell"><div class="n amber">1</div><div class="lbl">Callback</div></div>
+                <div class="stat-cell"><div class="n">2</div><div class="lbl">Submitted</div></div>
+                <div class="stat-cell"><div class="n red">1</div><div class="lbl">Passed</div></div>
+              </div>
+
+              <!-- Breakdown -->
+              <div class="breakdown">
+                <div class="head">
+                  <div class="title">Outcomes</div>
+                  <div class="meta">6 events</div>
+                </div>
+                <div class="br-row bk">
+                  <div class="info">
+                    <div class="proj">LOST10 — TBS Drama</div>
+                    <div class="sub">Shoot Fri 30 May · base ¥180k</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 180,000</div><span class="chip bk">BK</span></div>
+                </div>
+                <div class="br-row bk">
+                  <div class="info">
+                    <div class="proj">Shokz Earphone CM</div>
+                    <div class="sub">Shot May 20 · base ¥84k + OT ¥48k</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 132,000</div><span class="chip ot">+OT</span></div>
+                </div>
+                <div class="br-row">
+                  <div class="info">
+                    <div class="proj">Toyota CM</div>
+                    <div class="sub">Callback Tue · ¥220k if booked</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 220,000</div><span class="chip cb">CB</span></div>
+                </div>
+                <div class="br-row">
+                  <div class="info">
+                    <div class="proj">P-Co. Appliance</div>
+                    <div class="sub">Submitted · ¥80k if booked</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 80,000</div><span class="chip sub">SUB</span></div>
+                </div>
+                <div class="br-row">
+                  <div class="info">
+                    <div class="proj">Kamen Rider — VO</div>
+                    <div class="sub">Submitted · ¥95k if booked</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 95,000</div><span class="chip sub">SUB</span></div>
+                </div>
+                <div class="br-row passed">
+                  <div class="info">
+                    <div class="proj">Asahi CM</div>
+                    <div class="sub">Passed · May 18</div>
+                  </div>
+                  <div class="right"><div class="pay">— ¥ 120k</div></div>
+                </div>
+              </div>
+
+              <!-- OT log -->
+              <div class="breakdown" style="margin-top:14px; border-color:rgba(232,167,85,.22); background:linear-gradient(180deg, rgba(232,167,85,.05), transparent 60%);">
+                <div class="head">
+                  <div class="title" style="color:var(--amber);">Overtime · May</div>
+                  <div class="meta" style="color:var(--amber);">¥48k</div>
+                </div>
+                <div class="br-row">
+                  <div class="info">
+                    <div class="proj">Shokz CM · May 20</div>
+                    <div class="sub">1h 12m past wrap · ¥40k/hr ×1.5</div>
+                  </div>
+                  <div class="right"><div class="pay" style="color:var(--amber);">¥ 48,000</div><span class="chip ot">PAID ✓</span></div>
+                </div>
+              </div>
+
+              <div style="height:80px"></div>
+            </div>
+
+            <div class="botnav news">
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/></svg></span>Today</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/></svg></span>Auditions</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/></svg></span>Tapes</a>
+              <a href="#" class="on"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/></svg></span>Earnings</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>Me</a>
+            </div>
+          </div></div>
+        </div>
+        <p class="device-caption">Tap a month card to drop in. <b>Progress bar</b> shows the 65% of potential banked. Outcomes list every audition that contributed — booked, in-play, or passed. <b>OT log</b> at the bottom — every overtime payout tied to its shoot.</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>Why surface OT separately</h4>
+        <ul>
+          <li>OT is unpredictable income — it shouldn't roll into base "expected" pay.</li>
+          <li>Helps the actor argue rates: <b>"I averaged ¥48k OT a month over 6 months"</b>.</li>
+          <li>Tied to a specific shoot &amp; wrap time — auditable.</li>
+          <li>Each row shows the math: <code style="font-family:var(--mono); font-size:11px;">1h 12m × ¥40k/hr × 1.5 = ¥48k</code></li>
+        </ul>
+        <div class="sep"></div>
+        <div class="lbl">Passed amounts</div>
+        <ul>
+          <li>Shown as <b>negative grey</b> — visible but not heavy.</li>
+          <li>Aggregates into a yearly "money on the table" stat at YTD view.</li>
+          <li>Acts as a benchmark — passing on ¥1.2M tells you the kind of work you're being seen for.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ GOAL MODE ============================ -->
+  <section class="frame-set" id="set-goal">
+    <div class="canvas-row">
+      <div>
+        <div style="position:relative; display:inline-block;">
+          <span class="device-label">03 · goal mode</span>
+          <div class="device"><div class="device-inner">
+            <div class="statusbar"><span>9:30</span><div class="right"><span class="signal"><i></i><i></i><i></i><i></i></span><span style="font-size:10px">5G</span><span class="battery"><i></i></span></div></div>
+            <div class="scroll">
+
+              <div class="head-row">
+                <button class="back">Earnings</button>
+                <div class="seg"><span>Month</span><span class="on">Year</span></div>
+              </div>
+
+              <div style="padding:6px 22px 0;">
+                <div class="meta-line"><span class="live"></span>2026 · goal</div>
+                <div style="font-family:var(--serif); font-size:34px; line-height:1.05; letter-spacing:-.01em; color:var(--paper); margin-top:6px;">
+                  Hit <em style="font-style:italic; color:var(--green);">¥ 4.8M</em> by Dec 31.
+                </div>
+              </div>
+
+              <!-- Goal ring -->
+              <div class="goal-ring-wrap">
+                <div class="goal-ring">
+                  <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="44" fill="none" stroke="#26231f" stroke-width="6"/>
+                    <circle cx="50" cy="50" r="44" fill="none" stroke="#3aa86b" stroke-width="6"
+                      stroke-dasharray="86 276" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+                    <!-- target tick -->
+                    <line x1="50" y1="3" x2="50" y2="10" stroke="#e8a755" stroke-width="2"/>
+                  </svg>
+                  <div class="inner">
+                    <div class="num"><span style="color:var(--paper-faint); font-size:24px;">¥</span>1.24M</div>
+                    <div class="pct">25.8% of goal</div>
+                  </div>
+                </div>
+              </div>
+              <div style="text-align:center; font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-dim); text-transform:uppercase; margin-top:-4px; margin-bottom:18px;">
+                5 mo in &middot; <span style="color:var(--green);">on pace</span>
+              </div>
+
+              <!-- pace bar -->
+              <div style="margin:0 22px 0; padding:14px 16px; border:1px solid var(--rule); border-radius:12px; background:linear-gradient(180deg, rgba(58,168,107,.05), transparent 60%);">
+                <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:6px;">
+                  <span>Pace</span><span style="color:var(--green);">+ ¥40k ahead</span>
+                </div>
+                <div style="height:8px; background:rgba(255,255,255,.06); border-radius:4px; position:relative; overflow:hidden;">
+                  <div style="position:absolute; left:0; top:0; bottom:0; width:25.8%; background:var(--green); border-radius:4px;"></div>
+                  <div style="position:absolute; left:24%; top:-3px; bottom:-3px; width:1.5px; background:var(--amber);"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:var(--paper-faint); margin-top:5px; text-transform:uppercase;">
+                  <span>Jan</span><span style="color:var(--amber);">Today</span><span>Dec</span>
+                </div>
+              </div>
+
+              <div class="stat-grid">
+                <div class="stat-cell"><div class="n">¥248k</div><div class="lbl">avg / mo</div></div>
+                <div class="stat-cell"><div class="n">¥400k</div><div class="lbl">target / mo</div></div>
+                <div class="stat-cell"><div class="n green">7</div><div class="lbl">booked</div></div>
+                <div class="stat-cell"><div class="n">18%</div><div class="lbl">book rate</div></div>
+              </div>
+
+              <!-- Breakdown -->
+              <div class="breakdown" style="margin-top:18px;">
+                <div class="head">
+                  <div class="title">To hit ¥4.8M</div>
+                  <div class="meta">7 mo left</div>
+                </div>
+                <div class="br-row">
+                  <div class="info">
+                    <div class="proj">Remaining to bank</div>
+                    <div class="sub">¥ 3.56M · ¥508k/mo for 7 mo</div>
+                  </div>
+                  <div class="right"><div class="pay">¥ 3,560,000</div></div>
+                </div>
+                <div class="br-row">
+                  <div class="info">
+                    <div class="proj">At current 18% book rate</div>
+                    <div class="sub">¥ 2.8M submitted needed/mo</div>
+                  </div>
+                  <div class="right"><div class="pay">~14 subs/mo</div></div>
+                </div>
+                <div class="br-row">
+                  <div class="info">
+                    <div class="proj">Currently submitting</div>
+                    <div class="sub">9 per mo · need <b style="color:var(--amber);">+5</b></div>
+                  </div>
+                  <div class="right"><div class="pay" style="color:var(--amber);">below pace</div></div>
+                </div>
+              </div>
+
+              <button style="margin:18px 22px 0; padding:14px 0; width:calc(100% - 44px); font-family:var(--serif); font-size:19px; background:var(--paper); color:var(--bg); border:none; border-radius:13px; cursor:pointer;">
+                Edit goal →
+              </button>
+
+              <div style="height:80px"></div>
+            </div>
+
+            <div class="botnav news">
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/></svg></span>Today</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="1.5"/></svg></span>Auditions</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="1.5"/></svg></span>Tapes</a>
+              <a href="#" class="on"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/></svg></span>Earnings</a>
+              <a href="#"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.5 3.2-5.6 7-5.6s7 2.1 7 5.6"/></svg></span>Me</a>
+            </div>
+          </div></div>
+        </div>
+        <p class="device-caption">A year goal as a ring. Green = filled, amber tick = where you should be by today. Pace bar shows you <b>¥40k ahead</b>. The math at the bottom translates the goal into <b>"submit 14 a month"</b> — actionable.</p>
+      </div>
+
+      <div class="spec-card">
+        <h4>Goal mode</h4>
+        <ul>
+          <li>Set a <b>year or month target</b>. Default suggestion = last year + 20%.</li>
+          <li>Ring fills with <b>banked</b>. Amber tick = pace marker.</li>
+          <li><b>"Submit 14/mo"</b> derived from current book-rate &amp; remaining gap.</li>
+          <li>If pace slips, the briefing on the dashboard will prompt: <i>"You're 2 weeks behind pace — consider opening to background work."</i></li>
+        </ul>
+        <div class="sep"></div>
+        <div class="lbl">Privacy</div>
+        <ul>
+          <li>Goals are private. Never shown to agents, CDs, or the public.</li>
+          <li>Optional <b>share with agent</b> mode → agent sees only the gap, not the absolute.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ DESKTOP ============================ -->
+  <section class="frame-set" id="set-desk">
+    <div class="desk">
+      <div class="desk-bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="url">actoros.app/earnings</div>
+        <div style="margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--paper-faint); letter-spacing:.18em">TUE · MAY 27</div>
+      </div>
+      <div class="desk-body">
+        <aside class="desk-side">
+          <div class="ao-mark">AO</div>
+          <div class="nav-item">Home</div>
+          <div class="nav-item">Auditions</div>
+          <div class="nav-item">Self-tapes</div>
+          <div class="nav-item">Contracts</div>
+          <div class="nav-item">Outreach</div>
+          <div class="nav-item">Relationships</div>
+          <div class="nav-item">Needs approval</div>
+          <div class="nav-item on">Earnings</div>
+          <div class="nav-item">Calendar</div>
+          <div class="nav-item">Settings</div>
+        </aside>
+
+        <div class="desk-main">
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:18px;">
+            <div>
+              <div class="meta-line"><span class="live"></span>TUE · MAY 27 · TOKYO</div>
+              <div style="font-family:var(--serif); font-size:56px; line-height:1; letter-spacing:-.02em; margin-top:8px;">Earnings <em style="font-style:italic; color:var(--paper-dim);">— May 2026</em></div>
+            </div>
+            <div class="seg"><span>3M</span><span class="on">6M</span><span>YTD</span><span>All</span></div>
+          </div>
+
+          <div class="desk-hero">
+            <div>
+              <div style="font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase;">Banked · May</div>
+              <div class="desk-amt"><span class="ccy">¥</span>312,000</div>
+              <div style="font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--paper-dim); margin-top:10px;">
+                <span style="color:var(--green);">↑ 27%</span> on April &nbsp;·&nbsp; <span style="color:var(--paper-faint);">¥168k still in play</span> &nbsp;·&nbsp; <span style="color:var(--amber);">¥48k OT</span>
+              </div>
+
+              <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:24px; max-width:480px;">
+                <div class="stat-cell"><div class="n green">2</div><div class="lbl">Booked</div></div>
+                <div class="stat-cell"><div class="n">3</div><div class="lbl">Pending</div></div>
+                <div class="stat-cell"><div class="n red">1</div><div class="lbl">Passed</div></div>
+                <div class="stat-cell"><div class="n amber">¥48k</div><div class="lbl">OT</div></div>
+              </div>
+            </div>
+
+            <div class="desk-chart">
+              <svg viewBox="0 0 480 200" preserveAspectRatio="none" style="width:100%; height:100%; display:block;">
+                <defs>
+                  <linearGradient id="gFillD" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0" stop-color="#3aa86b" stop-opacity=".4"/>
+                    <stop offset="1" stop-color="#3aa86b" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <line x1="0" y1="40" x2="480" y2="40" stroke="#26231f" stroke-dasharray="3 5"/>
+                <line x1="0" y1="90" x2="480" y2="90" stroke="#26231f" stroke-dasharray="3 5"/>
+                <line x1="0" y1="140" x2="480" y2="140" stroke="#26231f" stroke-dasharray="3 5"/>
+                <polyline fill="none" stroke="#8d8579" stroke-width="2" stroke-dasharray="6 4" points="0,150 80,135 160,110 240,86 320,68 400,46 480,30"/>
+                <polyline fill="url(#gFillD)" stroke="#3aa86b" stroke-width="2.8" points="0,170 80,162 160,142 240,118 320,98 400,80 480,68 480,200 0,200"/>
+                <circle cx="480" cy="68" r="5" fill="#3aa86b"/>
+                <circle cx="480" cy="68" r="12" fill="#3aa86b" opacity=".22"/>
+              </svg>
+              <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--paper-faint); margin-top:8px; text-transform:uppercase;">
+                <span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>now →</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:28px;">
+            <div style="font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--paper-faint); text-transform:uppercase; margin-bottom:10px;">By month</div>
+            <div class="desk-month-strip">
+              <div class="month-card"><div class="top"><div class="name">Dec</div><div class="yr">'25</div></div><div class="amt"><span class="ccy">¥</span>180,000</div><div class="bar"><i style="width:90%"></i></div><div class="delta flat">90% booked</div></div>
+              <div class="month-card"><div class="top"><div class="name">Jan</div><div class="yr">'26</div></div><div class="amt"><span class="ccy">¥</span>95,000</div><div class="bar"><i style="width:30%"></i></div><div class="delta dn">↓ 47%</div></div>
+              <div class="month-card"><div class="top"><div class="name">Feb</div><div class="yr">'26</div></div><div class="amt"><span class="ccy">¥</span>240,000</div><div class="bar"><i style="width:55%"></i></div><div class="delta up">↑ 152%</div></div>
+              <div class="month-card"><div class="top"><div class="name">Mar</div><div class="yr">'26</div></div><div class="amt"><span class="ccy">¥</span>205,000</div><div class="bar"><i style="width:58%"></i></div><div class="delta dn">↓ 15%</div></div>
+              <div class="month-card"><div class="top"><div class="name">Apr</div><div class="yr">'26</div></div><div class="amt"><span class="ccy">¥</span>246,000</div><div class="bar"><i style="width:70%"></i></div><div class="delta up">↑ 20%</div></div>
+              <div class="month-card cur"><div class="top"><div class="name">May</div><div class="yr">'26</div></div><div class="amt"><span class="ccy">¥</span>312,000</div><div class="bar"><i style="width:65%"></i></div><div class="delta up">↑ 27%</div></div>
+            </div>
+          </div>
+
+          <div class="desk-bottom">
+            <div class="breakdown" style="margin:0;">
+              <div class="head">
+                <div class="title">May · breakdown</div>
+                <div class="meta">5 projects</div>
+              </div>
+              <div class="br-row bk"><div class="info"><div class="proj">LOST10 — TBS Drama</div><div class="sub">Booked · Fri 30 May</div></div><div class="right"><div class="pay">¥ 180,000</div><span class="chip bk">BK</span></div></div>
+              <div class="br-row bk"><div class="info"><div class="proj">Shokz Earphone CM</div><div class="sub">Shot May 20 · base ¥84k + OT ¥48k</div></div><div class="right"><div class="pay">¥ 132,000</div><span class="chip ot">+OT</span></div></div>
+              <div class="br-row"><div class="info"><div class="proj">Toyota CM — Crown Highway</div><div class="sub">Callback Tue · pending</div></div><div class="right"><div class="pay">¥ 220,000</div><span class="chip cb">CB</span></div></div>
+              <div class="br-row"><div class="info"><div class="proj">P-Co. Home Appliance</div><div class="sub">Submitted · awaiting</div></div><div class="right"><div class="pay">¥ 80,000</div><span class="chip sub">SUB</span></div></div>
+              <div class="br-row passed"><div class="info"><div class="proj">Asahi CM</div><div class="sub">Passed · May 18</div></div><div class="right"><div class="pay">— ¥ 120k</div></div></div>
+            </div>
+
+            <div class="breakdown" style="margin:0; border-color:rgba(232,167,85,.22); background:linear-gradient(180deg, rgba(232,167,85,.05), transparent 60%);">
+              <div class="head">
+                <div class="title" style="color:var(--amber);">Overtime · YTD</div>
+                <div class="meta" style="color:var(--amber);">¥184k</div>
+              </div>
+              <div class="br-row"><div class="info"><div class="proj">Shokz CM · May 20</div><div class="sub">1h 12m × ¥40k × 1.5</div></div><div class="right"><div class="pay" style="color:var(--amber);">¥ 48,000</div><span class="chip ot">PAID</span></div></div>
+              <div class="br-row"><div class="info"><div class="proj">Asahi shoot · Apr 12</div><div class="sub">2h 30m × ¥38k × 1.5</div></div><div class="right"><div class="pay" style="color:var(--amber);">¥ 71,000</div><span class="chip ot">PAID</span></div></div>
+              <div class="br-row"><div class="info"><div class="proj">Indie short · Mar 03</div><div class="sub">1h 50m × ¥36k × 1.5</div></div><div class="right"><div class="pay" style="color:var(--amber);">¥ 65,000</div><span class="chip ot">PAID</span></div></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <p style="max-width:1100px; margin:24px auto 0; font-family:var(--sans); font-size:13px; color:var(--paper-dim); line-height:1.6; padding:0 32px">Desktop layout — chart shares the hero row with the big amount. Month strip below, two side-by-side breakdown panels (monthly outcomes + YTD overtime log).</p>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <h3>Earnings — what's locked</h3>
+  <ul>
+    <li><b>Two-line chart</b> — green banked area against dashed grey potential.</li>
+    <li><b>Hero amount</b> in serif green; deltas + OT chip in mono.</li>
+    <li><b>Month strip</b> — horizontal scroll, current month highlighted, trend arrows on each card.</li>
+    <li><b>Breakdown</b> — every project per month: booked (green), in-play (paper), passed (red).</li>
+    <li><b>OT log</b> — overtime broken out separately with the math (hr × rate × multiplier).</li>
+    <li><b>Goal mode</b> — yearly ring with pace marker; derives an actionable "submit X/mo" target.</li>
+  </ul>
+
+  <h3>Decisions worth flagging</h3>
+  <ul>
+    <li><b>Negative tally for passed</b> — visible but greyed, with strike-through. Builds a yearly "money on the table" benchmark.</li>
+    <li><b>OT in its own column</b> — unpredictable income shouldn't be modeled into base "expected." Surfaces craft argument: "I average ¥48k/mo OT."</li>
+    <li><b>Goals are private</b>, optional share-with-agent shows only the gap.</li>
+  </ul>
+
+  <h3>Next</h3>
+  <ul>
+    <li>Day drilldown (from briefing CTA)</li>
+    <li>Auditions list (Agenda + Calendar toggle)</li>
+    <li>Relationships / Vault</li>
+    <li>Needs approval queue</li>
+  </ul>
+</footer>
+
+<script>
+  const tabs = document.querySelectorAll('#frames button');
+  const sets = document.querySelectorAll('.frame-set');
+  tabs.forEach(b => b.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    const f = b.dataset.f;
+    sets.forEach(s => s.classList.toggle('active', s.id === 'set-' + f));
+    window.scrollTo({top:0});
+  }));
+</script>
+</body>
+</html>
