@@ -32,6 +32,12 @@ export const metadata: Metadata = {
   title: "Actor OS — Your Acting Career, Organized",
   description:
     "The career command center for student and emerging actors. Track auditions, manage self-tapes, read contracts with AI.",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
@@ -45,6 +51,12 @@ export default function RootLayout({
       className={`${instrumentSerif.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0a0908" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Actor OS" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
         {/* Apply the persisted theme before first paint to avoid a flash. */}
         <script dangerouslySetInnerHTML={{ __html: themeNoFlashScript() }} />
       </head>

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useSearchParams } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Check, ArrowLeft, Loader2 } from "lucide-react"
@@ -11,8 +12,10 @@ export default function CheckoutPage() {
   const searchParams = useSearchParams()
   const plan = (searchParams.get("plan") || "monthly") as "monthly" | "annual"
 
+  const { user, profile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [betaCode, setBetaCode] = useState("")
 
   const planDetails = {
     monthly: {
@@ -51,8 +54,9 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           plan,
-          email: "demo@actor-os.com", // TODO: use auth user email
-          name: "Demo User",
+          email: user?.email || "",
+          name: profile?.full_name || "",
+          ...(betaCode.trim() && { coupon_code: betaCode.trim() }),
         }),
       })
 
@@ -107,6 +111,17 @@ export default function CheckoutPage() {
                 </li>
               ))}
             </ul>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Have a beta code?</label>
+              <input
+                type="text"
+                value={betaCode}
+                onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
+                placeholder="Enter code (e.g. BETA100)"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
 
             {error && (
               <p className="text-sm text-red-600 text-center">{error}</p>

@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Search, Plus, CalendarDays, List } from "lucide-react"
+import { Search, Plus, CalendarDays, List, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { useAuditions, useAuditionGroups, auditionAnchorDate } from "@/hooks/use-data"
 import { cn } from "@/lib/utils"
+import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet"
 import type { Audition } from "@/types"
 
 type View = "agenda" | "calendar"
@@ -240,12 +242,254 @@ function CalendarView({
   )
 }
 
+type AuditionStatus = "submitted" | "callback" | "booked"
+
+const EMPTY_FORM = {
+  project_name: "",
+  role_name: "",
+  casting_director: "",
+  agency: "",
+  status: "submitted" as AuditionStatus,
+  submitted_date: "",
+  callback_date: "",
+  location: "",
+  compensation: "",
+  notes: "",
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-paper-faint">
+      {children}
+    </span>
+  )
+}
+
+function FormInput({
+  label,
+  value,
+  onChange,
+  required,
+  type = "text",
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  required?: boolean
+  type?: string
+  placeholder?: string
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <FieldLabel>
+        {label}
+        {required && <span className="text-amber"> *</span>}
+      </FieldLabel>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+        placeholder={placeholder}
+        className="rounded-[10px] border border-rule bg-white/[0.025] px-3 py-2.5 font-sans text-[13px] text-paper outline-none placeholder:text-paper-faint focus:border-amber/50 focus:ring-1 focus:ring-amber/30"
+      />
+    </label>
+  )
+}
+
+function CreateAuditionSheet({
+  open,
+  onOpenChange,
+  addAudition,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  addAudition: (a: Omit<Audition, "id" | "user_id" | "created_at" | "updated_at">) => Promise<unknown>
+}) {
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [submitting, setSubmitting] = useState(false)
+
+  function set<K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.project_name.trim()) return
+
+    setSubmitting(true)
+    try {
+      await addAudition({
+        project_name: form.project_name.trim(),
+        role_name: form.role_name.trim() || null,
+        casting_director: form.casting_director.trim() || null,
+        agency: form.agency.trim() || null,
+        status: form.status,
+        submitted_date: form.submitted_date || null,
+        callback_date: form.callback_date || null,
+        shoot_date: null,
+        location: form.location.trim() || null,
+        compensation: form.compensation.trim() || null,
+        notes: form.notes.trim() || null,
+        self_tape_url: null,
+        headshot_url: null,
+        resume_url: null,
+        contract_url: null,
+      })
+      toast.success("Audition added to your slate")
+      setForm(EMPTY_FORM)
+      onOpenChange(false)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create audition"
+      toast.error(msg)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="flex h-full w-full flex-col overflow-y-auto border-rule bg-bg p-0 sm:max-w-[420px]"
+      >
+        {/* Header */}
+        <div className="sticky top-0 z-10 border-b border-rule bg-bg px-5 pb-4 pt-5">
+          <div className="font-mono mb-1.5 text-[10px] uppercase tracking-[0.22em] text-paper-faint">
+            New entry
+          </div>
+          <h2 className="font-serif text-[28px] leading-none tracking-[-0.01em] text-paper">
+            Create Audition
+          </h2>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 px-5 pb-6 pt-4">
+          <FormInput
+            label="Project name"
+            value={form.project_name}
+            onChange={(v) => set("project_name", v)}
+            required
+            placeholder="e.g. Tokyo Drift 2"
+          />
+          <FormInput
+            label="Role"
+            value={form.role_name}
+            onChange={(v) => set("role_name", v)}
+            placeholder="e.g. Lead / Featured Extra"
+          />
+          <FormInput
+            label="Casting director"
+            value={form.casting_director}
+            onChange={(v) => set("casting_director", v)}
+          />
+          <FormInput
+            label="Agency"
+            value={form.agency}
+            onChange={(v) => set("agency", v)}
+          />
+
+          {/* Status */}
+          <label className="flex flex-col gap-1.5">
+            <FieldLabel>Status</FieldLabel>
+            <div className="flex gap-1.5">
+              {(["submitted", "callback", "booked"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => set("status", s)}
+                  className={cn(
+                    "font-mono flex-1 rounded-[10px] border py-2.5 text-[10px] uppercase tracking-[0.12em]",
+                    form.status === s
+                      ? s === "booked"
+                        ? "border-green/50 bg-green/15 text-green"
+                        : s === "callback"
+                          ? "border-amber/50 bg-amber/15 text-amber"
+                          : "border-blue/50 bg-blue/15 text-blue"
+                      : "border-rule bg-white/[0.025] text-paper-dim hover:bg-white/[0.04]",
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <FormInput
+              label="Submitted"
+              type="date"
+              value={form.submitted_date}
+              onChange={(v) => set("submitted_date", v)}
+            />
+            <FormInput
+              label="Callback"
+              type="date"
+              value={form.callback_date}
+              onChange={(v) => set("callback_date", v)}
+            />
+          </div>
+
+          <FormInput
+            label="Location"
+            value={form.location}
+            onChange={(v) => set("location", v)}
+            placeholder="e.g. Roppongi Studio A"
+          />
+          <FormInput
+            label="Compensation"
+            value={form.compensation}
+            onChange={(v) => set("compensation", v)}
+            placeholder="e.g. $500/day"
+          />
+
+          {/* Notes */}
+          <label className="flex flex-col gap-1.5">
+            <FieldLabel>Notes</FieldLabel>
+            <textarea
+              value={form.notes}
+              onChange={(e) => set("notes", e.target.value)}
+              rows={3}
+              className="rounded-[10px] border border-rule bg-white/[0.025] px-3 py-2.5 font-sans text-[13px] text-paper outline-none placeholder:text-paper-faint focus:border-amber/50 focus:ring-1 focus:ring-amber/30"
+              placeholder="Anything to remember..."
+            />
+          </label>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={submitting || !form.project_name.trim()}
+            className={cn(
+              "font-serif flex w-full items-center justify-center gap-2 rounded-[14px] py-3.5 text-[20px] transition-opacity",
+              "bg-paper text-bg",
+              (submitting || !form.project_name.trim()) && "opacity-50",
+            )}
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="size-5 animate-spin" /> Saving...
+              </>
+            ) : (
+              "Add to slate"
+            )}
+          </button>
+        </form>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 export function AuditionsView() {
-  const { auditions, loading } = useAuditions()
+  const { auditions, loading, addAudition } = useAuditions()
   const [view, setView] = useState<View>("agenda")
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<Filter>("all")
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   useEffect(() => {
     const stored = window.localStorage.getItem(VIEW_KEY)
@@ -332,7 +576,11 @@ export function AuditionsView() {
             className="font-sans flex-1 bg-transparent text-[13px] text-paper outline-none placeholder:text-paper-faint"
           />
         </label>
-        <button className="font-mono flex-none rounded-[30px] bg-paper px-3.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-bg">
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          className="font-mono flex-none rounded-[30px] bg-paper px-3.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-bg"
+        >
           <Plus className="inline size-3" /> Add
         </button>
       </div>
@@ -397,6 +645,8 @@ export function AuditionsView() {
           </div>
         ))
       )}
+
+      <CreateAuditionSheet open={sheetOpen} onOpenChange={setSheetOpen} addAudition={addAudition} />
     </div>
   )
 }

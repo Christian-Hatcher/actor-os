@@ -247,14 +247,35 @@ export default function SettingsPage() {
     fetchConnections()
   }
 
+  const [portalLoading, setPortalLoading] = useState(false)
+
   // Tax settings
   const { settings: taxSettings, updateSettings: updateTaxSettings } = useTax()
 
-  const subscription = {
-    tier: "monthly",
-    status: "active",
-    currentPeriodEnd: "2026-06-21",
-    price: "$5",
+  const subscriptionTier = profile?.subscription_tier || "free"
+  const subscriptionStatus = profile?.subscription_status || "inactive"
+  const subscriptionPrice =
+    subscriptionTier === "yearly" ? "$45/year" : subscriptionTier === "monthly" ? "$5/month" : "Free"
+
+  async function handleManageSubscription() {
+    if (!profile?.id) return
+    setPortalLoading(true)
+    try {
+      const res = await fetch("/api/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: profile.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to open billing portal")
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setPortalLoading(false)
+    }
   }
 
   return (
@@ -626,12 +647,14 @@ export default function SettingsPage() {
               <CardTitle>Subscription</CardTitle>
               <Badge
                 className={
-                  subscription.status === "active"
+                  subscriptionStatus === "active"
                     ? "bg-green-100 text-green-800"
-                    : "bg-yellow-100 text-yellow-800"
+                    : subscriptionStatus === "past_due"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-gray-100 text-gray-800"
                 }
               >
-                {subscription.status}
+                {subscriptionStatus}
               </Badge>
             </div>
           </CardHeader>
@@ -639,23 +662,45 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">
-                  Actor OS {subscription.tier}
+                  Actor OS {subscriptionTier === "free" ? "Free" : subscriptionTier}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Renews on {subscription.currentPeriodEnd}
+                  {subscriptionTier === "free"
+                    ? "Upgrade to unlock all features"
+                    : `Plan: ${subscriptionTier}`}
                 </p>
               </div>
-              <div className="text-2xl font-bold">{subscription.price}</div>
+              <div className="text-2xl font-bold">{subscriptionPrice}</div>
             </div>
 
             <Separator />
 
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="/api/portal" target="_blank">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Open Billing Portal
-              </Link>
-            </Button>
+            {profile?.stripe_customer_id ? (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+              >
+                {portalLoading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Opening portal...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Manage Subscription
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button variant="outline" className="w-full" asChild>
+                <Link href="/checkout">
+                  Upgrade to Pro
+                </Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
 

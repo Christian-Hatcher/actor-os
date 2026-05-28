@@ -4,7 +4,7 @@ import { getStripe } from "@/lib/stripe-admin"
 export async function POST(request: Request) {
   const stripe = getStripe()
   try {
-    const { plan, email, name } = await request.json()
+    const { plan, email, name, coupon_code } = await request.json()
 
     if (!plan || !email) {
       return NextResponse.json({ error: "Missing plan or email" }, { status: 400 })
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const existing = await stripe.customers.list({ email, limit: 1 })
     const customer = existing.data[0] || await stripe.customers.create({ email, name })
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
       customer: customer.id,
       line_items: [
         {
@@ -32,8 +32,19 @@ export async function POST(request: Request) {
         trial_period_days: 14,
         metadata: { plan },
       },
-      allow_promotion_codes: true,
-    })
+    }
+
+    if (coupon_code) {
+      // Specific coupon code provided (e.g. BETA100) — apply as discount
+      sessionParams.discounts = [{ coupon: coupon_code }]
+      // Coupons and trial_period_days can conflict; remove trial for 100% off coupons
+      delete sessionParams.subscription_data!.trial_period_days
+    } else {
+      // No coupon — allow Stripe promotion codes from the dashboard
+      sessionParams.allow_promotion_codes = true
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams)
 
     return NextResponse.json({ url: session.url })
   } catch (err) {

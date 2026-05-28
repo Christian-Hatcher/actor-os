@@ -298,22 +298,53 @@ body::before {
     radial-gradient(ellipse 70% 60% at 50% 40%, rgba(140, 100, 70, 0.45), transparent 65%),
     repeating-linear-gradient(135deg, #2a241d 0 14px, #14110d 14px 28px);
 }
+/* Vignette — cinematic top/bottom darkening for slate legibility */
+.splash-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(0, 0, 0, 0.6) 8%,
+    transparent 28%,
+    transparent 68%,
+    rgba(0, 0, 0, 0.92) 100%
+  );
+  animation: splash-fade-in 0.8s ease 0.6s both;
+}
+
 .splash-slate {
   position: absolute;
-  left: 22px;
+  left: 18px;
+  right: 18px;
   font-family: var(--font-jetbrains-mono), monospace;
   font-size: 8.5px;
   letter-spacing: 0.18em;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(138, 133, 128, 1);
   text-transform: uppercase;
   z-index: 4;
-  animation: splash-fade-in 0.5s linear 0.8s both;
+  min-height: 1em;
+}
+.splash-slate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .splash-slate.t {
-  top: 56px;
+  top: 0;
+  height: 44px;
+  padding: 0 4px;
+  align-items: center;
+  border-bottom: 1px solid #111;
 }
 .splash-slate.b {
-  bottom: 56px;
+  bottom: 0;
+  height: 44px;
+  padding: 0 4px;
+  align-items: center;
+  border-top: 1px solid #111;
 }
 .splash-ao {
   position: absolute;

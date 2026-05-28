@@ -9,17 +9,37 @@ import {
   MessageSquare,
   Mail,
   MapPin,
+  Video,
+  Loader2,
   type LucideIcon,
 } from "lucide-react"
-import { useAudition } from "@/hooks/use-data"
+import { toast } from "sonner"
+import { useAudition, useAuditions } from "@/hooks/use-data"
 import { auditionRibbon, type RibbonTone } from "@/lib/ribbon"
 import { formatPay, parsePay, currencySymbol } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Audition } from "@/types"
 
+const ALL_STATUSES: Audition["status"][] = [
+  "submitted",
+  "callback",
+  "pinned",
+  "booked",
+  "passed",
+  "archived",
+]
+
+const STATUS_COLORS: Record<Audition["status"], { border: string; bg: string; text: string }> = {
+  submitted: { border: "border-blue/50", bg: "bg-blue/15", text: "text-blue" },
+  callback: { border: "border-amber/50", bg: "bg-amber/15", text: "text-amber" },
+  pinned: { border: "border-blue/50", bg: "bg-blue/15", text: "text-blue" },
+  booked: { border: "border-green/50", bg: "bg-green/15", text: "text-green" },
+  passed: { border: "border-rule", bg: "bg-white/[0.04]", text: "text-paper-faint" },
+  archived: { border: "border-rule", bg: "bg-white/[0.04]", text: "text-paper-faint" },
+}
+
 function Ribbon({ a }: { a: Audition }) {
   const [, tick] = useState(0)
-  // Re-render once a minute so the live countdown/OT timer stays current.
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 60_000)
     return () => clearInterval(t)
@@ -108,9 +128,81 @@ function CsRow({ k, v }: { k: string; v: React.ReactNode }) {
   )
 }
 
+function StatusSwitcher({
+  current,
+  onUpdate,
+}: {
+  current: Audition["status"]
+  onUpdate: (status: Audition["status"]) => Promise<void>
+}) {
+  const [updating, setUpdating] = useState<Audition["status"] | null>(null)
+
+  async function handleClick(status: Audition["status"]) {
+    if (status === current) return
+    setUpdating(status)
+    try {
+      await onUpdate(status)
+      toast.success(`Status changed to ${status}`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update status"
+      toast.error(msg)
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {ALL_STATUSES.map((s) => {
+        const colors = STATUS_COLORS[s]
+        const isActive = s === current
+        return (
+          <button
+            key={s}
+            type="button"
+            disabled={updating !== null}
+            onClick={() => handleClick(s)}
+            className={cn(
+              "font-mono rounded-[10px] border px-3 py-2 text-[10px] uppercase tracking-[0.12em] transition-all",
+              isActive
+                ? `${colors.border} ${colors.bg} ${colors.text}`
+                : "border-rule bg-white/[0.02] text-paper-faint hover:bg-white/[0.04]",
+              updating === s && "opacity-60",
+            )}
+          >
+            {updating === s ? (
+              <Loader2 className="inline size-3 animate-spin" />
+            ) : (
+              s
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function formatDate(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  return d.toLocaleDateString("en-US", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+}
+
 export function AuditionDetail({ id }: { id: string }) {
   const { audition: a, loading, error } = useAudition(id)
+  const { updateAudition } = useAuditions()
   const [briefOpen, setBriefOpen] = useState(false)
+  const [localAudition, setLocalAudition] = useState<Audition | null>(null)
+
+  // Keep local copy in sync with fetched data
+  useEffect(() => {
+    if (a) setLocalAudition(a)
+  }, [a])
 
   useEffect(() => {
     if (!id) return
@@ -126,6 +218,11 @@ export function AuditionDetail({ id }: { id: string }) {
     })
   }
 
+  async function handleStatusUpdate(status: Audition["status"]) {
+    await updateAudition(id, { status })
+    setLocalAudition((prev) => prev ? { ...prev, status } : prev)
+  }
+
   if (loading) {
     return (
       <p className="font-serif py-16 text-center text-[18px] italic text-paper-faint">
@@ -133,7 +230,9 @@ export function AuditionDetail({ id }: { id: string }) {
       </p>
     )
   }
-  if (error || !a) {
+
+  const display = localAudition ?? a
+  if (error || !display) {
     return (
       <div className="py-16 text-center">
         <p className="font-serif text-[20px] italic text-paper-faint">Audition not found.</p>
@@ -144,18 +243,18 @@ export function AuditionDetail({ id }: { id: string }) {
     )
   }
 
-  const isBooked = a.status === "booked"
-  const badgeTone = isBooked ? "bk" : a.status === "callback" ? "cb" : ""
-  const when = a.callback_date || a.shoot_date || a.submitted_date
+  const isBooked = display.status === "booked"
+  const badgeTone = isBooked ? "bk" : display.status === "callback" ? "cb" : ""
+  const when = display.callback_date || display.shoot_date || display.submitted_date
   const whenDate = when ? new Date(when) : null
   const startTime =
-    a.call_time ||
+    display.call_time ||
     (whenDate && when && when.length > 10
       ? whenDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
       : "—")
-  const pay = parsePay(a.compensation)
+  const pay = parsePay(display.compensation)
 
-  const tel = a.casting_director ? `tel:` : undefined
+  const tel = display.casting_director ? `tel:` : undefined
 
   return (
     <div className="-mx-[22px]">
@@ -167,7 +266,7 @@ export function AuditionDetail({ id }: { id: string }) {
         >
           <ArrowLeft className="size-3.5 text-paper" /> Back
         </Link>
-        <Ribbon a={a} />
+        <Ribbon a={display} />
       </div>
 
       {/* Poster */}
@@ -193,15 +292,15 @@ export function AuditionDetail({ id }: { id: string }) {
               badgeTone === "bk" && "border-green/45 text-green",
             )}
           >
-            {a.status}
+            {display.status}
           </span>
         )}
         <div className="absolute inset-x-4 bottom-4 z-[3]">
           <div className="font-serif text-[34px] leading-none tracking-[-0.01em] text-white [text-shadow:0_2px_16px_rgba(0,0,0,.7)]">
-            {a.project_name}
+            {display.project_name}
           </div>
           <div className="font-mono mt-1.5 text-[10px] uppercase tracking-[0.18em] text-[rgba(244,239,230,.7)]">
-            {[a.role_name, a.agency].filter(Boolean).join(" · ")}
+            {[display.role_name, display.agency].filter(Boolean).join(" · ")}
           </div>
         </div>
       </div>
@@ -220,9 +319,9 @@ export function AuditionDetail({ id }: { id: string }) {
           <span className="font-serif mt-1 text-[38px] leading-none tracking-[-0.01em] text-paper">
             {startTime}
           </span>
-          {isBooked && a.est_wrap_time && (
+          {isBooked && display.est_wrap_time && (
             <span className="font-mono mt-1.5 text-[10px] uppercase tracking-[0.14em] text-paper-faint">
-              est. wrap <b className="font-normal text-paper-dim">{a.est_wrap_time}</b>
+              est. wrap <b className="font-normal text-paper-dim">{display.est_wrap_time}</b>
             </span>
           )}
         </div>
@@ -241,46 +340,82 @@ export function AuditionDetail({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Call sheet */}
-      <div className="mx-[22px] mt-3.5 overflow-hidden rounded-[14px] border border-rule [background:linear-gradient(180deg,rgba(255,255,255,.018),transparent)]">
-        <CsRow k="Role" v={a.role_name} />
-        <CsRow k="Location" v={a.location} />
-        <CsRow k="Casting" v={a.casting_director} />
-        {briefOpen && (
-          <>
-            <CsRow k="Agency" v={a.agency} />
-            {isBooked && <CsRow k="Call time" v={a.call_time} />}
-            {isBooked && <CsRow k="Wrap" v={a.wrap_time || a.est_wrap_time} />}
-            <CsRow
-              k="Contract"
-              v={
-                a.contract_url ? (
-                  <a href={a.contract_url} className="text-amber underline">
-                    View contract
-                  </a>
-                ) : (
-                  "Not attached"
-                )
-              }
-            />
-          </>
-        )}
+      {/* Status switcher */}
+      <div className="mx-[22px] mt-4">
+        <div className="font-mono mb-2 text-[10px] uppercase tracking-[0.22em] text-paper-faint">
+          Update status
+        </div>
+        <StatusSwitcher current={display.status} onUpdate={handleStatusUpdate} />
       </div>
 
-      {/* Briefing expanded: director's note */}
-      {briefOpen && a.notes && (
-        <div className="mx-[22px] mt-3.5 rounded-[14px] border border-amber/30 bg-amber/[0.05] p-4">
-          <div className="font-mono mb-2 text-[10px] uppercase tracking-[0.22em] text-amber">
-            Director&apos;s note
+      {/* Call sheet */}
+      <div className="mx-[22px] mt-4 overflow-hidden rounded-[14px] border border-rule [background:linear-gradient(180deg,rgba(255,255,255,.018),transparent)]">
+        <CsRow k="Role" v={display.role_name} />
+        <CsRow k="Location" v={display.location} />
+        <CsRow k="Casting" v={display.casting_director} />
+        <CsRow k="Agency" v={display.agency} />
+        <CsRow k="Submitted" v={formatDate(display.submitted_date)} />
+        <CsRow k="Callback" v={formatDate(display.callback_date)} />
+        <CsRow k="Shoot" v={formatDate(display.shoot_date)} />
+        <CsRow k="Compensation" v={display.compensation} />
+        {isBooked && <CsRow k="Call time" v={display.call_time} />}
+        {isBooked && <CsRow k="Wrap" v={display.wrap_time || display.est_wrap_time} />}
+        <CsRow
+          k="Contract"
+          v={
+            display.contract_url ? (
+              <a href={display.contract_url} className="text-amber underline">
+                View contract
+              </a>
+            ) : null
+          }
+        />
+      </div>
+
+      {/* Self-tape link */}
+      {display.self_tape_url ? (
+        <a
+          href={display.self_tape_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mx-[22px] mt-3.5 flex items-center gap-3 rounded-[14px] border border-green/25 bg-green/[0.05] px-4 py-3.5 transition-colors hover:bg-green/[0.08]"
+        >
+          <div className="grid size-10 flex-none place-items-center rounded-full border border-green/30 bg-green/10">
+            <Video className="size-5 text-green" strokeWidth={1.6} />
           </div>
-          <p className="font-serif text-[16px] italic leading-[1.5] text-paper">{a.notes}</p>
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-green">
+              Self-tape attached
+            </div>
+            <div className="font-serif mt-0.5 text-[15px] text-paper">
+              View recording
+            </div>
+          </div>
+        </a>
+      ) : (
+        <div className="mx-[22px] mt-3.5 flex items-center gap-3 rounded-[14px] border border-rule bg-white/[0.015] px-4 py-3.5">
+          <div className="grid size-10 flex-none place-items-center rounded-full border border-dashed border-rule-strong">
+            <Video className="size-5 text-paper-faint" strokeWidth={1.6} />
+          </div>
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-paper-faint">
+              No self-tape
+            </div>
+            <div className="font-serif mt-0.5 text-[15px] text-paper-faint">
+              Not yet recorded
+            </div>
+          </div>
         </div>
       )}
 
-      {!briefOpen && (
-        <p className="font-serif px-[22px] pt-2.5 text-[13px] italic text-paper-faint">
-          tap briefing for full call-sheet, notes &amp; sides
-        </p>
+      {/* Notes */}
+      {display.notes && (
+        <div className="mx-[22px] mt-3.5 rounded-[14px] border border-amber/30 bg-amber/[0.05] p-4">
+          <div className="font-mono mb-2 text-[10px] uppercase tracking-[0.22em] text-amber">
+            Notes
+          </div>
+          <p className="font-serif text-[16px] italic leading-[1.5] text-paper">{display.notes}</p>
+        </div>
       )}
 
       {/* Action bar */}
@@ -291,21 +426,46 @@ export function AuditionDetail({ id }: { id: string }) {
         <ActionButton
           icon={Mail}
           label="Email"
-          href={a.casting_director ? "mailto:" : undefined}
+          href={display.casting_director ? "mailto:" : undefined}
         />
         <ActionButton
           icon={MapPin}
           label="Maps"
           href={
-            a.location
-              ? `https://maps.google.com/?q=${encodeURIComponent(a.location)}`
+            display.location
+              ? `https://maps.google.com/?q=${encodeURIComponent(display.location)}`
               : undefined
           }
         />
       </div>
 
+      {/* Briefing expanded: full details */}
+      {briefOpen && (
+        <div className="mx-[22px] mt-3.5 overflow-hidden rounded-[14px] border border-rule [background:linear-gradient(180deg,rgba(255,255,255,.018),transparent)]">
+          <CsRow k="Headshot" v={
+            display.headshot_url ? (
+              <a href={display.headshot_url} className="text-amber underline">View headshot</a>
+            ) : "Not attached"
+          } />
+          <CsRow k="Resume" v={
+            display.resume_url ? (
+              <a href={display.resume_url} className="text-amber underline">View resume</a>
+            ) : "Not attached"
+          } />
+          {display.ot_rate_multiplier && (
+            <CsRow k="OT rate" v={`${display.ot_rate_multiplier}x`} />
+          )}
+        </div>
+      )}
+
+      {!briefOpen && (
+        <p className="font-serif px-[22px] pt-2.5 text-[13px] italic text-paper-faint">
+          tap briefing for headshot, resume &amp; full details
+        </p>
+      )}
+
       {/* Primary CTA */}
-      <div className="mt-4 px-[22px]">
+      <div className="mt-4 px-[22px] pb-6">
         <button
           type="button"
           className={cn(

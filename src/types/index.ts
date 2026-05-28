@@ -55,7 +55,7 @@ export interface SelfTape {
   user_id: string
   audition_id: string | null
   title: string
-  video_url: string
+  video_url: string | null
   thumbnail_url: string | null
   scene_partner: string | null
   deadline: string | null

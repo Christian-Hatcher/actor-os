@@ -200,8 +200,68 @@ export function useReminders() {
 }
 
 export function useSelfTapes() {
-  const { rows, loading, error } = useUserTable<SelfTape>("self_tapes", "created_at")
-  return { selfTapes: rows, loading, error }
+  const [selfTapes, setSelfTapes] = useState<SelfTape[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    async function fetchRows() {
+      const { data: user } = await supabase.auth.getUser()
+      const userId = user.user?.id
+      if (!userId) {
+        if (active) setLoading(false)
+        return
+      }
+      const { data, error } = await supabase
+        .from("self_tapes")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+
+      if (!active) return
+      if (error) setError(error.message)
+      else setSelfTapes((data || []) as SelfTape[])
+      setLoading(false)
+    }
+    fetchRows()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  async function addSelfTape(
+    tape: Omit<SelfTape, "id" | "user_id" | "created_at">,
+  ) {
+    const { data: user } = await supabase.auth.getUser()
+    const userId = user.user?.id
+    if (!userId) throw new Error("Not authenticated")
+
+    const { data, error } = await supabase
+      .from("self_tapes")
+      .insert([{ ...tape, user_id: userId }])
+      .select()
+      .single()
+
+    if (error) throw error
+    setSelfTapes((prev) => [data as SelfTape, ...prev])
+    return data as SelfTape
+  }
+
+  async function updateSelfTape(id: string, updates: Partial<SelfTape>) {
+    const { user_id: _u, id: _i, created_at: _c, ...safeUpdates } = updates
+    const { error } = await supabase
+      .from("self_tapes")
+      .update(safeUpdates)
+      .eq("id", id)
+
+    if (error) throw error
+    setSelfTapes((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+    )
+  }
+
+  return { selfTapes, loading, error, addSelfTape, updateSelfTape }
 }
 
 export function useContacts() {
