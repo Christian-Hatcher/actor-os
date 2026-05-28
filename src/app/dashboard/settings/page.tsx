@@ -21,10 +21,14 @@ import {
   Target,
   LogOut,
   Palette,
+  Film,
+  Theater,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/theme-provider"
 import type { ActorPreferences } from "@/types"
+
+type FocusMode = "theater" | "film" | "both"
 
 interface EmailConnection {
   id: string
@@ -47,6 +51,10 @@ export default function SettingsPage() {
   const [syncing, setSyncing] = useState(false)
   const [syncPhase, setSyncPhase] = useState("")
   const [syncResult, setSyncResult] = useState<any | null>(null)
+
+  // Focus mode (theater / film / both) — persisted on profiles.preferred_mode
+  const [focusMode, setFocusMode] = useState<FocusMode>("both")
+  const [focusSaving, setFocusSaving] = useState(false)
 
   // Preferences state
   const defaultPreferences = {
@@ -73,7 +81,39 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchConnections()
     fetchPreferences()
+    fetchFocusMode()
   }, [])
+
+  async function fetchFocusMode() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    const { data } = await supabase
+      .from("profiles")
+      .select("preferred_mode")
+      .eq("id", session.user.id)
+      .single()
+    if (data?.preferred_mode === "theater" || data?.preferred_mode === "film" || data?.preferred_mode === "both") {
+      setFocusMode(data.preferred_mode)
+    }
+  }
+
+  async function saveFocusMode(next: FocusMode) {
+    const prev = focusMode
+    setFocusMode(next)
+    setFocusSaving(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      setFocusMode(prev)
+      setFocusSaving(false)
+      return
+    }
+    const { error } = await supabase
+      .from("profiles")
+      .update({ preferred_mode: next, updated_at: new Date().toISOString() })
+      .eq("id", session.user.id)
+    if (error) setFocusMode(prev)
+    setFocusSaving(false)
+  }
 
   async function fetchConnections() {
     const { data, error } = await supabase
@@ -610,6 +650,48 @@ export default function SettingsPage() {
                 "Save Preferences"
               )}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Focus mode */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Film className="h-5 w-5" /> Focus mode
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Tailor what shows up across Jobs and Rehearsals. Theater leans into
+              rehearsal logs; Film focuses on shoot days and call sheets.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { id: "theater", label: "Theater", icon: Theater, desc: "Rehearsal-heavy" },
+                  { id: "film", label: "Film", icon: Film, desc: "Shoot-day driven" },
+                  { id: "both", label: "Both", icon: Target, desc: "Show me everything" },
+                ] as const
+              ).map((m) => {
+                const on = focusMode === m.id
+                const Icon = m.icon
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => saveFocusMode(m.id)}
+                    disabled={focusSaving}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      on ? "border-amber bg-amber/[0.08] text-paper" : "border-rule hover:border-rule-strong"
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 ${on ? "text-amber" : "text-paper-dim"}`} />
+                    <p className="mt-2 text-sm font-medium">{m.label}</p>
+                    <p className="text-[11px] text-paper-faint">{m.desc}</p>
+                  </button>
+                )
+              })}
+            </div>
           </CardContent>
         </Card>
 
