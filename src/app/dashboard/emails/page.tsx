@@ -221,20 +221,20 @@ export default function EmailReviewPage() {
   function confidenceBadge(score: number) {
     if (score >= 70) {
       return (
-        <Badge className="bg-green-100 text-green-800 text-xs">
+        <Badge className="font-mono border-green/40 bg-green/[0.12] text-green text-xs">
           {score}%
         </Badge>
       )
     }
     if (score >= 40) {
       return (
-        <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+        <Badge className="font-mono border-amber/40 bg-amber/[0.12] text-amber text-xs">
           {score}%
         </Badge>
       )
     }
     return (
-      <Badge className="bg-red-100 text-red-800 text-xs">
+      <Badge className="font-mono border-red/40 bg-red/[0.12] text-red text-xs">
         {score}%
       </Badge>
     )
@@ -272,9 +272,9 @@ export default function EmailReviewPage() {
         {parsedEntries.length === 0 && (
           <Card>
             <CardContent className="flex flex-col items-center py-12 text-center">
-              <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+              <CheckCircle className="h-12 w-12 text-green mb-4" />
               <p className="text-lg font-medium">All caught up!</p>
-              <p className="text-sm text-muted-foreground max-w-md">
+              <p className="text-sm text-paper-dim max-w-md">
                 No emails need review. New casting emails will appear here after
                 syncing your Gmail.
               </p>
@@ -308,7 +308,7 @@ export default function EmailReviewPage() {
                 </div>
 
                 {/* From + date row */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center justify-between text-xs text-paper-dim">
                   <span className="truncate">
                     {email?.from_name || "Unknown sender"}
                   </span>
@@ -321,14 +321,14 @@ export default function EmailReviewPage() {
 
                 {/* Summary */}
                 {fields.summary && (
-                  <p className="text-sm text-muted-foreground leading-snug">
+                  <p className="text-sm text-paper-dim leading-snug">
                     {fields.summary}
                   </p>
                 )}
 
                 {/* Review reason */}
                 {entry.review_reason && (
-                  <div className="flex items-center gap-1.5 text-xs text-yellow-700 bg-yellow-50 rounded px-2 py-1">
+                  <div className="flex items-center gap-1.5 text-xs text-amber border border-amber/30 bg-amber/[0.08] rounded px-2 py-1">
                     <AlertTriangle className="h-3 w-3 shrink-0" />
                     {entry.review_reason}
                   </div>
@@ -338,26 +338,26 @@ export default function EmailReviewPage() {
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
                   {fields.project_name && (
                     <div>
-                      <span className="text-muted-foreground text-xs">Project</span>
+                      <span className="text-paper-dim text-xs">Project</span>
                       <p className="font-medium leading-tight text-sm truncate">{fields.project_name}</p>
                     </div>
                   )}
                   {fields.role_name && (
                     <div>
-                      <span className="text-muted-foreground text-xs">Role</span>
+                      <span className="text-paper-dim text-xs">Role</span>
                       <p className="font-medium leading-tight text-sm truncate">{fields.role_name}</p>
                     </div>
                   )}
                   {fields.agency && (
                     <div>
-                      <span className="text-muted-foreground text-xs">Agency</span>
+                      <span className="text-paper-dim text-xs">Agency</span>
                       <p className="font-medium leading-tight text-sm truncate">{fields.agency}</p>
                     </div>
                   )}
                   {fields.deadline && (
                     <div>
-                      <span className="text-muted-foreground text-xs">Deadline</span>
-                      <p className="font-medium leading-tight text-sm text-red-600 truncate">
+                      <span className="text-paper-dim text-xs">Deadline</span>
+                      <p className="font-medium leading-tight text-sm text-red truncate">
                         {fields.deadline}
                       </p>
                     </div>
@@ -369,7 +369,7 @@ export default function EmailReviewPage() {
                   <>
                     <button
                       onClick={() => toggleExpanded(entry.id)}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      className="flex items-center gap-1 text-xs text-paper-dim hover:text-paper transition-colors"
                     >
                       {isExpanded ? (
                         <ChevronUp className="h-3.5 w-3.5" />
@@ -383,7 +383,7 @@ export default function EmailReviewPage() {
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm border-t pt-2">
                         {fields.casting_director && (
                           <div>
-                            <span className="text-muted-foreground text-xs">CD</span>
+                            <span className="text-paper-dim text-xs">CD</span>
                             <p className="font-medium leading-tight truncate">
                               {fields.casting_director}
                             </p>
@@ -391,13 +391,13 @@ export default function EmailReviewPage() {
                         )}
                         {fields.location && (
                           <div>
-                            <span className="text-muted-foreground text-xs">Location</span>
+                            <span className="text-paper-dim text-xs">Location</span>
                             <p className="font-medium leading-tight truncate">{fields.location}</p>
                           </div>
                         )}
                         {fields.compensation && (
                           <div>
-                            <span className="text-muted-foreground text-xs">Pay</span>
+                            <span className="text-paper-dim text-xs">Pay</span>
                             <p className="font-medium leading-tight truncate">
                               {fields.compensation}
                             </p>
@@ -405,7 +405,7 @@ export default function EmailReviewPage() {
                         )}
                         {fields.shoot_date && (
                           <div>
-                            <span className="text-muted-foreground text-xs">Shoot</span>
+                            <span className="text-paper-dim text-xs">Shoot</span>
                             <p className="font-medium leading-tight truncate">
                               {fields.shoot_date}
                             </p>
@@ -413,7 +413,7 @@ export default function EmailReviewPage() {
                         )}
                         {fields.callback_date && (
                           <div>
-                            <span className="text-muted-foreground text-xs">Callback</span>
+                            <span className="text-paper-dim text-xs">Callback</span>
                             <p className="font-medium leading-tight truncate">
                               {fields.callback_date}
                             </p>
@@ -421,7 +421,7 @@ export default function EmailReviewPage() {
                         )}
                         {fields.notes && (
                           <div className="col-span-2">
-                            <span className="text-muted-foreground text-xs">Notes</span>
+                            <span className="text-paper-dim text-xs">Notes</span>
                             <p className="leading-tight text-sm line-clamp-3">{fields.notes}</p>
                           </div>
                         )}
@@ -438,7 +438,7 @@ export default function EmailReviewPage() {
                       handleApprove(entry.id, entry.audition_id || undefined)
                     }
                     disabled={isProcessing}
-                    className="bg-green-600 hover:bg-green-700 text-xs h-8"
+                    className="bg-green text-bg hover:opacity-90 text-xs h-8"
                   >
                     {isProcessing ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -454,7 +454,7 @@ export default function EmailReviewPage() {
                     size="sm"
                     onClick={() => handleNeedsResponse(entry.id)}
                     disabled={isProcessing}
-                    className="bg-blue-600 hover:bg-blue-700 text-xs h-8"
+                    className="bg-blue text-bg hover:opacity-90 text-xs h-8"
                   >
                     <MessageSquare className="mr-1 h-3 w-3" />
                     Reply
