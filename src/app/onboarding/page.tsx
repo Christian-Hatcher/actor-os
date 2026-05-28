@@ -140,14 +140,18 @@ function OnboardingInner() {
   async function handleNext() {
     if (step === 1) {
       const avatarUrl = await uploadAvatar()
-      const updates: Record<string, unknown> = { full_name: fullName }
+      const updates: Record<string, unknown> = { full_name: fullName.trim() }
       if (avatarUrl) updates.avatar_url = avatarUrl
       await saveStep(updates)
     } else if (step === 2) {
+      // D2: trim city before persisting so " Tokyo " doesn't bypass the
+      // "completed onboarding" proxy check in AuthGuard.
+      const trimmedCity = city.trim()
+      if (!trimmedCity) return // belt-and-braces — button is also disabled
       await saveStep({
-        city,
-        agency_name: agencyName || null,
-        agency_email: agencyEmail || null,
+        city: trimmedCity,
+        agency_name: agencyName.trim() || null,
+        agency_email: agencyEmail.trim() || null,
         preferred_mode: preferredMode,
       })
     } else if (step === 3) {
@@ -157,6 +161,30 @@ function OnboardingInner() {
         monthly_goal: goal,
         currency,
       })
+      // D1: persist the picked challenges. PHASE2 picks Option B —
+      // write them to actor_preferences.bio_context as a one-line
+      // prefix. Only seed when bio_context is empty so re-running
+      // onboarding via ?edit=1 doesn't clobber a user-written bio.
+      if (challenges.length > 0 && user) {
+        const summary = `Onboarding focus: ${challenges.join(", ").toLowerCase()}.`
+        const { data: existing } = await supabase
+          .from("actor_preferences")
+          .select("bio_context")
+          .eq("user_id", user.id)
+          .maybeSingle()
+        if (!existing?.bio_context) {
+          await supabase
+            .from("actor_preferences")
+            .upsert(
+              {
+                user_id: user.id,
+                bio_context: summary,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id" },
+            )
+        }
+      }
     } else if (step === 5) {
       // Theme is already saved by setThemeId, but persist to profile
       await saveStep({ theme_id: themeId })
@@ -184,13 +212,15 @@ function OnboardingInner() {
   }
 
   async function handleFinish() {
-    // Final save — ensure city is set (onboarding-complete marker)
+    // Final save — ensure city is set (onboarding-complete marker).
+    // D2: trim so trailing whitespace doesn't slip past AuthGuard.
     setSaving(true)
     const updates: Record<string, unknown> = {
       theme_id: themeId,
     }
-    if (!profile?.city && city) {
-      updates.city = city
+    const trimmedCity = city.trim()
+    if (!profile?.city && trimmedCity) {
+      updates.city = trimmedCity
     }
     await saveStep(updates)
     setSaving(false)
