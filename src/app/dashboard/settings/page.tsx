@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
@@ -24,6 +24,8 @@ import {
   Bot,
   Eye,
   EyeOff,
+  Camera,
+  Loader2,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/theme-provider"
@@ -31,6 +33,88 @@ import { useTax } from "@/hooks/use-tax"
 import { setCurrency, type CurrencyCode } from "@/lib/format"
 import type { TaxJurisdiction, USFilingStatus } from "@/lib/tax-estimator"
 import type { ActorPreferences } from "@/types"
+
+function HeadshotUpload({ profile, refreshProfile }: { profile: any; refreshProfile: () => Promise<void> }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  const currentPhoto = profile?.splash_photo_url || null
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !profile?.id) return
+
+    setUploading(true)
+    setUploadError(null)
+
+    try {
+      const ext = file.name.split(".").pop()
+      const path = `${profile.id}/headshot.${ext}`
+
+      const { error: storageError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true })
+
+      if (storageError) {
+        setUploadError(storageError.message)
+        return
+      }
+
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path)
+
+      await supabase
+        .from("profiles")
+        .update({ splash_photo_url: urlData.publicUrl, updated_at: new Date().toISOString() })
+        .eq("id", profile.id)
+
+      await refreshProfile()
+    } catch (err: any) {
+      setUploadError(err.message || "Upload failed")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Headshot</label>
+      <p className="text-xs text-paper-faint">Shown during the splash animation when you log in.</p>
+      <div className="flex items-center gap-4 mt-2">
+        <div
+          className="relative size-20 flex-none rounded-lg border border-rule-strong overflow-hidden bg-bg3"
+          style={currentPhoto ? { backgroundImage: `url(${currentPhoto})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+        >
+          {!currentPhoto && (
+            <div className="flex h-full items-center justify-center">
+              <Camera className="h-6 w-6 text-paper-faint" />
+            </div>
+          )}
+        </div>
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading ? (
+              <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Uploading...</>
+            ) : currentPhoto ? "Change photo" : "Upload photo"}
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleUpload}
+          />
+        </div>
+      </div>
+      {uploadError && <p className="text-sm text-red-500 mt-2">{uploadError}</p>}
+    </div>
+  )
+}
 
 interface EmailConnection {
   id: string
@@ -834,7 +918,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Appearance — theme picker (cinematic design system) */}
+        {/* Appearance — headshot + theme picker */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -842,6 +926,11 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Headshot upload */}
+            <HeadshotUpload profile={profile} refreshProfile={refreshProfile} />
+
+            <Separator className="my-4" />
+
             <div className="grid grid-cols-2 gap-3">
               {availableThemes.map((t) => (
                 <button
