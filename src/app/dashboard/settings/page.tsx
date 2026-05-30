@@ -45,6 +45,11 @@ function HeadshotUpload({ profile, refreshProfile }: { profile: any; refreshProf
     const file = e.target.files?.[0]
     if (!file || !profile?.id) return
 
+    if (file.size > 20 * 1024 * 1024) {
+      setUploadError("File too large. Max 20MB.")
+      return
+    }
+
     setUploading(true)
     setUploadError(null)
 
@@ -79,7 +84,7 @@ function HeadshotUpload({ profile, refreshProfile }: { profile: any; refreshProf
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium">Headshot</label>
-      <p className="text-xs text-paper-faint">Shown during the splash animation when you log in.</p>
+      <p className="text-xs text-paper-faint">Shown during the splash animation when you log in. Recommended: landscape 1920x1080, JPEG, under 2MB.</p>
       <div className="flex items-center gap-4 mt-2">
         <div
           className="relative size-20 flex-none rounded-lg border border-rule-strong overflow-hidden bg-bg3"
