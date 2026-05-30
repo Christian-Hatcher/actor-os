@@ -28,6 +28,7 @@ export default function LoginPage() {
     if (error) {
       setError(error.message)
     } else {
+      sessionStorage.setItem("show_splash", "1")
       router.push(returnTo)
     }
     setLoading(false)

@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
 
-const STORAGE_KEY = "last_splash_date"
+const SPLASH_FLAG = "show_splash"
 
-// Cold-open animation. Plays on the first cold-open of the day only; subsequent
-// opens skip straight to the dashboard. Tap anywhere to skip mid-sequence.
+// Cold-open animation. Plays after login only — the login page sets a
+// sessionStorage flag that this component consumes once and clears.
 // Sequence: letterbox bars (0–0.55s) → photo (0.3–1.5s) → slate metadata (0.8s)
 // → AO mark letterspacing gesture (1.3–2.4s) → subtitle (1.9s) → cross-fade out.
 export function Splash() {
@@ -15,12 +15,10 @@ export function Splash() {
   const [closing, setClosing] = useState(false)
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    if (window.localStorage.getItem(STORAGE_KEY) === today) return
-    window.localStorage.setItem(STORAGE_KEY, today)
+    if (window.sessionStorage.getItem(SPLASH_FLAG) !== "1") return
+    window.sessionStorage.removeItem(SPLASH_FLAG)
     setShow(true)
 
-    // Begin cross-fade at 3.2s; unmount after the 1.2s fade completes.
     const fade = setTimeout(() => setClosing(true), 3200)
     const done = setTimeout(() => setShow(false), 4400)
     return () => {
