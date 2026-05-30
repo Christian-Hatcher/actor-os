@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
-import { useAuditions } from "@/hooks/use-data"
+import { useDashboardData } from "@/hooks/use-dashboard-data"
 import { useEarnings, type EarningsRange } from "@/hooks/use-earnings"
 import { EarningsChart } from "./earnings-chart"
 import { TaxKeeper } from "./tax-keeper"
@@ -96,7 +96,7 @@ function GoalRing({ pct }: { pct: number }) {
 
 export function EarningsView() {
   const { profile } = useAuth()
-  const { auditions, loading } = useAuditions()
+  const { auditions, loading } = useDashboardData()
   const [range, setRange] = useState<EarningsRange>("6M")
   const [tab, setTab] = useState<EarningsTab>("overview")
 

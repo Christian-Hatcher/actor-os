@@ -3,7 +3,7 @@ import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
-import { themeNoFlashScript } from "@/lib/themes";
+import { themeNoFlashScript, THEMES, DEFAULT_THEME_ID, themeToCssVars } from "@/lib/themes";
 import { Toaster } from "@/components/ui/sonner";
 
 // Instrument Serif — big numbers, page titles, briefing prose, primary CTAs.
@@ -43,6 +43,8 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${instrumentSerif.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      style={themeToCssVars(THEMES[DEFAULT_THEME_ID]) as React.CSSProperties}
+      suppressHydrationWarning
     >
       <head>
         {/* Apply the persisted theme before first paint to avoid a flash. */}

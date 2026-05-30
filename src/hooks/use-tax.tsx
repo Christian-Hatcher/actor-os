@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/hooks/use-auth"
-import { useAuditions } from "@/hooks/use-data"
+import { useDashboardData } from "@/hooks/use-dashboard-data"
 import { parsePay } from "@/lib/format"
 import {
   estimateTax,
@@ -34,7 +34,7 @@ export interface TaxSummary {
 
 export function useTax() {
   const { user, profile } = useAuth()
-  const { auditions } = useAuditions()
+  const { auditions } = useDashboardData()
   const [settings, setSettings] = useState<TaxSettings>(DEFAULT_TAX_SETTINGS)
   const [withholdings, setWithholdings] = useState<
     { year: number; month: number; actually_set_aside: number }[]

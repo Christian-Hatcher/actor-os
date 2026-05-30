@@ -1,7 +1,7 @@
 "use client"
 
 import { Video, Upload, Play } from "lucide-react"
-import { useSelfTapes } from "@/hooks/use-data"
+import { useDashboardData } from "@/hooks/use-dashboard-data"
 import { cn } from "@/lib/utils"
 import type { SelfTape } from "@/types"
 
@@ -152,7 +152,7 @@ function TapeCard({ t }: { t: SelfTape }) {
 }
 
 export function SelfTapesView() {
-  const { selfTapes, loading } = useSelfTapes()
+  const { selfTapes, loading } = useDashboardData()
 
   const due = selfTapes.filter((t) => !t.submitted)
 

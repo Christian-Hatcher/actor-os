@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Search, Plus, CalendarDays, List } from "lucide-react"
-import { useAuditions, useAuditionGroups, auditionAnchorDate } from "@/hooks/use-data"
+import { useDashboardData } from "@/hooks/use-dashboard-data"
+import { useAuditionGroups, auditionAnchorDate } from "@/hooks/use-data"
 import { cn } from "@/lib/utils"
 import type { Audition } from "@/types"
 
@@ -241,7 +242,7 @@ function CalendarView({
 }
 
 export function AuditionsView() {
-  const { auditions, loading } = useAuditions()
+  const { auditions, loading } = useDashboardData()
   const [view, setView] = useState<View>("agenda")
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<Filter>("all")

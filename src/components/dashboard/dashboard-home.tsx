@@ -3,14 +3,7 @@
 import { useMemo } from "react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
-import {
-  useAuditions,
-  useReminders,
-  useSelfTapes,
-  useContacts,
-  useContracts,
-  usePendingApprovals,
-} from "@/hooks/use-data"
+import { useDashboardData } from "@/hooks/use-dashboard-data"
 import { composeBriefing } from "@/lib/briefing"
 import {
   formatPayCompact,
@@ -97,12 +90,8 @@ function AuditionMiniRow({ a }: { a: Audition }) {
 
 export function DashboardHome() {
   const { profile } = useAuth()
-  const { auditions, loading: auditionsLoading } = useAuditions()
-  const { reminders } = useReminders()
-  const { selfTapes } = useSelfTapes()
-  const { contacts } = useContacts()
-  const { contracts } = useContracts()
-  const { count: approvalsCount } = usePendingApprovals()
+  const { auditions, reminders, selfTapes, contacts, contracts, pendingApprovals, loading: auditionsLoading } = useDashboardData()
+  const approvalsCount = pendingApprovals.filter((r) => r.needs_review).length
 
   const name = profile?.full_name ?? null
   const city = profile?.city ?? "Tokyo"
