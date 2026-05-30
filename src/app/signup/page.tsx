@@ -2,15 +2,14 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clapperboard, Loader2 } from "lucide-react"
+import { Clapperboard, Loader2, Mail, ArrowRight } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
 export default function SignUpPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const plan = searchParams.get("plan") || "monthly"
   const { signUp } = useAuth()
@@ -20,6 +19,7 @@ export default function SignUpPage() {
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [confirmationSent, setConfirmationSent] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,8 +31,67 @@ export default function SignUpPage() {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push("/dashboard")
+      // Supabase sends a confirmation email by default.
+      // Show the confirmation screen instead of redirecting to dashboard.
+      setConfirmationSent(true)
+      setLoading(false)
     }
+  }
+
+  // Confirmation sent screen
+  if (confirmationSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted">
+        <div className="w-full max-w-md">
+          <div className="flex items-center justify-center gap-2 mb-8">
+            <Clapperboard className="h-6 w-6" />
+            <span className="text-xl font-bold">Actor OS</span>
+          </div>
+
+          <Card>
+            <CardContent className="pt-8 pb-6 text-center space-y-4">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+                <Mail className="h-7 w-7 text-green-600" />
+              </div>
+
+              <div>
+                <h2 className="text-xl font-semibold">Check your email</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  We sent a confirmation link to
+                </p>
+                <p className="mt-1 font-medium">{email}</p>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Click the link in the email to activate your account, then come
+                back here and log in.
+              </p>
+
+              <Button asChild className="w-full mt-4">
+                <Link href="/login">
+                  Go to Login
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+
+              <p className="text-xs text-muted-foreground">
+                Didn't get the email? Check your spam folder or{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmationSent(false)
+                    setLoading(false)
+                  }}
+                  className="text-primary hover:underline"
+                >
+                  try again
+                </button>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (

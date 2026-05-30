@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
-import { llm } from "@/lib/llm"
+import { llm, type LLMSettings } from "@/lib/llm"
 import {
   SYSTEM_PROMPT,
   DEFAULTS,
@@ -15,13 +15,14 @@ import {
 async function parseEmail(
   subject: string,
   body: string,
-  fromAddress: string
+  fromAddress: string,
+  userLLMSettings?: LLMSettings | null
 ) {
   try {
     const response = await llm("low", [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: buildUserPrompt(fromAddress, subject, body) },
-    ], 800)
+    ], 800, userLLMSettings)
 
     const parsed = parseLLMResponse(response.content)
     if (!parsed) {
@@ -77,6 +78,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to fetch pending emails" }, { status: 500 })
     }
 
+    // Look up user's LLM settings
+    const emailUserId = emails?.[0]?.user_id || user_id
+    let userLLMSettings: LLMSettings | null = null
+    if (emailUserId) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("llm_settings")
+        .eq("id", emailUserId)
+        .single()
+      if (profile?.llm_settings) {
+        userLLMSettings = profile.llm_settings as unknown as LLMSettings
+      }
+    }
+
     if (!emails?.length) {
       return NextResponse.json({
         processed: 0,
@@ -94,7 +109,8 @@ export async function POST(request: Request) {
         const parsed = await parseEmail(
           email.subject,
           email.body_text || "",
-          email.from_address
+          email.from_address,
+          userLLMSettings
         )
 
         // If LLM says it's not a casting email, mark it and move on

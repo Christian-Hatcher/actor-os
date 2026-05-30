@@ -21,6 +21,9 @@ import {
   LogOut,
   Palette,
   Calculator,
+  Bot,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/theme-provider"
@@ -72,10 +75,19 @@ export default function SettingsPage() {
   const [prefsSaved, setPrefsSaved] = useState(false)
   const [prefsError, setPrefsError] = useState<string | null>(null)
 
+  // LLM settings state
+  const [llmProvider, setLlmProvider] = useState<string>("gemini")
+  const [llmApiKey, setLlmApiKey] = useState("")
+  const [llmShowKey, setLlmShowKey] = useState(false)
+  const [llmSaving, setLlmSaving] = useState(false)
+  const [llmSaved, setLlmSaved] = useState(false)
+  const [llmError, setLlmError] = useState<string | null>(null)
+
   // Fetch connections + preferences on mount
   useEffect(() => {
     fetchConnections()
     fetchPreferences()
+    fetchLLMSettings()
   }, [])
 
   async function fetchConnections() {
@@ -113,6 +125,56 @@ export default function SettingsPage() {
         bio_context: data.bio_context || "",
       })
     }
+  }
+
+  async function fetchLLMSettings() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("llm_settings")
+      .eq("id", session.user.id)
+      .single()
+
+    if (data?.llm_settings) {
+      const settings = data.llm_settings as any
+      if (settings.provider) setLlmProvider(settings.provider)
+      if (settings.api_key) setLlmApiKey(settings.api_key)
+    }
+  }
+
+  async function saveLLMSettings() {
+    setLlmSaving(true)
+    setLlmSaved(false)
+    setLlmError(null)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      setLlmError("Please log in first")
+      setLlmSaving(false)
+      return
+    }
+
+    const llmSettings = llmApiKey.trim()
+      ? { provider: llmProvider, api_key: llmApiKey.trim() }
+      : null
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        llm_settings: llmSettings,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", session.user.id)
+
+    if (error) {
+      setLlmError(error.message)
+    } else {
+      setLlmSaved(true)
+      setTimeout(() => setLlmSaved(false), 3000)
+    }
+    setLlmSaving(false)
   }
 
   async function savePreferences() {
@@ -381,6 +443,107 @@ export default function SettingsPage() {
               audition and self-tape emails. We never send emails or
               delete anything.
             </p>
+          </CardContent>
+        </Card>
+
+        {/* AI Provider */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>AI Provider</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Actor OS uses AI to parse your casting emails. Bring your own API key, or leave blank to use the free default (Google Gemini).
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {llmSaved && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                <CheckCircle className="h-4 w-4" />
+                AI settings saved.
+              </div>
+            )}
+
+            {llmError && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                <AlertTriangle className="h-4 w-4" />
+                {llmError}
+              </div>
+            )}
+
+            {/* Provider picker */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Provider</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: "gemini", label: "Google Gemini", desc: "Free tier available" },
+                  { value: "openai", label: "OpenAI", desc: "GPT-4o-mini" },
+                  { value: "anthropic", label: "Anthropic", desc: "Claude Haiku" },
+                ].map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setLlmProvider(p.value)}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      llmProvider === p.value
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{p.label}</p>
+                    <p className="text-xs text-muted-foreground">{p.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* API Key */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">API Key</label>
+              <div className="relative">
+                <input
+                  type={llmShowKey ? "text" : "password"}
+                  value={llmApiKey}
+                  onChange={(e) => setLlmApiKey(e.target.value)}
+                  placeholder={
+                    llmProvider === "gemini"
+                      ? "Leave blank for free tier, or paste your Gemini API key"
+                      : llmProvider === "openai"
+                        ? "sk-..."
+                        : "sk-ant-..."
+                  }
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                <button
+                  type="button"
+                  onClick={() => setLlmShowKey(!llmShowKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {llmShowKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {llmProvider === "gemini" && !llmApiKey
+                  ? "Without a key, Actor OS will use the server's Gemini key (free tier, rate-limited)."
+                  : "Your key is stored securely and only used for your account."}
+              </p>
+            </div>
+
+            <Button
+              onClick={saveLLMSettings}
+              disabled={llmSaving}
+              className="w-full"
+            >
+              {llmSaving ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save AI Settings"
+              )}
+            </Button>
           </CardContent>
         </Card>
 
