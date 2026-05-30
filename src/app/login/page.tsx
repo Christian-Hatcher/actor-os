@@ -24,14 +24,19 @@ export default function LoginPage() {
     setLoading(true)
     setError("")
 
-    const { error } = await signIn(email, password)
-    if (error) {
-      setError(error.message)
-    } else {
-      sessionStorage.setItem("show_splash", "1")
-      router.push(returnTo)
+    try {
+      const { error } = await signIn(email, password)
+      if (error) {
+        setError(error.message)
+      } else {
+        sessionStorage.setItem("show_splash", "1")
+        router.push(returnTo)
+      }
+    } catch (err: any) {
+      setError(err.message || "Login failed")
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
