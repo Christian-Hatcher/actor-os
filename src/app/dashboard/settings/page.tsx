@@ -454,10 +454,17 @@ export default function SettingsPage() {
               <CardTitle>AI Provider</CardTitle>
             </div>
             <p className="text-sm text-muted-foreground">
-              Actor OS uses AI to parse your casting emails. Bring your own API key, or leave blank to use the free default (Google Gemini).
+              Actor OS uses AI to parse your casting emails and extract audition details automatically. The free default works great for most users. If you have your own AI subscription, plug in your API key below for faster, unlimited parsing.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+              <p className="font-medium">How it works</p>
+              <p className="mt-1 text-xs">
+                When you sync your Gmail, Actor OS reads your casting emails and uses AI to pull out the project name, role, dates, and more. No key needed — we include a free AI tier. Add your own key for higher limits.
+              </p>
+            </div>
+
             {llmSaved && (
               <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
                 <CheckCircle className="h-4 w-4" />
@@ -474,12 +481,15 @@ export default function SettingsPage() {
 
             {/* Provider picker */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Provider</label>
+              <label className="text-sm font-medium">AI Provider</label>
+              <p className="text-xs text-muted-foreground">
+                Pick whichever AI service you already pay for, or stick with the free default.
+              </p>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: "gemini", label: "Google Gemini", desc: "Free tier available" },
-                  { value: "openai", label: "OpenAI", desc: "GPT-4o-mini" },
-                  { value: "anthropic", label: "Anthropic", desc: "Claude Haiku" },
+                  { value: "gemini", label: "Google Gemini", desc: "Free tier included" },
+                  { value: "openai", label: "OpenAI", desc: "Uses your ChatGPT key" },
+                  { value: "anthropic", label: "Anthropic", desc: "Uses your Claude key" },
                 ].map((p) => (
                   <button
                     key={p.value}
@@ -500,7 +510,7 @@ export default function SettingsPage() {
 
             {/* API Key */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">API Key</label>
+              <label className="text-sm font-medium">Your API Key</label>
               <div className="relative">
                 <input
                   type={llmShowKey ? "text" : "password"}
@@ -508,10 +518,10 @@ export default function SettingsPage() {
                   onChange={(e) => setLlmApiKey(e.target.value)}
                   placeholder={
                     llmProvider === "gemini"
-                      ? "Leave blank for free tier, or paste your Gemini API key"
+                      ? "Optional — leave blank to use the free tier"
                       : llmProvider === "openai"
-                        ? "sk-..."
-                        : "sk-ant-..."
+                        ? "Paste your OpenAI key (sk-...)"
+                        : "Paste your Anthropic key (sk-ant-...)"
                   }
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 />
@@ -525,8 +535,10 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {llmProvider === "gemini" && !llmApiKey
-                  ? "Without a key, Actor OS will use the server's Gemini key (free tier, rate-limited)."
-                  : "Your key is stored securely and only used for your account."}
+                  ? "No key needed. Actor OS includes a free Google Gemini tier for email parsing."
+                  : llmProvider === "gemini"
+                    ? "Your own Gemini key gives you higher rate limits. Stored securely, only used for your account."
+                    : "Your key is stored securely and only used for your account. Get one from your provider's dashboard."}
               </p>
             </div>
 
