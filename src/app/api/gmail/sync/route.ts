@@ -256,6 +256,11 @@ export async function POST(request: Request) {
       let skipped = 0
 
       for (const msg of messages) {
+        if (!msg.payload) {
+          skipped++
+          continue
+        }
+
         const headers = extractHeaders(msg.payload)
         const { text, html } = extractEmailContent(msg.payload)
 
