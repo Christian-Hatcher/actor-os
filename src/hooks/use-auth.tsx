@@ -72,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (!error && data.session?.user) {
       setUser(data.session.user)
-      await fetchProfile(data.session.user.id)
+      // Don't await fetchProfile — let it complete in background so login doesn't hang
+      fetchProfile(data.session.user.id).catch(() => {})
     }
     return { error }
   }
