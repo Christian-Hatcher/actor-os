@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
@@ -131,6 +131,14 @@ interface EmailConnection {
 }
 
 export default function SettingsPage() {
+  return (
+    <Suspense>
+      <SettingsContent />
+    </Suspense>
+  )
+}
+
+function SettingsContent() {
   const { signOut, profile, refreshProfile } = useAuth()
   const { themeId, setThemeId, availableThemes } = useTheme()
   const searchParams = useSearchParams()
