@@ -12,8 +12,6 @@ interface AuthContextType {
   user: User | null
   profile: Profile | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<{ error: any }>
-  signUp: (email: string, password: string, metadata?: { full_name?: string }) => Promise<{ error: any }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -26,22 +24,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function initAuth() {
-      const { data: { session } } = await supabase.auth.getSession()
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      }
+      if (session?.user) fetchProfile(session.user.id)
       setLoading(false)
-    }
-
-    initAuth()
+    }).catch(() => setLoading(false))
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setUser(session?.user ?? null)
         if (session?.user) {
-          await fetchProfile(session.user.id)
+          fetchProfile(session.user.id)
         } else {
           setProfile(null)
           setCurrency("USD")
@@ -68,35 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user?.id) await fetchProfile(user.id)
   }
 
-  async function signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (!error && data.session?.user) {
-      setUser(data.session.user)
-      // Don't await fetchProfile — let it complete in background so login doesn't hang
-      fetchProfile(data.session.user.id).catch(() => {})
-    }
-    return { error }
-  }
-
-  async function signUp(
-    email: string,
-    password: string,
-    metadata?: { full_name?: string }
-  ) {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: metadata },
-    })
-    return { error }
-  }
-
   async function signOut() {
     await supabase.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

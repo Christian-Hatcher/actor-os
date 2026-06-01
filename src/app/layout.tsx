@@ -1,31 +1,14 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/components/theme-provider";
-import { themeNoFlashScript, THEMES, DEFAULT_THEME_ID, themeToCssVars } from "@/lib/themes";
 import { Toaster } from "@/components/ui/sonner";
 
-// Instrument Serif — big numbers, page titles, briefing prose, primary CTAs.
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-});
-
-// Inter — body, button labels, secondary text.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
-});
-
-// JetBrains Mono — call-sheet metadata, status pills, dates/times, fine print.
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -40,16 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${instrumentSerif.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
-      style={themeToCssVars(THEMES[DEFAULT_THEME_ID]) as React.CSSProperties}
-      suppressHydrationWarning
-    >
-      <head>
-        {/* Apply the persisted theme before first paint to avoid a flash. */}
-        <script dangerouslySetInnerHTML={{ __html: themeNoFlashScript() }} />
-      </head>
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <AuthProvider>
