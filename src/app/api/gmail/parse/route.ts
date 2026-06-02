@@ -7,6 +7,7 @@ import {
   buildUserPrompt,
   parseLLMResponse,
   validateParsedResult,
+  detectPlatform,
 } from "@/lib/email-parser"
 
 /**
@@ -18,6 +19,9 @@ async function parseEmail(
   fromAddress: string,
   userLLMSettings?: LLMSettings | null
 ) {
+  // Step 1: Deterministic platform detection (no LLM cost)
+  const detectedPlatform = detectPlatform(fromAddress, subject, body)
+
   try {
     const response = await llm("low", [
       { role: "system", content: SYSTEM_PROMPT },
@@ -30,7 +34,7 @@ async function parseEmail(
       return DEFAULTS
     }
 
-    return validateParsedResult(parsed)
+    return validateParsedResult(parsed, detectedPlatform)
   } catch (err) {
     console.error("LLM parse failed:", err)
     return DEFAULTS
@@ -144,10 +148,14 @@ export async function POST(request: Request) {
           location: parsed.location,
           compensation: parsed.compensation,
           deadline: parsed.deadline,
+          submission_deadline: parsed.submission_deadline,
           shoot_date: parsed.shoot_date,
           callback_date: parsed.callback_date,
           notes: parsed.notes,
           summary: parsed.summary,
+          source_platform: parsed.source_platform,
+          email_type: parsed.email_type,
+          action_required: parsed.action_required,
         }
 
         const { data: parsedRecord, error: parsedError } = await supabaseAdmin
@@ -175,8 +183,12 @@ export async function POST(request: Request) {
         let auditionCreated = false
         let auditionId: string | null = null
 
-        // Auto-create audition if high confidence
-        if (auto_create && parsed.confidence >= 80 && !dry_run) {
+        // Auto-create audition if high confidence and actionable type
+        const isActionable = parsed.email_type === "casting" || parsed.email_type === "callback" || parsed.email_type === "inquiry"
+        if (auto_create && parsed.confidence >= 80 && isActionable && !dry_run) {
+          // Map email type to audition status
+          const auditionStatus = parsed.email_type === "callback" ? "callback" : "submitted"
+
           const { data: audition, error: auditionError } = await supabaseAdmin
             .from("auditions")
             .insert({
@@ -185,12 +197,12 @@ export async function POST(request: Request) {
               role_name: parsed.role_name || "Unknown Role",
               casting_director: parsed.casting_director,
               agency: parsed.agency,
-              status: "submitted",
+              status: auditionStatus,
               submitted_date: new Date().toISOString().split("T")[0],
               callback_date: parsed.callback_date,
               shoot_date: parsed.shoot_date,
               location: parsed.location,
-              notes: parsed.notes,
+              notes: [parsed.notes, parsed.action_required ? `Action: ${parsed.action_required}` : null].filter(Boolean).join("\n"),
               compensation: parsed.compensation,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),

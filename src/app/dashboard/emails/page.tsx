@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
 import {
   CheckCircle,
   XCircle,
@@ -354,15 +355,42 @@ export default function EmailReviewPage() {
                       <p className="font-medium leading-tight text-sm truncate">{fields.agency}</p>
                     </div>
                   )}
-                  {fields.deadline && (
+                  {(fields.submission_deadline || fields.deadline) && (
                     <div>
-                      <span className="text-muted-foreground text-xs">Deadline</span>
+                      <span className="text-muted-foreground text-xs">Due</span>
                       <p className="font-medium leading-tight text-sm text-red-600 truncate">
-                        {fields.deadline}
+                        {fields.submission_deadline || fields.deadline}
                       </p>
                     </div>
                   )}
                 </div>
+
+                {/* Action required + platform badges */}
+                <div className="flex flex-wrap gap-1.5">
+                  {fields.email_type && fields.email_type !== "irrelevant" && (
+                    <span className={cn(
+                      "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase",
+                      fields.email_type === "casting" && "bg-blue-100 text-blue-700",
+                      fields.email_type === "callback" && "bg-amber-100 text-amber-700",
+                      fields.email_type === "inquiry" && "bg-purple-100 text-purple-700",
+                      fields.email_type === "admin" && "bg-gray-100 text-gray-700",
+                    )}>
+                      {fields.email_type}
+                    </span>
+                  )}
+                  {fields.source_platform && fields.source_platform !== "unknown" && (
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                      {fields.source_platform.replace("_", " ")}
+                    </span>
+                  )}
+                </div>
+
+                {fields.action_required && (
+                  <div className="flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50 rounded px-2 py-1">
+                    <Mail className="h-3 w-3 shrink-0" />
+                    {fields.action_required}
+                  </div>
+                )}
 
                 {/* Expandable details */}
                 {hasDetailFields && (

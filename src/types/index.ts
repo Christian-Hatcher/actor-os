@@ -121,10 +121,14 @@ export interface ParsedAuditionFields {
   location: string | null
   compensation: string | null
   deadline: string | null
+  submission_deadline: string | null
   shoot_date: string | null
   callback_date: string | null
   notes: string | null
   summary: string | null
+  source_platform: "actors_access" | "backstage" | "casting_networks" | "direct" | "unknown" | null
+  email_type: "casting" | "callback" | "inquiry" | "admin" | "irrelevant" | null
+  action_required: string | null
 }
 
 export interface ParsedAudition {

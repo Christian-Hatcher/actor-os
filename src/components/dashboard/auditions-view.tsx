@@ -2,16 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Search, Plus, CalendarDays, List } from "lucide-react"
+import { Search, Plus, CalendarDays, List, ChevronDown, ChevronRight, ArrowUpDown } from "lucide-react"
 import { useDashboardData } from "@/hooks/use-dashboard-data"
 import { useAuditionGroups, auditionAnchorDate } from "@/hooks/use-data"
+import { parsePay } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Audition } from "@/types"
 
 type View = "agenda" | "calendar"
 type Filter = "all" | "callback" | "submitted" | "booked" | "past"
+type SortKey = "date" | "pay" | "created"
 
 const VIEW_KEY = "auditions_view"
+const SORT_KEY = "auditions_sort"
+const SUBMITTED_COLLAPSED_KEY = "auditions_submitted_collapsed"
 
 function statusClass(a: Audition): "cb" | "sub" | "bk" | "passed" | "" {
   if (a.status === "callback") return "cb"
@@ -23,7 +27,7 @@ function statusClass(a: Audition): "cb" | "sub" | "bk" | "passed" | "" {
 
 function timeLabel(a: Audition): string {
   const iso = auditionAnchorDate(a)
-  if (!iso) return "—"
+  if (!iso) return "\u2014"
   const d = new Date(iso)
   const hasTime = iso.length > 10 && (d.getHours() !== 0 || d.getMinutes() !== 0)
   return hasTime
@@ -46,13 +50,41 @@ function matchesFilter(a: Audition, f: Filter): boolean {
   }
 }
 
-function AgendaRow({ a }: { a: Audition }) {
+/** Check if an audition's relevant date has passed (auto-expire candidate). */
+function isExpired(a: Audition): boolean {
+  if (a.status !== "submitted" && a.status !== "pinned") return false
+  const anchor = a.callback_date || a.shoot_date
+  if (!anchor) return false
+  const anchorDate = new Date(anchor + "T23:59:59")
+  return anchorDate < new Date()
+}
+
+function sortAuditions(auditions: Audition[], key: SortKey): Audition[] {
+  const sorted = [...auditions]
+  switch (key) {
+    case "pay":
+      return sorted.sort((a, b) => parsePay(b.compensation) - parsePay(a.compensation))
+    case "date": {
+      return sorted.sort((a, b) => {
+        const da = auditionAnchorDate(a) || "9999"
+        const db = auditionAnchorDate(b) || "9999"
+        return da.localeCompare(db)
+      })
+    }
+    case "created":
+      return sorted.sort((a, b) => b.created_at.localeCompare(a.created_at))
+  }
+}
+
+function AgendaRow({ a, showExpired }: { a: Audition; showExpired?: boolean }) {
   const sc = statusClass(a)
+  const expired = isExpired(a)
   return (
     <Link
       href={`/dashboard/auditions/${a.id}`}
       className={cn(
         "relative grid grid-cols-[56px_1fr_auto] items-center gap-x-4 border-t border-rule py-[18px] pl-6 pr-[22px] first:border-t-0 hover:bg-white/[0.025]",
+        expired && showExpired && "opacity-50",
       )}
     >
       <span
@@ -69,11 +101,13 @@ function AgendaRow({ a }: { a: Audition }) {
           {a.project_name}
         </div>
         <div className="font-mono mt-1.5 truncate text-[10px] uppercase tracking-[0.08em] text-paper-faint">
-          {[a.role_name, a.location, a.agency].filter(Boolean).join(" · ") || "—"}
+          {[a.role_name, a.location, a.agency].filter(Boolean).join(" \u00b7 ") || "\u2014"}
         </div>
       </div>
       <div className="flex flex-shrink-0 flex-col items-end gap-[7px]">
-        <span className={`chip ${sc}`}>{a.status}</span>
+        <span className={`chip ${sc}`}>
+          {expired ? "expired" : a.status}
+        </span>
         {a.compensation && (
           <span className={cn("font-mono text-[11.5px] text-paper", sc === "bk" && "text-green")}>
             {a.compensation}
@@ -147,7 +181,7 @@ function CalendarView({
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))}
             className="rounded-[30px] border border-rule bg-white/[0.02] px-2.5 py-1.5"
           >
-            ‹
+            &lsaquo;
           </button>
           <button
             onClick={() => setCursor(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })}
@@ -159,7 +193,7 @@ function CalendarView({
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))}
             className="rounded-[30px] border border-rule bg-white/[0.02] px-2.5 py-1.5"
           >
-            ›
+            &rsaquo;
           </button>
         </div>
       </div>
@@ -241,16 +275,128 @@ function CalendarView({
   )
 }
 
+function SortDropdown({ value, onChange }: { value: SortKey; onChange: (k: SortKey) => void }) {
+  const [open, setOpen] = useState(false)
+  const labels: Record<SortKey, string> = { date: "Due date", pay: "Pay", created: "Newest" }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="font-mono flex items-center gap-1.5 rounded-[30px] border border-rule bg-white/[0.025] px-3 py-[5px] text-[10px] uppercase tracking-[0.1em] text-paper-dim"
+      >
+        <ArrowUpDown className="size-3" />
+        {labels[value]}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] overflow-hidden rounded-[10px] border border-rule bg-[var(--bg)] shadow-lg">
+            {(Object.keys(labels) as SortKey[]).map((k) => (
+              <button
+                key={k}
+                onClick={() => { onChange(k); setOpen(false) }}
+                className={cn(
+                  "font-mono block w-full px-3.5 py-2 text-left text-[10px] uppercase tracking-[0.1em]",
+                  k === value ? "bg-paper text-bg" : "text-paper-dim hover:bg-white/[0.04]",
+                )}
+              >
+                {labels[k]}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function CollapsibleSection({
+  label,
+  count,
+  defaultOpen,
+  storageKey,
+  highlight,
+  children,
+}: {
+  label: string
+  count: number
+  defaultOpen: boolean
+  storageKey?: string
+  highlight?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  useEffect(() => {
+    if (storageKey) {
+      const stored = window.localStorage.getItem(storageKey)
+      if (stored === "0") setOpen(false)
+      if (stored === "1") setOpen(true)
+    }
+  }, [storageKey])
+
+  function toggle() {
+    setOpen((o) => {
+      const next = !o
+      if (storageKey) window.localStorage.setItem(storageKey, next ? "1" : "0")
+      return next
+    })
+  }
+
+  return (
+    <div className="mt-[22px] first:mt-2">
+      <button
+        onClick={toggle}
+        className="relative flex w-full items-baseline justify-between gap-3.5 px-[22px] pb-3 pt-6 text-left"
+      >
+        <span
+          className="absolute inset-x-[22px] top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, var(--rule-strong) 0, var(--rule) 30%, transparent 100%)",
+          }}
+        />
+        <span className="flex items-center gap-2">
+          {open ? (
+            <ChevronDown className="size-3.5 text-paper-faint" />
+          ) : (
+            <ChevronRight className="size-3.5 text-paper-faint" />
+          )}
+          <span
+            className={cn(
+              "font-serif text-[24px] italic leading-none tracking-[-0.005em]",
+              highlight ? "text-amber" : "text-paper",
+            )}
+          >
+            {highlight && (
+              <i className="mr-2 inline-block size-1.5 rounded-full bg-amber align-[3px] shadow-[0_0_10px_var(--amber)]" />
+            )}
+            {label}
+          </span>
+        </span>
+        <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-paper-faint">
+          {count} {count === 1 ? "item" : "items"}
+        </span>
+      </button>
+      {open && children}
+    </div>
+  )
+}
+
 export function AuditionsView() {
-  const { auditions, loading } = useDashboardData()
+  const { auditions, loading, updateAudition } = useDashboardData()
   const [view, setView] = useState<View>("agenda")
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<Filter>("all")
+  const [sort, setSort] = useState<SortKey>("date")
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
 
   useEffect(() => {
     const stored = window.localStorage.getItem(VIEW_KEY)
     if (stored === "agenda" || stored === "calendar") setView(stored)
+    const storedSort = window.localStorage.getItem(SORT_KEY)
+    if (storedSort === "date" || storedSort === "pay" || storedSort === "created") setSort(storedSort)
   }, [])
 
   function switchView(v: View) {
@@ -258,18 +404,35 @@ export function AuditionsView() {
     window.localStorage.setItem(VIEW_KEY, v)
   }
 
+  function switchSort(s: SortKey) {
+    setSort(s)
+    window.localStorage.setItem(SORT_KEY, s)
+  }
+
+  // Auto-expire: mark submitted auditions with past dates as "passed"
+  useEffect(() => {
+    for (const a of auditions) {
+      if (isExpired(a)) {
+        updateAudition(a.id, { status: "passed" }).catch(() => {})
+      }
+    }
+  }, [auditions, updateAudition])
+
   const filtered = useMemo(
     () =>
-      auditions.filter((a) => {
-        const q = search.toLowerCase()
-        const matchesSearch =
-          !q ||
-          a.project_name.toLowerCase().includes(q) ||
-          a.role_name?.toLowerCase().includes(q) ||
-          a.agency?.toLowerCase().includes(q)
-        return matchesSearch && matchesFilter(a, filter)
-      }),
-    [auditions, search, filter],
+      sortAuditions(
+        auditions.filter((a) => {
+          const q = search.toLowerCase()
+          const matchesSearch =
+            !q ||
+            a.project_name.toLowerCase().includes(q) ||
+            a.role_name?.toLowerCase().includes(q) ||
+            a.agency?.toLowerCase().includes(q)
+          return matchesSearch && matchesFilter(a, filter)
+        }),
+        sort,
+      ),
+    [auditions, search, filter, sort],
   )
 
   const groups = useAuditionGroups(filtered)
@@ -322,7 +485,7 @@ export function AuditionsView() {
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search + Sort */}
       <div className="flex gap-2 px-[22px] pb-1 pt-3">
         <label className="flex flex-1 items-center gap-2 rounded-[30px] border border-rule bg-white/[0.025] px-3.5 py-2.5">
           <Search className="size-3.5 text-paper-faint" strokeWidth={1.8} />
@@ -333,6 +496,7 @@ export function AuditionsView() {
             className="font-sans flex-1 bg-transparent text-[13px] text-paper outline-none placeholder:text-paper-faint"
           />
         </label>
+        <SortDropdown value={sort} onChange={switchSort} />
         <button className="font-mono flex-none rounded-[30px] bg-paper px-3.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-bg">
           <Plus className="inline size-3" /> Add
         </button>
@@ -358,7 +522,7 @@ export function AuditionsView() {
 
       {loading ? (
         <p className="font-serif px-[22px] py-12 text-center text-[18px] italic text-paper-faint">
-          Loading your slate…
+          Loading your slate&hellip;
         </p>
       ) : view === "calendar" ? (
         <CalendarView auditions={filtered} selected={selectedDay} onSelect={setSelectedDay} />
@@ -367,36 +531,44 @@ export function AuditionsView() {
           {search || filter !== "all" ? "Nothing matches." : "No auditions yet. Add your first."}
         </p>
       ) : (
-        groups.map((g) => (
-          <div key={g.key} className="mt-[22px] first:mt-2">
-            <div className="relative flex items-baseline justify-between gap-3.5 px-[22px] pb-3 pt-6">
-              <span
-                className="absolute inset-x-[22px] top-0 h-px"
-                style={{
-                  background:
-                    "linear-gradient(90deg, var(--rule-strong) 0, var(--rule) 30%, transparent 100%)",
-                }}
-              />
-              <span
-                className={cn(
-                  "font-serif text-[24px] italic leading-none tracking-[-0.005em]",
-                  g.label.startsWith("Today") ? "text-amber" : "text-paper",
-                )}
+        groups.map((g) => {
+          // "Submitted" and "Awaiting reply" sections are collapsible (start collapsed)
+          const isSubmittedGroup = g.auditions.every(
+            (a) => a.status === "submitted" || a.status === "pinned"
+          )
+          const isAwaitingGroup = g.key === "awaiting"
+          const shouldCollapse = isSubmittedGroup || isAwaitingGroup
+
+          if (shouldCollapse) {
+            return (
+              <CollapsibleSection
+                key={g.key}
+                label={g.label}
+                count={g.auditions.length}
+                defaultOpen={!isAwaitingGroup}
+                storageKey={`auditions_collapse_${g.key}`}
               >
-                {g.label.startsWith("Today") && (
-                  <i className="mr-2 inline-block size-1.5 rounded-full bg-amber align-[3px] shadow-[0_0_10px_var(--amber)]" />
-                )}
-                {g.label}
-              </span>
-              <span className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-paper-faint">
-                {g.auditions.length} {g.auditions.length === 1 ? "item" : "items"}
-              </span>
-            </div>
-            {g.auditions.map((a) => (
-              <AgendaRow key={a.id} a={a} />
-            ))}
-          </div>
-        ))
+                {g.auditions.map((a) => (
+                  <AgendaRow key={a.id} a={a} showExpired />
+                ))}
+              </CollapsibleSection>
+            )
+          }
+
+          return (
+            <CollapsibleSection
+              key={g.key}
+              label={g.label}
+              count={g.auditions.length}
+              defaultOpen
+              highlight={g.label.startsWith("Today")}
+            >
+              {g.auditions.map((a) => (
+                <AgendaRow key={a.id} a={a} />
+              ))}
+            </CollapsibleSection>
+          )
+        })
       )}
     </div>
   )
