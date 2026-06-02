@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import Link from "next/link"
-import { Search, Plus, CalendarDays, List, ChevronDown, ChevronRight, ArrowUpDown } from "lucide-react"
+import { Search, Plus, CalendarDays, List, ChevronDown, ChevronRight, ArrowUpDown, RefreshCw } from "lucide-react"
 import { useDashboardData } from "@/hooks/use-dashboard-data"
+import { useAuth } from "@/hooks/use-auth"
 import { useAuditionGroups, auditionAnchorDate } from "@/hooks/use-data"
 import { parsePay } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -385,12 +386,58 @@ function CollapsibleSection({
 }
 
 export function AuditionsView() {
-  const { auditions, loading, updateAudition } = useDashboardData()
+  const { auditions, loading, updateAudition, refresh } = useDashboardData()
+  const { user } = useAuth()
   const [view, setView] = useState<View>("agenda")
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<Filter>("all")
   const [sort, setSort] = useState<SortKey>("date")
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState<string | null>(null)
+
+  const handleSync = useCallback(async () => {
+    if (syncing || !user?.id) return
+    setSyncing(true)
+    setSyncMsg("Syncing emails...")
+    try {
+      const syncRes = await fetch("/api/gmail/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id }),
+      })
+      const syncData = await syncRes.json()
+      const inserted = syncData.results?.[0]?.emails_inserted || 0
+
+      setSyncMsg(inserted > 0 ? `Parsing ${inserted} new emails...` : "Parsing...")
+      const parseRes = await fetch("/api/gmail/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id, auto_create: true }),
+      })
+      const parseData = await parseRes.json()
+      const parsed = parseData.parsed || 0
+      const created = parseData.created || 0
+
+      if (created > 0) {
+        setSyncMsg(`${created} new audition${created > 1 ? "s" : ""} added`)
+        refresh()
+      } else if (parsed > 0) {
+        setSyncMsg(`${parsed} emails parsed`)
+        refresh()
+      } else if (inserted > 0) {
+        setSyncMsg(`${inserted} emails synced`)
+      } else {
+        setSyncMsg("Up to date")
+      }
+      setTimeout(() => setSyncMsg(null), 4000)
+    } catch {
+      setSyncMsg("Sync failed")
+      setTimeout(() => setSyncMsg(null), 3000)
+    } finally {
+      setSyncing(false)
+    }
+  }, [syncing, user, refresh])
 
   useEffect(() => {
     const stored = window.localStorage.getItem(VIEW_KEY)
@@ -497,10 +544,26 @@ export function AuditionsView() {
           />
         </label>
         <SortDropdown value={sort} onChange={switchSort} />
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className={cn(
+            "font-mono flex-none rounded-[30px] border border-rule bg-white/[0.025] px-3 py-[5px] text-[10px] uppercase tracking-[0.1em] text-paper-dim",
+            syncing && "opacity-50",
+          )}
+        >
+          <RefreshCw className={cn("inline size-3 mr-1", syncing && "animate-spin")} />
+          Sync
+        </button>
         <button className="font-mono flex-none rounded-[30px] bg-paper px-3.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-bg">
           <Plus className="inline size-3" /> Add
         </button>
       </div>
+      {syncMsg && (
+        <div className="font-mono px-[22px] py-1.5 text-[11px] text-paper-dim">
+          {syncMsg}
+        </div>
+      )}
 
       {/* Filter chips */}
       <div className="flex gap-1.5 overflow-x-auto px-[22px] pb-3 pt-3.5 [scrollbar-width:none]">

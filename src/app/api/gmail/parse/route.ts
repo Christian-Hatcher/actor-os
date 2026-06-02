@@ -80,7 +80,8 @@ export async function POST(request: Request) {
       query = query.eq("user_id", user_id)
     }
 
-    query = query.limit(50)
+    // Small batches so the UI returns fast. Cron picks up the rest.
+    query = query.order("received_at", { ascending: false }).limit(5)
 
     const { data: emails, error: fetchError } = await query
 
@@ -196,9 +197,10 @@ export async function POST(request: Request) {
         let auditionCreated = false
         let auditionId: string | null = null
 
-        // Auto-create audition if high confidence and actionable type
+        // Auto-create audition if actionable type with a project name
         const isActionable = parsed.email_type === "casting" || parsed.email_type === "callback" || parsed.email_type === "inquiry"
-        if (auto_create && parsed.confidence >= 80 && isActionable && !dry_run) {
+        const hasEnoughData = parsed.project_name || (email.is_casting_email && parsed.summary)
+        if (auto_create && isActionable && hasEnoughData && !dry_run) {
           // Map email type to audition status
           const auditionStatus = parsed.email_type === "callback" ? "callback" : "submitted"
 
@@ -206,8 +208,8 @@ export async function POST(request: Request) {
             .from("auditions")
             .insert({
               user_id: email.user_id,
-              project_name: parsed.project_name || "Unknown Project",
-              role_name: parsed.role_name || "Unknown Role",
+              project_name: parsed.project_name || parsed.summary?.split(".")[0] || email.subject,
+              role_name: parsed.role_name || null,
               casting_director: parsed.casting_director,
               agency: parsed.agency,
               status: auditionStatus,

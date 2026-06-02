@@ -469,6 +469,7 @@ function SettingsContent() {
         body: JSON.stringify({
           user_id: session?.user?.id,
           connection_id: connectionId,
+          auto_create: true,
         }),
       })
       const parseData = await parseRes.json()
