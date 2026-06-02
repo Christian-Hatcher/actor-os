@@ -31,7 +31,7 @@ export interface Audition {
   role_name: string | null
   casting_director: string | null
   agency: string | null
-  status: "submitted" | "callback" | "pinned" | "booked" | "passed" | "archived"
+  status: "received" | "submitted" | "callback" | "pinned" | "booked" | "passed" | "archived"
   submitted_date: string | null
   callback_date: string | null
   shoot_date: string | null

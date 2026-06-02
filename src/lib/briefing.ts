@@ -72,7 +72,7 @@ export function composeBriefing(
     sentences.push(`You're on set today for ${bold(a.project_name)}${a.location ? ` at ${bold(a.location)}` : ""}.`)
   } else {
     const active = auditions.filter(
-      (a) => a.status === "submitted" || a.status === "callback" || a.status === "pinned",
+      (a) => a.status === "received" || a.status === "submitted" || a.status === "callback" || a.status === "pinned",
     ).length
     sentences.push(
       active
@@ -95,7 +95,7 @@ export function composeBriefing(
     .filter((a) => a.status === "booked")
     .reduce((sum, a) => sum + parsePay(a.compensation), 0)
   const potential = auditions
-    .filter((a) => a.status === "submitted" || a.status === "callback" || a.status === "pinned")
+    .filter((a) => a.status === "received" || a.status === "submitted" || a.status === "callback" || a.status === "pinned")
     .reduce((sum, a) => sum + parsePay(a.compensation), 0)
 
   if (banked || potential) {

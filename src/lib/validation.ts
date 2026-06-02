@@ -5,7 +5,7 @@ export const auditionSchema = z.object({
   role_name: z.string().min(1, "Role name is required"),
   casting_director: z.string().optional(),
   agency: z.string().optional(),
-  status: z.enum(["submitted", "callback", "pinned", "booked", "passed", "archived"]),
+  status: z.enum(["received", "submitted", "callback", "pinned", "booked", "passed", "archived"]),
   submitted_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD").optional(),
   callback_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   shoot_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),

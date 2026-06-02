@@ -11,14 +11,15 @@ import { cn } from "@/lib/utils"
 import type { Audition } from "@/types"
 
 type View = "agenda" | "calendar"
-type Filter = "all" | "callback" | "submitted" | "booked" | "past"
+type Filter = "all" | "received" | "callback" | "submitted" | "booked" | "past"
 type SortKey = "date" | "pay" | "created"
 
 const VIEW_KEY = "auditions_view"
 const SORT_KEY = "auditions_sort"
 const SUBMITTED_COLLAPSED_KEY = "auditions_submitted_collapsed"
 
-function statusClass(a: Audition): "cb" | "sub" | "bk" | "passed" | "" {
+function statusClass(a: Audition): "rcv" | "cb" | "sub" | "bk" | "passed" | "" {
+  if (a.status === "received") return "rcv"
   if (a.status === "callback") return "cb"
   if (a.status === "submitted" || a.status === "pinned") return "sub"
   if (a.status === "booked") return "bk"
@@ -40,6 +41,8 @@ function matchesFilter(a: Audition, f: Filter): boolean {
   switch (f) {
     case "all":
       return a.status !== "passed" && a.status !== "archived"
+    case "received":
+      return a.status === "received"
     case "callback":
       return a.status === "callback"
     case "submitted":
@@ -53,7 +56,7 @@ function matchesFilter(a: Audition, f: Filter): boolean {
 
 /** Check if an audition's relevant date has passed (auto-expire candidate). */
 function isExpired(a: Audition): boolean {
-  if (a.status !== "submitted" && a.status !== "pinned") return false
+  if (a.status !== "received" && a.status !== "submitted" && a.status !== "pinned") return false
   const anchor = a.callback_date || a.shoot_date
   if (!anchor) return false
   const anchorDate = new Date(anchor + "T23:59:59")
@@ -91,6 +94,7 @@ function AgendaRow({ a, showExpired }: { a: Audition; showExpired?: boolean }) {
       <span
         className={cn(
           "absolute inset-y-0 left-0 w-[2px]",
+          sc === "rcv" && "[background:linear-gradient(180deg,var(--purple,#a78bfa),rgba(167,139,250,.25))]",
           sc === "cb" && "[background:linear-gradient(180deg,var(--amber),rgba(232,167,85,.25))]",
           sc === "sub" && "[background:linear-gradient(180deg,var(--blue),rgba(106,179,232,.25))]",
           sc === "bk" && "[background:linear-gradient(180deg,var(--green),rgba(58,168,107,.25))]",
@@ -107,7 +111,7 @@ function AgendaRow({ a, showExpired }: { a: Audition; showExpired?: boolean }) {
       </div>
       <div className="flex flex-shrink-0 flex-col items-end gap-[7px]">
         <span className={`chip ${sc}`}>
-          {expired ? "expired" : a.status}
+          {expired ? "expired" : a.status === "received" ? "new" : a.status}
         </span>
         {a.compensation && (
           <span className={cn("font-mono text-[11.5px] text-paper", sc === "bk" && "text-green")}>
@@ -165,7 +169,8 @@ function CalendarView({
     if (!list?.length) return ""
     if (list.some((a) => a.status === "booked")) return "bk"
     if (list.some((a) => a.status === "callback")) return "cb"
-    return "sub"
+    if (list.some((a) => a.status === "submitted")) return "sub"
+    return "rcv"
   }
 
   const selectedList = selected ? byDay.get(selected) : undefined
@@ -418,9 +423,13 @@ export function AuditionsView() {
       const parseData = await parseRes.json()
       const parsed = parseData.parsed || 0
       const created = parseData.created || 0
+      const updated = parseData.updated || 0
 
-      if (created > 0) {
-        setSyncMsg(`${created} new audition${created > 1 ? "s" : ""} added`)
+      if (created > 0 || updated > 0) {
+        const parts = []
+        if (created > 0) parts.push(`${created} new`)
+        if (updated > 0) parts.push(`${updated} updated`)
+        setSyncMsg(`${parts.join(", ")} audition${created + updated > 1 ? "s" : ""}`)
         refresh()
       } else if (parsed > 0) {
         setSyncMsg(`${parsed} emails parsed`)
@@ -488,6 +497,7 @@ export function AuditionsView() {
     const active = auditions.filter((a) => a.status !== "passed" && a.status !== "archived")
     return {
       all: active.length,
+      received: auditions.filter((a) => a.status === "received").length,
       callback: auditions.filter((a) => a.status === "callback").length,
       submitted: auditions.filter((a) => a.status === "submitted" || a.status === "pinned").length,
       booked: auditions.filter((a) => a.status === "booked").length,
@@ -497,8 +507,9 @@ export function AuditionsView() {
 
   const filterDefs: Array<{ key: Filter; label: string; n: number }> = [
     { key: "all", label: "All", n: counts.all },
-    { key: "callback", label: "Callback", n: counts.callback },
+    { key: "received", label: "New", n: counts.received },
     { key: "submitted", label: "Submitted", n: counts.submitted },
+    { key: "callback", label: "Callback", n: counts.callback },
     { key: "booked", label: "Booked", n: counts.booked },
     { key: "past", label: "Past", n: counts.past },
   ]
@@ -625,7 +636,7 @@ export function AuditionsView() {
         groups.map((g) => {
           // "Submitted" and "Awaiting reply" sections are collapsible (start collapsed)
           const isSubmittedGroup = g.auditions.every(
-            (a) => a.status === "submitted" || a.status === "pinned"
+            (a) => a.status === "received" || a.status === "submitted" || a.status === "pinned"
           )
           const isAwaitingGroup = g.key === "awaiting"
           const shouldCollapse = isSubmittedGroup || isAwaitingGroup

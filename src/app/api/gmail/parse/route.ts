@@ -195,14 +195,75 @@ export async function POST(request: Request) {
         }
 
         let auditionCreated = false
+        let auditionUpdated = false
         let auditionId: string | null = null
 
-        // Auto-create audition if actionable type with a project name
+        // Thread-aware: check if another email in this thread already has an audition
+        let existingAuditionId: string | null = null
+        if (email.thread_id) {
+          const { data: threadEmails } = await supabaseAdmin
+            .from("casting_emails")
+            .select("id")
+            .eq("thread_id", email.thread_id)
+            .neq("id", email.id)
+
+          if (threadEmails?.length) {
+            const threadEmailIds = threadEmails.map((e: any) => e.id)
+            const { data: linkedParsed } = await supabaseAdmin
+              .from("parsed_auditions")
+              .select("audition_id")
+              .in("source_email_id", threadEmailIds)
+              .not("audition_id", "is", null)
+              .limit(1)
+
+            if (linkedParsed?.[0]?.audition_id) {
+              existingAuditionId = linkedParsed[0].audition_id
+            }
+          }
+        }
+
         const isActionable = parsed.email_type === "casting" || parsed.email_type === "callback" || parsed.email_type === "inquiry"
         const hasEnoughData = parsed.project_name || (email.is_casting_email && parsed.summary)
-        if (auto_create && isActionable && hasEnoughData && !dry_run) {
-          // Map email type to audition status
-          const auditionStatus = parsed.email_type === "callback" ? "callback" : "submitted"
+
+        if (auto_create && !dry_run && existingAuditionId) {
+          // UPDATE existing audition — this email is a thread follow-up
+          // Build update payload — append new info to existing audition
+          const newNote = [parsed.action_required ? `Update: ${parsed.action_required}` : null, parsed.summary].filter(Boolean).join("\n")
+          let mergedNotes: string | undefined
+          if (newNote) {
+            const { data: existing } = await supabaseAdmin
+              .from("auditions")
+              .select("notes")
+              .eq("id", existingAuditionId)
+              .single()
+            mergedNotes = [existing?.notes, newNote].filter(Boolean).join("\n---\n")
+          }
+
+          await supabaseAdmin
+            .from("auditions")
+            .update({
+              updated_at: new Date().toISOString(),
+              ...(parsed.callback_date ? { callback_date: parsed.callback_date } : {}),
+              ...(parsed.shoot_date ? { shoot_date: parsed.shoot_date } : {}),
+              ...(parsed.location ? { location: parsed.location } : {}),
+              ...(parsed.compensation ? { compensation: parsed.compensation } : {}),
+              ...(parsed.role_name ? { role_name: parsed.role_name } : {}),
+              ...(parsed.email_type === "callback" ? { status: "callback" } : {}),
+              ...(mergedNotes ? { notes: mergedNotes } : {}),
+            })
+            .eq("id", existingAuditionId)
+
+          auditionUpdated = true
+          auditionId = existingAuditionId
+
+          await supabaseAdmin
+            .from("parsed_auditions")
+            .update({ audition_id: existingAuditionId })
+            .eq("id", parsedRecord.id)
+
+        } else if (auto_create && isActionable && hasEnoughData && !dry_run) {
+          // CREATE new audition — first email in thread or no thread match
+          const auditionStatus = parsed.email_type === "callback" ? "callback" : "received"
 
           const { data: audition, error: auditionError } = await supabaseAdmin
             .from("auditions")
@@ -236,10 +297,14 @@ export async function POST(request: Request) {
         }
 
         // Update email processing status
+        const finalStatus = auditionCreated ? "audition_created"
+          : auditionUpdated ? "audition_updated"
+          : dry_run ? "pending" : "parsed"
+
         await supabaseAdmin
           .from("casting_emails")
           .update({
-            processing_status: auditionCreated ? "audition_created" : dry_run ? "pending" : "parsed",
+            processing_status: finalStatus,
             updated_at: new Date().toISOString(),
           })
           .eq("id", email.id)
@@ -251,6 +316,7 @@ export async function POST(request: Request) {
           confidence: parsed.confidence,
           needs_review: needsReview || !auto_create,
           audition_created: auditionCreated,
+          audition_updated: auditionUpdated,
           audition_id: auditionId,
           summary: parsed.summary,
         })
@@ -275,6 +341,7 @@ export async function POST(request: Request) {
       parsed: results.filter((r) => r.status === "success").length,
       skipped: results.filter((r) => r.status === "skipped").length,
       created: results.filter((r) => r.audition_created).length,
+      updated: results.filter((r) => r.audition_updated).length,
       needs_review: results.filter((r) => r.status === "success" && r.needs_review).length,
       errors: results.filter((r) => r.status === "error").length,
       results,

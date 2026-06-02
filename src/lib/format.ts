@@ -92,7 +92,7 @@ export const formatYen = formatPay
 // Audition helpers
 // ---------------------------------------------------------------------------
 
-const ACTIVE_STATUSES: Audition["status"][] = ["submitted", "callback", "pinned"]
+const ACTIVE_STATUSES: Audition["status"][] = ["received", "submitted", "callback", "pinned"]
 
 export function isActiveAudition(a: Audition): boolean {
   return ACTIVE_STATUSES.includes(a.status)

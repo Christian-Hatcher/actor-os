@@ -200,6 +200,7 @@ export function DashboardHome() {
             >
               <p className="mb-3.5">
                 <b className="font-medium text-paper">{week.length} this week.</b>{" "}
+                {activeAuditions.filter((a) => a.status === "received").length} new,{" "}
                 {activeAuditions.filter((a) => a.status === "callback").length} callback,{" "}
                 {activeAuditions.filter((a) => a.status === "submitted").length} submitted.
               </p>

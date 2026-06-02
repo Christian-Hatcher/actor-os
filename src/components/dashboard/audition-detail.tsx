@@ -199,7 +199,8 @@ function StatusActions({
       const labels: Record<string, string> = {
         booked: "Booked! Nice work.",
         passed: "Marked as passed.",
-        submitted: "Reopened.",
+        submitted: "Marked as submitted.",
+        received: "Reopened.",
       }
       setFlash(labels[status] || "Updated.")
       setTimeout(() => setFlash(null), 2500)
@@ -236,7 +237,7 @@ function StatusActions({
         <div className="flex gap-2 px-[22px] pt-2">
           {s === "passed" && (
             <button
-              onClick={() => setStatus("submitted")}
+              onClick={() => setStatus("received")}
               disabled={saving}
               className="font-mono flex-1 rounded-[10px] border border-rule bg-white/[0.02] py-2.5 text-[10px] uppercase tracking-[0.12em] text-paper-dim hover:bg-white/[0.05]"
             >
@@ -257,21 +258,35 @@ function StatusActions({
     )
   }
 
-  // Active audition — show Booked and Passed
+  // Active audition — show actions based on current status
   return (
     <>
       {flashBanner}
       <div className="flex gap-2 px-[22px] pt-2">
-        <button
-          onClick={() => setStatus("booked")}
-          disabled={saving}
-          className={cn(
-            "font-serif flex-1 rounded-[10px] border border-green/40 bg-green/[0.1] py-3 text-[16px] text-green hover:bg-green/[0.18]",
-            saving && "opacity-50",
-          )}
-        >
-          {saving ? "Saving..." : "Booked"}
-        </button>
+        {s === "received" && (
+          <button
+            onClick={() => setStatus("submitted")}
+            disabled={saving}
+            className={cn(
+              "font-serif flex-1 rounded-[10px] border border-blue/40 bg-blue/[0.1] py-3 text-[16px] text-blue hover:bg-blue/[0.18]",
+              saving && "opacity-50",
+            )}
+          >
+            {saving ? "Saving..." : "Submitted"}
+          </button>
+        )}
+        {(s === "submitted" || s === "callback" || s === "pinned") && (
+          <button
+            onClick={() => setStatus("booked")}
+            disabled={saving}
+            className={cn(
+              "font-serif flex-1 rounded-[10px] border border-green/40 bg-green/[0.1] py-3 text-[16px] text-green hover:bg-green/[0.18]",
+              saving && "opacity-50",
+            )}
+          >
+            {saving ? "Saving..." : "Booked"}
+          </button>
+        )}
         <button
           onClick={() => setStatus("passed")}
           disabled={saving}
@@ -280,7 +295,7 @@ function StatusActions({
             saving && "opacity-50",
           )}
         >
-          {saving ? "Saving..." : "Passed"}
+          {saving ? "Saving..." : "Pass"}
         </button>
       </div>
     </>
@@ -386,7 +401,7 @@ export function AuditionDetail({ id }: { id: string }) {
   }
 
   const isBooked = a.status === "booked"
-  const badgeTone = isBooked ? "bk" : a.status === "callback" ? "cb" : ""
+  const badgeTone = isBooked ? "bk" : a.status === "callback" ? "cb" : a.status === "received" ? "rcv" : a.status === "submitted" ? "sub" : ""
   const when = a.callback_date || a.shoot_date || a.submitted_date
   const whenDate = when ? new Date(when) : null
   const startTime =
@@ -430,11 +445,13 @@ export function AuditionDetail({ id }: { id: string }) {
           <span
             className={cn(
               "font-mono absolute left-3.5 top-3.5 z-[3] rounded-[30px] border border-white/20 bg-black/60 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] backdrop-blur",
+              badgeTone === "rcv" && "border-purple/45 bg-black/70 text-purple",
               badgeTone === "cb" && "border-amber/45 bg-black/70 text-amber",
+              badgeTone === "sub" && "border-blue/45 bg-black/70 text-blue",
               badgeTone === "bk" && "border-green/45 text-green",
             )}
           >
-            {a.status}
+            {a.status === "received" ? "new" : a.status}
           </span>
         )}
         <div className="absolute inset-x-4 bottom-4 z-[3]">

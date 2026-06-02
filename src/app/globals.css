@@ -149,6 +149,11 @@ body::before {
   color: var(--paper-dim);
   border: 1px solid var(--rule);
 }
+.chip.rcv {
+  color: var(--purple);
+  border-color: color-mix(in srgb, var(--purple) 40%, transparent);
+  background: color-mix(in srgb, var(--purple) 12%, transparent);
+}
 .chip.cb {
   color: var(--amber);
   border-color: color-mix(in srgb, var(--amber) 40%, transparent);
