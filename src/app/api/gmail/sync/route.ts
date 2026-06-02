@@ -68,6 +68,7 @@ async function getValidAccessToken(connection: any): Promise<string | null> {
  */
 async function fetchCastingEmails(
   accessToken: string,
+  trustedSources: string[],
   cursor?: string,
   maxResults: number = 50
 ): Promise<{
@@ -76,12 +77,16 @@ async function fetchCastingEmails(
 }> {
   const baseUrl = "https://gmail.googleapis.com/gmail/v1/users/me"
 
-  // Search for casting-related emails from any sender
-  // Matches Japanese casting keywords + English equivalents
-  const fullQuery = `(audition OR casting OR self-tape OR callback OR 出演 OR オーディション OR キャスティング OR 撮影) newer_than:30d`
+  // Two search strategies:
+  // 1. Keyword-based: emails containing casting-related terms
+  // 2. Source-based: ALL emails from trusted casting sources (no keyword required)
+  const keywordQuery = `(audition OR casting OR self-tape OR callback OR role OR shoot OR talent OR submission OR 出演 OR オーディション OR キャスティング OR 撮影) newer_than:30d`
 
-  // If we have a cursor (historyId), use history API for incremental sync
-  // Otherwise, do a full search
+  // Build "from:" query for trusted sources
+  const sourceQuery = trustedSources.length > 0
+    ? `(${trustedSources.map((s) => `from:${s}`).join(" OR ")}) newer_than:30d`
+    : null
+
   let messageIds: string[] = []
   let nextHistoryId: string | undefined
 
@@ -115,16 +120,35 @@ async function fetchCastingEmails(
 
   // Full search (first sync or fallback)
   if (messageIds.length === 0) {
+    // Run keyword search
     const searchRes = await fetch(
-      `${baseUrl}/messages?q=${encodeURIComponent(fullQuery)}&maxResults=${maxResults}`,
+      `${baseUrl}/messages?q=${encodeURIComponent(keywordQuery)}&maxResults=${maxResults}`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
       }
     )
     const searchData = await searchRes.json()
-
     if (searchData.messages) {
       messageIds = searchData.messages.map((m: any) => m.id)
+    }
+
+    // Run trusted source search (separate query, merged results)
+    if (sourceQuery) {
+      const sourceRes = await fetch(
+        `${baseUrl}/messages?q=${encodeURIComponent(sourceQuery)}&maxResults=${maxResults}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      )
+      const sourceData = await sourceRes.json()
+      if (sourceData.messages) {
+        const existingIds = new Set(messageIds)
+        for (const msg of sourceData.messages) {
+          if (!existingIds.has(msg.id)) {
+            messageIds.push(msg.id)
+          }
+        }
+      }
     }
 
     // Get the current historyId for future incremental syncs
@@ -255,13 +279,44 @@ export async function POST(request: Request) {
         continue
       }
 
-      // Fetch emails
+      // Fetch emails (keyword search + trusted source search)
       const cursor = force_full ? undefined : connection.sync_cursor || undefined
       const { messages, historyId } = await fetchCastingEmails(
         accessToken,
+        trustedSources,
         cursor,
         50 // Max 50 emails per sync
       )
+
+      // Also re-process previously skipped emails from trusted sources
+      if (trustedSources.length > 0) {
+        const { data: skippedEmails } = await supabaseAdmin
+          .from("casting_emails")
+          .select("id, from_address")
+          .eq("user_id", connection.user_id)
+          .eq("processing_status", "skipped")
+
+        if (skippedEmails) {
+          for (const email of skippedEmails) {
+            const addr = email.from_address?.toLowerCase() || ""
+            const domain = addr.match(/<(.+?)>/)?.[1]?.split("@")[1] || addr.split("@")[1] || ""
+            const isTrusted = trustedSources.some((src) => {
+              const s = src.toLowerCase()
+              return addr.includes(s) || domain.includes(s)
+            })
+            if (isTrusted) {
+              await supabaseAdmin
+                .from("casting_emails")
+                .update({
+                  is_casting_email: true,
+                  processing_status: "pending",
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", email.id)
+            }
+          }
+        }
+      }
 
       let inserted = 0
       let skipped = 0
