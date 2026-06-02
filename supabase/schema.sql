@@ -12,6 +12,7 @@ create table public.profiles (
   subscription_status text default 'inactive',
   stripe_customer_id text,
   stripe_subscription_id text,
+  casting_sources jsonb default '[]'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

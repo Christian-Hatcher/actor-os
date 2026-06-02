@@ -228,6 +228,17 @@ export async function POST(request: Request) {
     const results: any[] = []
 
     for (const connection of connections) {
+      // Load user's trusted casting sources
+      let trustedSources: string[] = []
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("casting_sources")
+        .eq("id", connection.user_id)
+        .single()
+      if (profile?.casting_sources && Array.isArray(profile.casting_sources)) {
+        trustedSources = profile.casting_sources as string[]
+      }
+
       // Get valid access token
       const accessToken = await getValidAccessToken(connection)
       if (!accessToken) {
@@ -286,24 +297,40 @@ export async function POST(request: Request) {
           continue
         }
 
-        // Detect if it's likely a casting email
+        // Check if sender is a trusted casting source (from profile settings)
+        const senderEmail = fromAddress.match(/<(.+?)>/)?.[1]?.toLowerCase() || fromAddress.toLowerCase()
+        const senderDomain = senderEmail.split("@")[1] || ""
+        const isTrustedSource = trustedSources.some((src: string) => {
+          const s = src.toLowerCase()
+          return senderEmail.includes(s) || senderDomain.includes(s)
+        })
+
+        // Detect if it's likely a casting email via keywords OR trusted source
         const lowerSubject = subject.toLowerCase()
         const lowerBody = text.toLowerCase()
-        const isCasting =
-          fromAddress.includes("bay-side.biz") ||
-          fromAddress.includes("lilianamodels.com") ||
-          fromAddress.includes("horipro.co.jp") ||
+        const keywordMatch =
           lowerSubject.includes("audition") ||
           lowerSubject.includes("casting") ||
           lowerSubject.includes("self-tape") ||
           lowerSubject.includes("self tape") ||
           lowerSubject.includes("callback") ||
+          lowerSubject.includes("role") ||
+          lowerSubject.includes("submission") ||
+          lowerSubject.includes("availability") ||
+          lowerSubject.includes("shoot") ||
+          lowerSubject.includes("talent") ||
           lowerSubject.includes("出演") ||
           lowerSubject.includes("オーディション") ||
           lowerSubject.includes("キャスティング") ||
+          lowerSubject.includes("撮影") ||
           lowerBody.includes("audition") ||
           lowerBody.includes("self-tape") ||
-          lowerBody.includes("撮影日")
+          lowerBody.includes("casting") ||
+          lowerBody.includes("callback") ||
+          lowerBody.includes("撮影日") ||
+          lowerBody.includes("出演依頼")
+
+        const isCasting = isTrustedSource || keywordMatch
 
         // Insert into database
         const { error: insertError } = await supabaseAdmin

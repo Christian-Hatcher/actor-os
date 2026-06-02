@@ -19,6 +19,7 @@ export interface Profile {
   theme_id?: string
   custom_theme?: Record<string, unknown> | null
   preferred_mode?: "theater" | "film" | "both"
+  casting_sources?: string[]
   created_at: string
   updated_at: string
 }

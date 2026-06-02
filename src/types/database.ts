@@ -33,6 +33,7 @@ export interface Database {
           preferred_mode: string
           tax_settings: Json | null
           llm_settings: Json | null
+          casting_sources: Json | null
           created_at: string
           updated_at: string
         }
@@ -58,6 +59,7 @@ export interface Database {
           preferred_mode?: string
           tax_settings?: Json | null
           llm_settings?: Json | null
+          casting_sources?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -82,6 +84,7 @@ export interface Database {
           preferred_mode?: string
           tax_settings?: Json | null
           llm_settings?: Json | null
+          casting_sources?: Json | null
           updated_at?: string
         }
         Relationships: []

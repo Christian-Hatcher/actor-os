@@ -121,6 +121,100 @@ function HeadshotUpload({ profile, refreshProfile }: { profile: any; refreshProf
   )
 }
 
+function CastingSources({ profile, refreshProfile }: { profile: any; refreshProfile: () => Promise<void> }) {
+  const [sources, setSources] = useState<string[]>([])
+  const [newSource, setNewSource] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (profile?.casting_sources && Array.isArray(profile.casting_sources)) {
+      setSources(profile.casting_sources)
+    }
+  }, [profile?.casting_sources])
+
+  async function addSource() {
+    const trimmed = newSource.trim().toLowerCase()
+    if (!trimmed || !profile?.id) return
+    if (sources.includes(trimmed)) { setNewSource(""); return }
+
+    const updated = [...sources, trimmed]
+    setSaving(true)
+    await supabase
+      .from("profiles")
+      .update({ casting_sources: updated })
+      .eq("id", profile.id)
+    setSources(updated)
+    setNewSource("")
+    setSaving(false)
+    refreshProfile()
+  }
+
+  async function removeSource(src: string) {
+    if (!profile?.id) return
+    const updated = sources.filter((s) => s !== src)
+    await supabase
+      .from("profiles")
+      .update({ casting_sources: updated })
+      .eq("id", profile.id)
+    setSources(updated)
+    refreshProfile()
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Target className="h-5 w-5 text-muted-foreground" />
+          <CardTitle>Casting Sources</CardTitle>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Add email addresses or domains that send you casting notices.
+          Emails from these sources always get parsed, even without
+          &ldquo;audition&rdquo; in the subject.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex gap-2">
+          <input
+            value={newSource}
+            onChange={(e) => setNewSource(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") addSource() }}
+            placeholder="e.g. agency@talent.com or backstage.com"
+            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+          <Button size="sm" onClick={addSource} disabled={saving || !newSource.trim()}>
+            Add
+          </Button>
+        </div>
+
+        {sources.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No trusted sources yet. Add your agent&apos;s email or casting
+            platform domains so their emails always get picked up.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {sources.map((src) => (
+              <span
+                key={src}
+                className="inline-flex items-center gap-1 rounded-full border bg-muted px-2.5 py-1 text-xs"
+              >
+                {src}
+                <button
+                  onClick={() => removeSource(src)}
+                  className="ml-0.5 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 interface EmailConnection {
   id: string
   email_address: string
@@ -542,6 +636,9 @@ function SettingsContent() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Casting Sources */}
+        <CastingSources profile={profile} refreshProfile={refreshProfile} />
 
         {/* AI Provider */}
         <Card>
