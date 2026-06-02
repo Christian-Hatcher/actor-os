@@ -23,45 +23,60 @@ import type { ParsedAudition } from "@/types"
 
 export default function EmailReviewPage() {
   const [parsedEntries, setParsedEntries] = useState<ParsedAudition[]>([])
+  const [processedEntries, setProcessedEntries] = useState<ParsedAudition[]>([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState<Set<string>>(new Set())
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
+  const [showProcessed, setShowProcessed] = useState(false)
   const hasFetched = useRef(false)
 
   const fetchPendingReviews = useCallback(async () => {
     setLoading(true)
 
-    const { data: parsed, error: parsedError } = await supabase
-      .from("parsed_auditions")
-      .select("*")
-      .eq("needs_review", true)
-      .eq("reviewed_by_user", false)
-      .order("confidence_score", { ascending: false })
+    // Fetch both pending AND processed in parallel
+    const [pendingResult, processedResult] = await Promise.all([
+      supabase
+        .from("parsed_auditions")
+        .select("*")
+        .eq("needs_review", true)
+        .eq("reviewed_by_user", false)
+        .order("confidence_score", { ascending: false }),
+      supabase
+        .from("parsed_auditions")
+        .select("*")
+        .eq("reviewed_by_user", true)
+        .order("reviewed_at", { ascending: false })
+        .limit(50),
+    ])
 
-    if (parsedError) {
-      console.error("Failed to fetch reviews:", parsedError)
+    if (pendingResult.error) {
+      console.error("Failed to fetch reviews:", pendingResult.error)
       setLoading(false)
       return
     }
 
-    const emailIds = (parsed || []).map((p: any) => p.email_id).filter(Boolean)
+    const allParsed = [...(pendingResult.data || []), ...(processedResult.data || [])]
+    const emailIds = allParsed.map((p: any) => p.email_id).filter(Boolean)
     let emailMap: Record<string, any> = {}
     if (emailIds.length > 0) {
       const { data: emails } = await supabase
         .from("casting_emails")
         .select("*")
-        .in("id", emailIds)
+        .in("id", [...new Set(emailIds)])
       if (emails) {
         emailMap = Object.fromEntries(emails.map((e: any) => [e.id, e]))
       }
     }
 
-    const enriched = (parsed || []).map((p: any) => ({
-      ...p,
-      casting_emails: emailMap[p.email_id] || null,
-    }))
+    function enrich(entries: any[]) {
+      return entries.map((p: any) => ({
+        ...p,
+        casting_emails: emailMap[p.email_id] || null,
+      }))
+    }
 
-    setParsedEntries(enriched as unknown as ParsedAudition[])
+    setParsedEntries(enrich(pendingResult.data || []) as unknown as ParsedAudition[])
+    setProcessedEntries(enrich(processedResult.data || []) as unknown as ParsedAudition[])
     setLoading(false)
     hasFetched.current = true
   }, [])
@@ -255,8 +270,8 @@ export default function EmailReviewPage() {
   return (
     <DashboardShell>
       <DashboardHeader
-        heading="Review Queue"
-        text={`${parsedEntries.length} email${parsedEntries.length === 1 ? "" : "s"} to review`}
+        heading="Email Inbox"
+        text={`${parsedEntries.length} to review · ${processedEntries.length} processed`}
       >
         <Button
           variant="outline"
@@ -281,6 +296,14 @@ export default function EmailReviewPage() {
               </p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Section label: To Review */}
+        {parsedEntries.length > 0 && (
+          <div className="flex items-center gap-2 pt-2">
+            <Mail className="h-4 w-4 text-amber-500" />
+            <p className="text-sm font-medium">To Review</p>
+          </div>
         )}
 
         {parsedEntries.map((entry) => {
@@ -503,6 +526,75 @@ export default function EmailReviewPage() {
             </Card>
           )
         })}
+
+        {/* Processed section — collapsible */}
+        {processedEntries.length > 0 && (
+          <>
+            <button
+              onClick={() => setShowProcessed((o) => !o)}
+              className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5 mt-4"
+            >
+              <div className="flex items-center gap-2">
+                {showProcessed ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="text-sm font-medium">Processed</span>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {processedEntries.length}
+              </Badge>
+            </button>
+
+            {showProcessed && processedEntries.map((entry) => {
+              const fields = entry.extracted_fields
+              const email = (entry as any).casting_emails
+              const outcome = entry.audition_id ? "added" : entry.review_reason === "Needs response" ? "reply" : "skipped"
+
+              return (
+                <Card key={entry.id} className="overflow-hidden opacity-75">
+                  <CardContent className="p-3 space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-sm leading-snug line-clamp-1 min-w-0">
+                        {fields.project_name || email?.subject || "Unknown"}
+                      </p>
+                      <span className={cn(
+                        "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase",
+                        outcome === "added" && "bg-green-100 text-green-700",
+                        outcome === "reply" && "bg-blue-100 text-blue-700",
+                        outcome === "skipped" && "bg-gray-100 text-gray-600",
+                      )}>
+                        {outcome === "added" ? "Audition" : outcome === "reply" ? "Needs reply" : "Skipped"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="truncate">{email?.from_name || "Unknown sender"}</span>
+                      <span className="whitespace-nowrap ml-2">
+                        {entry.reviewed_at
+                          ? new Date(entry.reviewed_at).toLocaleDateString()
+                          : ""}
+                      </span>
+                    </div>
+                    {fields.summary && (
+                      <p className="text-xs text-muted-foreground leading-snug line-clamp-2">
+                        {fields.summary}
+                      </p>
+                    )}
+                    {outcome === "added" && entry.audition_id && (
+                      <a
+                        href={`/dashboard/auditions/${entry.audition_id}`}
+                        className="inline-block text-xs text-amber-600 hover:underline"
+                      >
+                        View audition &rarr;
+                      </a>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </>
+        )}
       </div>
     </DashboardShell>
   )

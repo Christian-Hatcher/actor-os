@@ -526,9 +526,37 @@ export function AuditionsView() {
         </p>
       ) : view === "calendar" ? (
         <CalendarView auditions={filtered} selected={selectedDay} onSelect={setSelectedDay} />
-      ) : groups.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <p className="font-serif px-[22px] py-12 text-center text-[18px] italic text-paper-faint">
           {search || filter !== "all" ? "Nothing matches." : "No auditions yet. Add your first."}
+        </p>
+      ) : filter === "past" ? (
+        // Past view: sub-sections by status
+        (() => {
+          const passed = filtered.filter((a) => a.status === "passed")
+          const archived = filtered.filter((a) => a.status === "archived")
+          const pastGroups = [
+            { key: "passed", label: "Passed", auditions: passed },
+            { key: "archived", label: "Archived", auditions: archived },
+          ].filter((g) => g.auditions.length > 0)
+
+          return pastGroups.map((g) => (
+            <CollapsibleSection
+              key={g.key}
+              label={g.label}
+              count={g.auditions.length}
+              defaultOpen={g.key === "passed"}
+              storageKey={`auditions_past_${g.key}`}
+            >
+              {g.auditions.map((a) => (
+                <AgendaRow key={a.id} a={a} />
+              ))}
+            </CollapsibleSection>
+          ))
+        })()
+      ) : groups.length === 0 ? (
+        <p className="font-serif px-[22px] py-12 text-center text-[18px] italic text-paper-faint">
+          {search ? "Nothing matches." : "No auditions in this view."}
         </p>
       ) : (
         groups.map((g) => {
