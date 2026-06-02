@@ -42,3 +42,8 @@ next-env.d.ts
 .gstack/
 supabase/.temp/
 /mcp/
+
+# installed skills (2400+ files, install via npx skills add)
+.agents/
+.claude/skills/
+skills-lock.json
