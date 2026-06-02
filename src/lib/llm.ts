@@ -11,7 +11,7 @@
 
 export type LLMTier = "low" | "high"
 
-export type LLMProvider = "gemini" | "openai" | "anthropic"
+export type LLMProvider = "gemini" | "openai" | "anthropic" | "ollama" | "groq"
 
 export interface LLMSettings {
   provider: LLMProvider
@@ -39,6 +39,8 @@ const DEFAULT_MODELS: Record<LLMProvider, Record<LLMTier, string>> = {
   gemini: { low: "gemini-2.0-flash", high: "gemini-2.0-flash" },
   openai: { low: "gpt-4o-mini", high: "gpt-4o" },
   anthropic: { low: "claude-haiku-4-5-20251001", high: "claude-sonnet-4-6" },
+  ollama: { low: "llama3.2:3b", high: "llama3.2:3b" },
+  groq: { low: "llama-3.3-70b-versatile", high: "llama-3.3-70b-versatile" },
 }
 
 /**
@@ -51,32 +53,59 @@ function getConfig(tier: LLMTier, userSettings?: LLMSettings | null) {
       provider: userSettings.provider,
       model: userSettings.model || DEFAULT_MODELS[userSettings.provider]?.[tier] || DEFAULT_MODELS.gemini[tier],
       apiKey: userSettings.api_key,
+      baseUrl: undefined as string | undefined,
     }
   }
 
   // Priority 2: App-level env vars
   const envProvider = process.env[`LLM_${tier.toUpperCase()}_PROVIDER`] as LLMProvider | undefined
+  const envModel = process.env[`LLM_${tier.toUpperCase()}_MODEL`]
   const envKey = process.env[`LLM_${tier.toUpperCase()}_API_KEY`]
-  if (envProvider && envKey) {
+  const envBaseUrl = process.env[`LLM_${tier.toUpperCase()}_BASE_URL`]
+
+  // Ollama needs no API key, just a base URL
+  if (envProvider === "ollama") {
     return {
-      provider: envProvider,
-      model: process.env[`LLM_${tier.toUpperCase()}_MODEL`] || DEFAULT_MODELS[envProvider]?.[tier] || DEFAULT_MODELS.gemini[tier],
-      apiKey: envKey,
+      provider: "ollama" as LLMProvider,
+      model: envModel || DEFAULT_MODELS.ollama[tier],
+      apiKey: "",
+      baseUrl: envBaseUrl || "http://localhost:11434",
     }
   }
 
-  // Priority 3: Gemini free tier (uses GEMINI_API_KEY env var)
+  if (envProvider && envKey) {
+    return {
+      provider: envProvider,
+      model: envModel || DEFAULT_MODELS[envProvider]?.[tier] || DEFAULT_MODELS.gemini[tier],
+      apiKey: envKey,
+      baseUrl: envBaseUrl,
+    }
+  }
+
+  // Priority 3: Groq free tier (generous: 30 req/min, Llama 3.3 70B)
+  const groqKey = process.env.GROQ_API_KEY
+  if (groqKey) {
+    return {
+      provider: "groq" as LLMProvider,
+      model: DEFAULT_MODELS.groq[tier],
+      apiKey: groqKey,
+      baseUrl: undefined,
+    }
+  }
+
+  // Priority 4: Gemini free tier
   const geminiKey = process.env.GEMINI_API_KEY
   if (geminiKey) {
     return {
       provider: "gemini" as LLMProvider,
       model: DEFAULT_MODELS.gemini[tier],
       apiKey: geminiKey,
+      baseUrl: undefined,
     }
   }
 
   throw new Error(
-    "No LLM provider configured. Set GEMINI_API_KEY env var for free Gemini, or add your own key in Settings > AI Provider."
+    "No LLM provider configured. Set GROQ_API_KEY (free) or GEMINI_API_KEY env var, or add your own key in Settings > AI Provider."
   )
 }
 
@@ -193,6 +222,104 @@ async function callOpenAI(model: string, apiKey: string, messages: LLMMessage[],
   }
 }
 
+async function callOllama(model: string, baseUrl: string, messages: LLMMessage[], maxTokens: number): Promise<LLMResponse> {
+  // Use Ollama native API for thinking models (kimi, deepseek, qwq)
+  // The OpenAI-compat endpoint doesn't separate thinking vs content well
+  const isThinkingModel = model.includes("kimi") || model.includes("deepseek") || model.includes("qwq")
+
+  if (isThinkingModel) {
+    // Use native Ollama /api/chat which properly handles thinking models
+    const res = await fetch(`${baseUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        options: { num_predict: maxTokens },
+      }),
+    })
+
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Ollama error ${res.status}: ${text}`)
+    }
+
+    const data = await res.json()
+    let content = data.message?.content || ""
+
+    // If content is empty but there's thinking, try to extract JSON from thinking
+    if (!content && data.message?.thinking) {
+      const thinking = data.message.thinking
+      const jsonStart = thinking.lastIndexOf("{")
+      const jsonEnd = thinking.lastIndexOf("}")
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        content = thinking.substring(jsonStart, jsonEnd + 1)
+      }
+    }
+
+    return {
+      content,
+      model,
+      provider: "ollama",
+      usage: {
+        input_tokens: data.prompt_eval_count,
+        output_tokens: data.eval_count,
+      },
+    }
+  }
+
+  // Standard OpenAI-compat endpoint for non-thinking models
+  const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Ollama error ${res.status}: ${text}`)
+  }
+
+  const data = await res.json()
+  return {
+    content: data.choices?.[0]?.message?.content || "",
+    model,
+    provider: "ollama",
+    usage: {
+      input_tokens: data.usage?.prompt_tokens,
+      output_tokens: data.usage?.completion_tokens,
+    },
+  }
+}
+
+async function callGroq(model: string, apiKey: string, messages: LLMMessage[], maxTokens: number): Promise<LLMResponse> {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Groq error ${res.status}: ${text}`)
+  }
+
+  const data = await res.json()
+  return {
+    content: data.choices?.[0]?.message?.content || "",
+    model,
+    provider: "groq",
+    usage: {
+      input_tokens: data.usage?.prompt_tokens,
+      output_tokens: data.usage?.completion_tokens,
+    },
+  }
+}
+
 /**
  * Call an LLM.
  *
@@ -216,6 +343,10 @@ export async function llm(
       return callAnthropic(config.model, config.apiKey, messages, maxTokens)
     case "openai":
       return callOpenAI(config.model, config.apiKey, messages, maxTokens)
+    case "ollama":
+      return callOllama(config.model, config.baseUrl || "http://localhost:11434", messages, maxTokens)
+    case "groq":
+      return callGroq(config.model, config.apiKey, messages, maxTokens)
     default:
       throw new Error(`Unknown LLM provider: ${config.provider}`)
   }

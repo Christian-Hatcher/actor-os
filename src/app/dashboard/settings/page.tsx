@@ -459,16 +459,10 @@ function SettingsContent() {
       const inserted = syncData.results?.[0]?.emails_inserted || 0
       const fetched = syncData.results?.[0]?.emails_fetched || 0
 
-      if (inserted === 0) {
-        setSyncResult({
-          message: `Checked ${fetched} emails — no new casting emails found.`,
-        })
-        fetchConnections()
-        return
-      }
-
-      // Step 2: Parse new emails with AI
-      setSyncPhase(`Parsing ${inserted} new emails with AI...`)
+      // Step 2: Parse pending emails with AI (includes newly inserted + re-queued)
+      setSyncPhase(inserted > 0
+        ? `Parsing ${inserted} new emails with AI...`
+        : "Checking for emails to parse...")
       const parseRes = await fetch("/api/gmail/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -478,11 +472,19 @@ function SettingsContent() {
         }),
       })
       const parseData = await parseRes.json()
+      const parsed = parseData.parsed || 0
+      const needsReview = parseData.needs_review || 0
 
-      setSyncResult({
-        message: `Synced ${inserted} emails, parsed ${parseData.parsed || 0}, ${parseData.needs_review || 0} need review.`,
-        details: syncData,
-      })
+      if (inserted === 0 && parsed === 0) {
+        setSyncResult({
+          message: `Checked ${fetched} emails — no new casting emails found.`,
+        })
+      } else {
+        setSyncResult({
+          message: `Synced ${inserted} new emails, parsed ${parsed}, ${needsReview} need review.`,
+          details: syncData,
+        })
+      }
 
       fetchConnections()
     } catch (err: any) {

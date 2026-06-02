@@ -219,6 +219,30 @@ function extractHeaders(payload: any): Record<string, string> {
 }
 
 /**
+ * Check if an email matches any trusted casting source by address, domain, or sender name
+ */
+function matchesTrustedSource(
+  fromAddress: string,
+  fromName: string,
+  trustedSources: string[]
+): boolean {
+  const addr = fromAddress.toLowerCase()
+  const email = addr.match(/<(.+?)>/)?.[1] || addr
+  const domain = email.split("@")[1] || ""
+  const name = fromName.toLowerCase()
+
+  return trustedSources.some((src) => {
+    const s = src.toLowerCase()
+    return (
+      email.includes(s) ||
+      domain.includes(s) ||
+      name.includes(s) ||
+      s.includes(name) && name.length > 2
+    )
+  })
+}
+
+/**
  * POST /api/gmail/sync
  * Triggered by user clicking "Sync Emails" or by cron job
  */
@@ -292,19 +316,13 @@ export async function POST(request: Request) {
       if (trustedSources.length > 0) {
         const { data: skippedEmails } = await supabaseAdmin
           .from("casting_emails")
-          .select("id, from_address")
+          .select("id, from_address, from_name")
           .eq("user_id", connection.user_id)
           .eq("processing_status", "skipped")
 
         if (skippedEmails) {
           for (const email of skippedEmails) {
-            const addr = email.from_address?.toLowerCase() || ""
-            const domain = addr.match(/<(.+?)>/)?.[1]?.split("@")[1] || addr.split("@")[1] || ""
-            const isTrusted = trustedSources.some((src) => {
-              const s = src.toLowerCase()
-              return addr.includes(s) || domain.includes(s)
-            })
-            if (isTrusted) {
+            if (matchesTrustedSource(email.from_address || "", email.from_name || "", trustedSources)) {
               await supabaseAdmin
                 .from("casting_emails")
                 .update({
@@ -352,13 +370,8 @@ export async function POST(request: Request) {
           continue
         }
 
-        // Check if sender is a trusted casting source (from profile settings)
-        const senderEmail = fromAddress.match(/<(.+?)>/)?.[1]?.toLowerCase() || fromAddress.toLowerCase()
-        const senderDomain = senderEmail.split("@")[1] || ""
-        const isTrustedSource = trustedSources.some((src: string) => {
-          const s = src.toLowerCase()
-          return senderEmail.includes(s) || senderDomain.includes(s)
-        })
+        // Check if sender is a trusted casting source (by email, domain, or name)
+        const isTrustedSource = matchesTrustedSource(fromAddress, fromName, trustedSources)
 
         // Detect if it's likely a casting email via keywords OR trusted source
         const lowerSubject = subject.toLowerCase()

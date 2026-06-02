@@ -3,30 +3,36 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin"
 import { llm, type LLMSettings } from "@/lib/llm"
 import {
   SYSTEM_PROMPT,
+  DEEP_SYSTEM_PROMPT,
   DEFAULTS,
   buildUserPrompt,
+  buildDeepUserPrompt,
   parseLLMResponse,
   validateParsedResult,
   detectPlatform,
 } from "@/lib/email-parser"
 
 /**
- * LLM-powered casting email parser with structured output
+ * Quick pass: classify email + grab basics (~500 chars of body, small prompt)
  */
 async function parseEmail(
   subject: string,
   body: string,
   fromAddress: string,
-  userLLMSettings?: LLMSettings | null
+  userLLMSettings?: LLMSettings | null,
+  isTrustedSource?: boolean
 ) {
-  // Step 1: Deterministic platform detection (no LLM cost)
   const detectedPlatform = detectPlatform(fromAddress, subject, body)
+
+  const trustedHint = isTrustedSource
+    ? " This is from a TRUSTED CASTING SOURCE — default to 'casting' unless clearly admin."
+    : ""
 
   try {
     const response = await llm("low", [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: SYSTEM_PROMPT + trustedHint },
       { role: "user", content: buildUserPrompt(fromAddress, subject, body) },
-    ], 800, userLLMSettings)
+    ], 2000, userLLMSettings)
 
     const parsed = parseLLMResponse(response.content)
     if (!parsed) {
@@ -114,11 +120,12 @@ export async function POST(request: Request) {
           email.subject,
           email.body_text || "",
           email.from_address,
-          userLLMSettings
+          userLLMSettings,
+          email.is_casting_email
         )
 
-        // If LLM says it's not a casting email, mark it and move on
-        if (parsed.email_type === "irrelevant") {
+        // If LLM says it's not a casting email AND it wasn't flagged as trusted source, skip it
+        if (parsed.email_type === "irrelevant" && !email.is_casting_email) {
           await supabaseAdmin
             .from("casting_emails")
             .update({
@@ -130,6 +137,12 @@ export async function POST(request: Request) {
 
           results.push({ email_id: email.id, status: "skipped", reason: "not_casting" })
           continue
+        }
+
+        // Trusted source override: if LLM said irrelevant but it's from a trusted source,
+        // treat it as a casting email and default to "casting" type
+        if (parsed.email_type === "irrelevant" && email.is_casting_email) {
+          parsed.email_type = "casting"
         }
 
         // Determine if needs human review

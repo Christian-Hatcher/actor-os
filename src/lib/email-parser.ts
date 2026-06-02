@@ -132,51 +132,43 @@ export function validateParsedResult(
   }
 }
 
-export const SYSTEM_PROMPT = `You are a casting email parser for a professional actor. You receive emails that may be casting notices, audition invitations, callbacks, inquiries, self-tape requests, or unrelated messages.
+// Quick pass: classify + grab basics. ~5 fields, fast.
+export const SYSTEM_PROMPT = `Classify this email and extract basics. Respond with ONLY a JSON object — no explanation, no markdown.
 
-STEP 1 — READ THE SUBJECT LINE FIRST.
-The subject line is the most reliable source for the project title and email type. Extract the project name from the subject before reading the body.
+Types: "casting" (new audition/role/self-tape), "callback", "inquiry" (availability check, form), "admin" (logistics), "irrelevant"
 
-STEP 2 — CLASSIFY THE EMAIL.
-- "casting": a new audition opportunity, role posting, or self-tape request
-- "callback": a follow-up to a previous audition (you got called back)
-- "inquiry": asking you to fill out forms, provide availability, confirm interest — NOT a confirmed audition yet
-- "admin": scheduling, paperwork, logistics for an already-confirmed booking
-- "irrelevant": newsletters, promotions, unrelated
+Extract project_name from the subject line. Translate Japanese to English. Dates as YYYY-MM-DD.`
 
-STEP 3 — EXTRACT STRUCTURED DATA from the email body.
-
-PLATFORM AWARENESS:
-- Actors Access / Breakdown Services: project title is usually in the subject after "Breakdown:" or "Audition:". Role details are in structured blocks.
-- Backstage: subject often starts with "New Casting Notice:" or "Audition Alert:". Body has structured fields.
-- Casting Networks / LA Casting: subject often has "Casting Notice" or "Audition". Body uses tables or labeled fields.
-- Direct emails from agents/CDs: less structured — scan for project name, dates, and instructions.
-
-RULES:
-- Respond with ONLY a JSON object. No markdown fences, no explanation, no text before or after.
-- Every field must be present in the response. Use null for missing data, never omit a field.
-- "project_name": The title of the project/show/film/commercial. This is the MOST important field. Extract from subject line first, body second.
-- "submission_deadline": When the actor must submit by (separate from shoot/callback dates). Common in Actors Access and Backstage listings.
-- "action_required": One short phrase describing what the actor needs to DO. Examples: "Submit self-tape by Friday", "Fill out availability form", "Confirm callback attendance", "Upload headshot to portal". null if no action needed.
-- "source_platform": "actors_access", "backstage", "casting_networks", "direct", or "unknown"
-- "summary": 1-2 sentences a busy actor can scan in 3 seconds. Lead with pay if mentioned, then what it is, then the deadline.
-- "confidence": 90+ = very sure. 60-89 = some guesses. Below 60 = unsure this is even a casting email.
-- Dates in YYYY-MM-DD format. If only month/day given, assume the current or next occurrence.
-- Compensation: keep original currency and amount. "$500/day", "¥50,000", "3万円" are all fine.
-- Translate Japanese content to English for extracted fields.`
-
-export const USER_PROMPT_TEMPLATE = `Parse this email:
-
-FROM: {from}
+export const USER_PROMPT_TEMPLATE = `FROM: {from}
 SUBJECT: {subject}
 BODY:
 {body}
 
-Respond with this exact JSON structure:
-{"email_type":"casting|callback|inquiry|admin|irrelevant","project_name":null,"role_name":null,"casting_director":null,"agency":null,"location":null,"compensation":null,"deadline":null,"submission_deadline":null,"shoot_date":null,"callback_date":null,"notes":null,"summary":null,"confidence":0,"source_platform":"actors_access|backstage|casting_networks|direct|unknown","action_required":null}`
+{"email_type":"","project_name":null,"agency":null,"deadline":null,"summary":null,"confidence":0,"action_required":null}`
+
+// Deep pass: full extraction for confirmed casting emails. Called on demand.
+export const DEEP_SYSTEM_PROMPT = `Extract full details from this casting email. Respond with ONLY a JSON object.
+
+Rules:
+- Dates as YYYY-MM-DD. Keep original currency for compensation.
+- Translate Japanese to English. Use null for missing fields.`
+
+export const DEEP_USER_PROMPT_TEMPLATE = `FROM: {from}
+SUBJECT: {subject}
+BODY:
+{body}
+
+{"project_name":null,"role_name":null,"casting_director":null,"agency":null,"location":null,"compensation":null,"deadline":null,"submission_deadline":null,"shoot_date":null,"callback_date":null,"notes":null,"summary":null,"confidence":0,"source_platform":"actors_access|backstage|casting_networks|direct|unknown","action_required":null}`
 
 export function buildUserPrompt(from: string, subject: string, body: string): string {
   return USER_PROMPT_TEMPLATE
+    .replace("{from}", from)
+    .replace("{subject}", subject)
+    .replace("{body}", body.substring(0, 1500))
+}
+
+export function buildDeepUserPrompt(from: string, subject: string, body: string): string {
+  return DEEP_USER_PROMPT_TEMPLATE
     .replace("{from}", from)
     .replace("{subject}", subject)
     .replace("{body}", body.substring(0, 4000))
