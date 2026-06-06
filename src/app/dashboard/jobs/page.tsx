@@ -5,7 +5,12 @@ import Link from "next/link"
 import { Briefcase, Calendar, MapPin } from "lucide-react"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
 import type { Job } from "@/types"
+
+/** Project types shown per preferred_mode */
+const THEATER_TYPES = new Set(["theater"])
+const FILM_TYPES = new Set(["film", "tv", "commercial", "voice_over", "modeling"])
 
 type StatusFilter = "all" | "active" | "wrapped" | "archived"
 
@@ -120,10 +125,13 @@ function JobRow({ job }: { job: Job }) {
 }
 
 function JobsView() {
+  const { profile } = useAuth()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<StatusFilter>("all")
+
+  const preferredMode = (profile?.preferred_mode as string) ?? "both"
 
   useEffect(() => {
     let active = true
@@ -145,8 +153,15 @@ function JobsView() {
     return () => { active = false }
   }, [])
 
+  // Apply theater/film mode filter, then status filter
+  const modeFiltered = preferredMode === "both"
+    ? jobs
+    : preferredMode === "theater"
+      ? jobs.filter((j) => THEATER_TYPES.has(j.project_type) || j.project_type === "other")
+      : jobs.filter((j) => FILM_TYPES.has(j.project_type) || j.project_type === "other")
+
   const filtered =
-    filter === "all" ? jobs : jobs.filter((j) => j.status === filter)
+    filter === "all" ? modeFiltered : modeFiltered.filter((j) => j.status === filter)
 
   if (loading) {
     return (
@@ -183,8 +198,8 @@ function JobsView() {
         {STATUS_TABS.map((tab) => {
           const count =
             tab.key === "all"
-              ? jobs.length
-              : jobs.filter((j) => j.status === tab.key).length
+              ? modeFiltered.length
+              : modeFiltered.filter((j) => j.status === tab.key).length
           return (
             <button
               key={tab.key}

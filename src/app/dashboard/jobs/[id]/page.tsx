@@ -14,9 +14,10 @@ import {
 } from "lucide-react"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
 import type { Job, RehearsalLog, Script } from "@/types"
 
-type Tab = "overview" | "rehearsals" | "scripts"
+type Tab = "overview" | "rehearsals" | "scripts" | "timeline"
 
 const REHEARSAL_TYPES: { value: RehearsalLog["type"]; label: string }[] = [
   { value: "table_read", label: "Table Read" },
@@ -428,6 +429,123 @@ function ScriptsTab({ jobId, scripts: initial }: { jobId: string; scripts: Scrip
 }
 
 /* ------------------------------------------------------------------ */
+/* Timeline tab                                                        */
+/* ------------------------------------------------------------------ */
+
+function TimelineTab({ job, rehearsals }: { job: Job; rehearsals: RehearsalLog[] }) {
+  // Build a list of all events: job start/end + rehearsals
+  type TimelineEvent = {
+    date: string
+    label: string
+    type: "start" | "end" | "rehearsal"
+    detail?: string
+  }
+
+  const events: TimelineEvent[] = []
+
+  if (job.start_date) {
+    events.push({ date: job.start_date, label: "Job starts", type: "start" })
+  }
+  if (job.end_date) {
+    events.push({ date: job.end_date, label: "Job ends", type: "end" })
+  }
+  rehearsals.forEach((r) => {
+    events.push({
+      date: r.date,
+      label: r.type.replace(/_/g, " "),
+      type: "rehearsal",
+      detail: r.notes || undefined,
+    })
+  })
+
+  events.sort((a, b) => a.date.localeCompare(b.date))
+
+  // Group by month
+  const grouped = events.reduce<Record<string, TimelineEvent[]>>((acc, e) => {
+    const monthKey = e.date.slice(0, 7) // YYYY-MM
+    ;(acc[monthKey] ??= []).push(e)
+    return acc
+  }, {})
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  const eventDot = (type: TimelineEvent["type"]) => {
+    if (type === "start") return "bg-green"
+    if (type === "end") return "bg-red"
+    return "bg-amber"
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="mt-4 py-8 text-center">
+        <p className="font-serif text-[17px] italic text-paper-faint">
+          No dates to show yet. Add a start date or log a rehearsal.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4 space-y-5">
+      {Object.entries(grouped).map(([monthKey, monthEvents]) => {
+        const monthLabel = new Date(monthKey + "-01T00:00:00").toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+        })
+        return (
+          <div key={monthKey}>
+            <div className="font-mono mb-2 text-[10px] uppercase tracking-[0.22em] text-paper-faint">
+              {monthLabel}
+            </div>
+            <div className="relative border-l-2 border-rule ml-2 pl-5 space-y-3">
+              {monthEvents.map((e, i) => {
+                const isPast = e.date < today
+                const isToday = e.date === today
+                return (
+                  <div key={`${e.date}-${i}`} className="relative">
+                    {/* Dot on timeline */}
+                    <div
+                      className={cn(
+                        "absolute -left-[27px] top-1.5 size-3 rounded-full border-2 border-bg",
+                        eventDot(e.type),
+                        isPast && !isToday && "opacity-50",
+                        isToday && "ring-2 ring-amber/40",
+                      )}
+                    />
+                    <div className={cn(
+                      "rounded-[10px] border border-rule px-3.5 py-2.5",
+                      isToday && "border-amber/40 bg-amber/[0.03]",
+                      isPast && !isToday && "opacity-60",
+                    )}>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="font-sans text-[13px] text-paper capitalize">
+                          {e.label}
+                        </span>
+                        <span className="font-mono text-[10px] text-paper-faint shrink-0">
+                          {formatRehearsalDate(e.date)}
+                          {isToday && (
+                            <span className="ml-1.5 text-amber">today</span>
+                          )}
+                        </span>
+                      </div>
+                      {e.detail && (
+                        <p className="mt-1 text-[12px] leading-relaxed text-paper-dim">
+                          {e.detail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Main detail component                                               */
 /* ------------------------------------------------------------------ */
 
@@ -494,9 +612,14 @@ function JobDetail({ id }: { id: string }) {
     )
   }
 
+  const { profile } = useAuth()
+  const preferredMode = (profile?.preferred_mode as string) ?? "both"
+  const showRehearsals = preferredMode !== "film"
+
   const TABS: { key: Tab; label: string; count?: number }[] = [
     { key: "overview", label: "Overview" },
-    { key: "rehearsals", label: "Rehearsals", count: rehearsals.length },
+    { key: "timeline", label: "Timeline", count: rehearsals.length + (job.start_date ? 1 : 0) + (job.end_date ? 1 : 0) },
+    ...(showRehearsals ? [{ key: "rehearsals" as Tab, label: "Rehearsals", count: rehearsals.length }] : []),
     { key: "scripts", label: "Scripts", count: scripts.length },
   ]
 
@@ -597,7 +720,8 @@ function JobDetail({ id }: { id: string }) {
       {/* Tab content */}
       <div className="mx-[22px]">
         {tab === "overview" && <OverviewTab job={job} />}
-        {tab === "rehearsals" && <RehearsalsTab jobId={id} rehearsals={rehearsals} />}
+        {tab === "timeline" && <TimelineTab job={job} rehearsals={rehearsals} />}
+        {tab === "rehearsals" && showRehearsals && <RehearsalsTab jobId={id} rehearsals={rehearsals} />}
         {tab === "scripts" && <ScriptsTab jobId={id} scripts={scripts} />}
       </div>
     </div>

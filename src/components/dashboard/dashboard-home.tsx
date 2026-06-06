@@ -11,7 +11,7 @@ import {
   isActiveAudition,
   rollupEarnings,
 } from "@/lib/format"
-import type { Audition } from "@/types"
+import type { Audition, Job } from "@/types"
 import { AccordionSection } from "./accordion-section"
 import { WeekStrip } from "./week-strip"
 import { Splash } from "./splash"
@@ -90,7 +90,8 @@ function AuditionMiniRow({ a }: { a: Audition }) {
 
 export function DashboardHome() {
   const { profile } = useAuth()
-  const { auditions, reminders, selfTapes, contacts, contracts, pendingApprovals, emailConnections, loading: auditionsLoading } = useDashboardData()
+  const { auditions, jobs, reminders, selfTapes, contacts, contracts, pendingApprovals, emailConnections, loading: auditionsLoading } = useDashboardData()
+  const activeJobs = jobs.filter((j: Job) => j.status === "active")
   const approvalsCount = pendingApprovals.filter((r) => r.needs_review).length
 
   const name = profile?.full_name ?? null
@@ -293,6 +294,50 @@ export function DashboardHome() {
                   className="font-sans inline-flex items-center gap-1.5 rounded-[30px] border border-rule-strong px-3 py-1.5 text-xs text-paper"
                 >
                   View all auditions <span className="font-serif">→</span>
+                </Link>
+              </div>
+            </AccordionSection>
+
+            <AccordionSection
+              id="jobs"
+              title="Jobs"
+              meta={`${activeJobs.length} active`}
+            >
+              {activeJobs.length > 0 ? (
+                <>
+                  <p>
+                    <b className="font-medium text-paper">{activeJobs.length} active job{activeJobs.length !== 1 ? "s" : ""}.</b>{" "}
+                    {jobs.filter((j: Job) => j.status === "wrapped").length} wrapped.
+                  </p>
+                  <div className="mt-2 flex flex-col gap-1">
+                    {activeJobs.slice(0, 3).map((j: Job) => (
+                      <Link
+                        key={j.id}
+                        href={`/dashboard/jobs/${j.id}`}
+                        className="flex items-center justify-between rounded-[10px] border border-rule px-3.5 py-2.5 hover:bg-white/[0.015] transition-colors"
+                      >
+                        <div>
+                          <div className="font-serif text-[15px] text-paper">{j.title}</div>
+                          {j.role_name && (
+                            <div className="text-[11px] text-paper-dim">{j.role_name}</div>
+                          )}
+                        </div>
+                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-paper-faint capitalize">
+                          {j.project_type.replace(/_/g, " ")}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="font-serif italic text-paper-faint">No active jobs. Book an audition to get started.</p>
+              )}
+              <div className="mt-3">
+                <Link
+                  href="/dashboard/jobs"
+                  className="font-sans inline-flex items-center gap-1.5 rounded-[30px] border border-rule-strong px-3 py-1.5 text-xs text-paper"
+                >
+                  All jobs <span className="font-serif">→</span>
                 </Link>
               </div>
             </AccordionSection>

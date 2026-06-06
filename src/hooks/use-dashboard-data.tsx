@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/hooks/use-auth"
-import type { Audition, Contact, Contract, Reminder, SelfTape } from "@/types"
+import type { Audition, Contact, Contract, Job, Reminder, SelfTape } from "@/types"
 
 interface EmailConnection {
   id: string
@@ -13,6 +13,7 @@ interface EmailConnection {
 
 interface DashboardData {
   auditions: Audition[]
+  jobs: Job[]
   reminders: Reminder[]
   selfTapes: SelfTape[]
   contacts: Contact[]
@@ -30,6 +31,7 @@ const DashboardDataContext = createContext<DashboardData | null>(null)
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [auditions, setAuditions] = useState<Audition[]>([])
+  const [jobs, setJobs] = useState<Job[]>([])
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [selfTapes, setSelfTapes] = useState<SelfTape[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
@@ -45,6 +47,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
 
     const [
       { data: aud },
+      { data: jobsData },
       { data: rem },
       { data: tapes },
       { data: cont },
@@ -53,6 +56,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
       { data: emailConn },
     ] = await Promise.all([
       supabase.from("auditions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("jobs").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
       supabase.from("reminders").select("*").eq("user_id", user.id).order("due_date", { ascending: true }),
       supabase.from("self_tapes").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
       supabase.from("contacts").select("*").eq("user_id", user.id).order("priority", { ascending: true }),
@@ -62,6 +66,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
     ])
 
     setAuditions((aud || []) as Audition[])
+    setJobs((jobsData || []) as Job[])
     setReminders((rem || []) as Reminder[])
     setSelfTapes((tapes || []) as SelfTape[])
     setContacts((cont || []) as Contact[])
@@ -102,7 +107,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
   return (
     <DashboardDataContext.Provider
       value={{
-        auditions, reminders, selfTapes, contacts, contracts, pendingApprovals, emailConnections,
+        auditions, jobs, reminders, selfTapes, contacts, contracts, pendingApprovals, emailConnections,
         loading, refresh: fetchAll, addAudition, updateAudition,
       }}
     >
