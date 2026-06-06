@@ -31,6 +31,7 @@ import {
   Users,
   Receipt,
   BarChart3,
+  Clapperboard,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/theme-provider"
@@ -279,11 +280,18 @@ function SettingsContent() {
   const [llmSaved, setLlmSaved] = useState(false)
   const [llmError, setLlmError] = useState<string | null>(null)
 
+  // Focus Mode state
+  const [focusMode, setFocusMode] = useState<"theater" | "film" | "both">("both")
+  const [focusModeSaving, setFocusModeSaving] = useState(false)
+  const [focusModeSaved, setFocusModeSaved] = useState(false)
+  const [focusModeError, setFocusModeError] = useState<string | null>(null)
+
   // Fetch connections + preferences on mount
   useEffect(() => {
     fetchConnections()
     fetchPreferences()
     fetchLLMSettings()
+    fetchFocusMode()
   }, [])
 
   async function fetchConnections() {
@@ -338,6 +346,49 @@ function SettingsContent() {
       if (settings.provider) setLlmProvider(settings.provider)
       if (settings.api_key) setLlmApiKey(settings.api_key)
     }
+  }
+
+  async function fetchFocusMode() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("preferred_mode")
+      .eq("id", session.user.id)
+      .single()
+
+    if (data?.preferred_mode) {
+      setFocusMode(data.preferred_mode as "theater" | "film" | "both")
+    }
+  }
+
+  async function saveFocusMode(mode: "theater" | "film" | "both") {
+    setFocusModeSaving(true)
+    setFocusModeSaved(false)
+    setFocusModeError(null)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      setFocusModeError("Please log in first")
+      setFocusModeSaving(false)
+      return
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ preferred_mode: mode, updated_at: new Date().toISOString() })
+      .eq("id", session.user.id)
+
+    if (error) {
+      setFocusModeError(error.message)
+    } else {
+      setFocusMode(mode)
+      setFocusModeSaved(true)
+      setTimeout(() => setFocusModeSaved(false), 3000)
+      refreshProfile()
+    }
+    setFocusModeSaving(false)
   }
 
   async function saveLLMSettings() {
@@ -1281,6 +1332,63 @@ function SettingsContent() {
                 />
               </button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Focus Mode */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clapperboard className="h-5 w-5" /> Focus Mode
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Filter your dashboard to the type of work you&rsquo;re focused on. Theater mode shows rehearsals and stage jobs; Film mode shows on-camera work and hides rehearsals from the nav; Both shows everything.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {focusModeSaved && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                <CheckCircle className="h-4 w-4" />
+                Focus mode saved.
+              </div>
+            )}
+
+            {focusModeError && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                <AlertTriangle className="h-4 w-4" />
+                {focusModeError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { value: "theater", label: "Theater", desc: "Stage jobs + rehearsals" },
+                { value: "film", label: "Film", desc: "On-camera + commercial" },
+                { value: "both", label: "Both", desc: "Show everything" },
+              ] as { value: "theater" | "film" | "both"; label: string; desc: string }[]).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={focusModeSaving}
+                  onClick={() => saveFocusMode(opt.value)}
+                  className={`rounded-lg border p-3 text-left transition-colors ${
+                    focusMode === opt.value
+                      ? "border-amber bg-amber/5 ring-1 ring-amber"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <p className="text-sm font-medium">{opt.label}</p>
+                  <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+
+            {focusModeSaving && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Saving...
+              </div>
+            )}
           </CardContent>
         </Card>
 

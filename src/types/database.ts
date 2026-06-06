@@ -116,6 +116,8 @@ export interface Database {
           est_wrap_time: string | null
           wrap_time: string | null
           ot_rate_multiplier: number | null
+          // --- v2 additions ---
+          job_id: string | null
           created_at: string
           updated_at: string
         }
@@ -141,6 +143,7 @@ export interface Database {
           est_wrap_time?: string | null
           wrap_time?: string | null
           ot_rate_multiplier?: number | null
+          job_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -164,7 +167,236 @@ export interface Database {
           est_wrap_time?: string | null
           wrap_time?: string | null
           ot_rate_multiplier?: number | null
+          job_id?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      jobs: {
+        Row: {
+          id: string
+          user_id: string
+          audition_id: string | null
+          production_id: string | null
+          title: string
+          role_name: string | null
+          project_type: string
+          status: string
+          location: string | null
+          compensation: string | null
+          start_date: string | null
+          end_date: string | null
+          contract_id: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          audition_id?: string | null
+          production_id?: string | null
+          title: string
+          role_name?: string | null
+          project_type?: string
+          status?: string
+          location?: string | null
+          compensation?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          contract_id?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          audition_id?: string | null
+          production_id?: string | null
+          title?: string
+          role_name?: string | null
+          project_type?: string
+          status?: string
+          location?: string | null
+          compensation?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          contract_id?: string | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rehearsal_logs: {
+        Row: {
+          id: string
+          job_id: string
+          user_id: string
+          date: string
+          type: string
+          duration_minutes: number | null
+          location: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          user_id: string
+          date: string
+          type?: string
+          duration_minutes?: number | null
+          location?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          job_id?: string
+          date?: string
+          type?: string
+          duration_minutes?: number | null
+          location?: string | null
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      scripts: {
+        Row: {
+          id: string
+          job_id: string
+          user_id: string
+          file_name: string
+          file_url: string
+          file_type: string
+          file_size_bytes: number
+          version_label: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          user_id: string
+          file_name: string
+          file_url: string
+          file_type: string
+          file_size_bytes: number
+          version_label?: string | null
+          created_at?: string
+        }
+        Update: {
+          job_id?: string
+          file_name?: string
+          file_url?: string
+          file_type?: string
+          file_size_bytes?: number
+          version_label?: string | null
+        }
+        Relationships: []
+      }
+      script_annotations: {
+        Row: {
+          id: string
+          script_id: string
+          user_id: string
+          page_number: number | null
+          line_reference: string | null
+          annotation_type: string
+          content: string
+          color: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          script_id: string
+          user_id: string
+          page_number?: number | null
+          line_reference?: string | null
+          annotation_type?: string
+          content: string
+          color?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          script_id?: string
+          page_number?: number | null
+          line_reference?: string | null
+          annotation_type?: string
+          content?: string
+          color?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      productions: {
+        Row: {
+          id: string
+          created_by: string
+          name: string
+          description: string | null
+          invite_code: string
+          project_type: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          created_by: string
+          name: string
+          description?: string | null
+          invite_code: string
+          project_type?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          description?: string | null
+          invite_code?: string
+          project_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      production_members: {
+        Row: {
+          id: string
+          production_id: string
+          user_id: string
+          role_label: string | null
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          production_id: string
+          user_id: string
+          role_label?: string | null
+          joined_at?: string
+        }
+        Update: {
+          production_id?: string
+          user_id?: string
+          role_label?: string | null
+        }
+        Relationships: []
+      }
+      production_notes: {
+        Row: {
+          id: string
+          production_id: string
+          user_id: string
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          production_id: string
+          user_id: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          content?: string
         }
         Relationships: []
       }

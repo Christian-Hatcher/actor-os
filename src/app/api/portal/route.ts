@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
+import { createSupabaseServer } from "@/lib/supabase-server"
 import { getStripe } from "@/lib/stripe-admin"
 
-export async function POST(request: Request) {
+export async function POST() {
+  const supabase = await createSupabaseServer()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const stripe = getStripe()
   const supabaseAdmin = getSupabaseAdmin()
   try {
-    const { user_id } = await request.json()
-
-    if (!user_id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("stripe_customer_id")
-      .eq("id", user_id)
+      .eq("id", user.id)
       .single()
 
     if (!profile?.stripe_customer_id) {

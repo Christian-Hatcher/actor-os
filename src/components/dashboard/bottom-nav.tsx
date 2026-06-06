@@ -11,6 +11,7 @@ import {
   FileSearch,
   Users,
   Receipt,
+  Briefcase,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -27,20 +28,22 @@ interface NavItem {
 }
 
 /** Modules that are always visible regardless of enabled_modules. */
-const CORE_MODULES = new Set(["dashboard", "casting", "self_tapes", "settings"])
+const CORE_MODULES = new Set(["dashboard", "casting", "self_tapes", "settings", "jobs"])
 
 /** Default modules when profile.enabled_modules is not yet populated. */
-const DEFAULT_MODULES = ["dashboard", "casting", "emails", "self_tapes", "settings"]
+const DEFAULT_MODULES = ["dashboard", "casting", "emails", "self_tapes", "settings", "jobs"]
 
 // Full nav item registry. Core items always render; gated items render
 // only when their moduleId appears in the user's enabled_modules array.
 const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Today", href: "/dashboard", icon: Home, moduleId: "dashboard" },
   { label: "Auditions", href: "/dashboard/auditions", icon: Clapperboard, moduleId: "casting", matchPrefix: true },
+  { label: "Jobs", href: "/dashboard/jobs", icon: Briefcase, moduleId: "jobs", matchPrefix: true },
   { label: "Tapes", href: "/dashboard/self-tapes", icon: Video, moduleId: "self_tapes", matchPrefix: true },
   { label: "Earnings", href: "/dashboard/earnings", icon: BarChart3, moduleId: "earnings", matchPrefix: true },
   { label: "Contracts", href: "/dashboard/contracts", icon: FileSearch, moduleId: "contract_reader", matchPrefix: true },
   { label: "Outreach", href: "/dashboard/outreach", icon: Users, moduleId: "outreach", matchPrefix: true },
+  { label: "Cast", href: "/dashboard/productions", icon: Users, moduleId: "productions", matchPrefix: true },
   { label: "Tax", href: "/dashboard/tax", icon: Receipt, moduleId: "tax", matchPrefix: true },
   { label: "Me", href: "/dashboard/settings", icon: User, moduleId: "settings", matchPrefix: true },
 ]

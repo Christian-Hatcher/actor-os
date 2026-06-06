@@ -181,3 +181,88 @@ export interface OutreachLog {
   notes: string | null
   created_at: string
 }
+
+// V2 Types
+
+export interface Job {
+  id: string
+  user_id: string
+  audition_id: string | null
+  production_id: string | null
+  title: string
+  role_name: string | null
+  project_type: "film" | "tv" | "commercial" | "theater" | "voice_over" | "modeling" | "other"
+  status: "active" | "wrapped" | "archived"
+  location: string | null
+  compensation: string | null
+  start_date: string | null
+  end_date: string | null
+  contract_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface RehearsalLog {
+  id: string
+  job_id: string
+  user_id: string
+  date: string
+  type: "table_read" | "blocking" | "run_through" | "tech_rehearsal" | "dress_rehearsal" | "other"
+  duration_minutes: number | null
+  location: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface Script {
+  id: string
+  job_id: string
+  user_id: string
+  file_name: string
+  file_url: string
+  file_type: "pdf" | "txt" | "docx"
+  file_size_bytes: number
+  version_label: string | null
+  created_at: string
+}
+
+export interface ScriptAnnotation {
+  id: string
+  script_id: string
+  user_id: string
+  page_number: number | null
+  line_reference: string | null
+  annotation_type: "blocking" | "character_note" | "director_note" | "emotion" | "prop" | "cue" | "general"
+  content: string
+  color: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Production {
+  id: string
+  created_by: string
+  name: string
+  description: string | null
+  invite_code: string
+  project_type: "film" | "tv" | "commercial" | "theater" | "other"
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductionMember {
+  id: string
+  production_id: string
+  user_id: string
+  role_label: string | null
+  joined_at: string
+}
+
+export interface ProductionNote {
+  id: string
+  production_id: string
+  user_id: string
+  content: string
+  created_at: string
+}
