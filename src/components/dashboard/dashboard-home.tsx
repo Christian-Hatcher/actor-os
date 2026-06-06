@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { useDashboardData } from "@/hooks/use-dashboard-data"
@@ -90,7 +90,7 @@ function AuditionMiniRow({ a }: { a: Audition }) {
 
 export function DashboardHome() {
   const { profile } = useAuth()
-  const { auditions, reminders, selfTapes, contacts, contracts, pendingApprovals, loading: auditionsLoading } = useDashboardData()
+  const { auditions, reminders, selfTapes, contacts, contracts, pendingApprovals, emailConnections, loading: auditionsLoading } = useDashboardData()
   const approvalsCount = pendingApprovals.filter((r) => r.needs_review).length
 
   const name = profile?.full_name ?? null
@@ -104,6 +104,9 @@ export function DashboardHome() {
   const activeAuditions = auditions.filter(isActiveAudition)
   const week = useMemo(() => thisWeek(auditions), [auditions])
   const { banked, potential } = useMemo(() => rollupEarnings(auditions), [auditions])
+
+  const hasGmail = emailConnections.some((c) => c.is_active)
+  const [gmailBannerDismissed, setGmailBannerDismissed] = useState(false)
 
   const now = new Date()
   const tapesDue = selfTapes.filter((t) => !t.submitted)
@@ -179,8 +182,79 @@ export function DashboardHome() {
       {/* Week strip */}
       <WeekStrip auditions={auditions} reminders={reminders} />
 
+      {/* Gmail connect banner — shown when auditions exist but no Gmail connected */}
+      {!auditionsLoading && auditions.length > 0 && !hasGmail && !gmailBannerDismissed && (
+        <div className="relative mt-5 rounded-[14px] border border-rule px-[18px] py-4">
+          <button
+            type="button"
+            onClick={() => setGmailBannerDismissed(true)}
+            className="absolute right-3 top-3 font-mono text-[11px] text-paper-faint hover:text-paper"
+            aria-label="Dismiss"
+          >
+            &times;
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="grid size-[36px] flex-shrink-0 place-items-center rounded-full border border-rule-strong">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-paper-dim"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </div>
+            <div>
+              <p className="font-serif text-[15px] leading-snug text-paper">
+                Connect Gmail to auto-import auditions
+              </p>
+              <p className="mt-0.5 text-[12px] text-paper-dim">
+                Actor OS reads your casting emails and pulls out projects, roles, and dates automatically.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Link
+              href="/dashboard/settings"
+              className="font-sans inline-flex items-center gap-1.5 rounded-[30px] border border-paper bg-paper px-3.5 py-1.5 text-[12px] font-medium text-bg"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              Connect Gmail
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state — shown when no auditions and no Gmail connected */}
+      {!auditionsLoading && auditions.length === 0 && !hasGmail && (
+        <div className="mt-10 flex flex-col items-center text-center">
+          <div className="grid size-[72px] place-items-center rounded-full border border-rule-strong"
+            style={{
+              background: "linear-gradient(135deg, rgba(255,255,255,.04), transparent 50%), linear-gradient(45deg, #2a251f, #3a3329)",
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-paper-dim"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+          </div>
+          <h2 className="font-serif mt-5 text-[26px] leading-tight tracking-[-0.01em] text-paper">
+            Welcome to Actor OS
+          </h2>
+          <p className="mt-2 max-w-[340px] text-[14px] leading-relaxed text-paper-dim">
+            Connect your Gmail to automatically track auditions from your email. Actor OS reads casting notices and builds your dashboard for you.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/dashboard/settings"
+              className="font-sans inline-flex items-center justify-center gap-2 rounded-[30px] border border-paper bg-paper px-5 py-2.5 text-[14px] font-medium text-bg"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              Connect Gmail
+            </Link>
+            <Link
+              href="/dashboard/auditions/new"
+              className="font-sans inline-flex items-center justify-center gap-2 rounded-[30px] border border-rule-strong px-5 py-2.5 text-[14px] font-medium text-paper-dim"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              Add an audition manually
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Accordion sections */}
-      <div className="mt-6">
+      {(auditionsLoading || auditions.length > 0 || hasGmail) && <div className="mt-6">
         <div className="font-mono mb-2.5 text-[10px] uppercase tracking-[0.22em] text-paper-faint">
           Your work
         </div>
@@ -370,7 +444,7 @@ export function DashboardHome() {
             </AccordionSection>
           </>
         )}
-      </div>
+      </div>}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
+import { createSupabaseServer } from "@/lib/supabase-server"
 import { llm } from "@/lib/llm"
 
 // Contract analysis prompt template
@@ -50,6 +51,12 @@ Provide your analysis in this exact JSON format:
 Be thorough but concise. If information is missing, use null or empty arrays. Do NOT make up information that isn't in the contract.`
 
 export async function POST(request: Request) {
+  const supabase = await createSupabaseServer()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const supabaseAdmin = getSupabaseAdmin()
   try {
     const { contractId, contractText, fileUrl } = await request.json()
@@ -67,6 +74,11 @@ export async function POST(request: Request) {
 
     if (contractError || !contract) {
       return NextResponse.json({ error: "Contract not found" }, { status: 404 })
+    }
+
+    // Verify the requesting user owns this contract
+    if (contract.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     // Update status to analyzing

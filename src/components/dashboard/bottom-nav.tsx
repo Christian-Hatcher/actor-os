@@ -8,26 +8,41 @@ import {
   Video,
   BarChart3,
   User,
+  FileSearch,
+  Users,
+  Receipt,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
 
 interface NavItem {
   label: string
   href: string
   icon: LucideIcon
+  /** Module ID used for gating. Core modules are always shown. */
+  moduleId: string
   /** Match nested routes (e.g. /dashboard/auditions/[id]) as active. */
   matchPrefix?: boolean
 }
 
-// News-app style nav (Apple News inspiration): thin-stroke icon + tiny label.
-// Active tab tints amber. Reads less app-y, more editorial.
-const NAV_ITEMS: NavItem[] = [
-  { label: "Today", href: "/dashboard", icon: Home },
-  { label: "Auditions", href: "/dashboard/auditions", icon: Clapperboard, matchPrefix: true },
-  { label: "Tapes", href: "/dashboard/self-tapes", icon: Video, matchPrefix: true },
-  { label: "Earnings", href: "/dashboard/earnings", icon: BarChart3, matchPrefix: true },
-  { label: "Me", href: "/dashboard/settings", icon: User, matchPrefix: true },
+/** Modules that are always visible regardless of enabled_modules. */
+const CORE_MODULES = new Set(["dashboard", "casting", "self_tapes", "settings"])
+
+/** Default modules when profile.enabled_modules is not yet populated. */
+const DEFAULT_MODULES = ["dashboard", "casting", "emails", "self_tapes", "settings"]
+
+// Full nav item registry. Core items always render; gated items render
+// only when their moduleId appears in the user's enabled_modules array.
+const ALL_NAV_ITEMS: NavItem[] = [
+  { label: "Today", href: "/dashboard", icon: Home, moduleId: "dashboard" },
+  { label: "Auditions", href: "/dashboard/auditions", icon: Clapperboard, moduleId: "casting", matchPrefix: true },
+  { label: "Tapes", href: "/dashboard/self-tapes", icon: Video, moduleId: "self_tapes", matchPrefix: true },
+  { label: "Earnings", href: "/dashboard/earnings", icon: BarChart3, moduleId: "earnings", matchPrefix: true },
+  { label: "Contracts", href: "/dashboard/contracts", icon: FileSearch, moduleId: "contract_reader", matchPrefix: true },
+  { label: "Outreach", href: "/dashboard/outreach", icon: Users, moduleId: "outreach", matchPrefix: true },
+  { label: "Tax", href: "/dashboard/tax", icon: Receipt, moduleId: "tax", matchPrefix: true },
+  { label: "Me", href: "/dashboard/settings", icon: User, moduleId: "settings", matchPrefix: true },
 ]
 
 function isActive(pathname: string, item: NavItem): boolean {
@@ -37,6 +52,14 @@ function isActive(pathname: string, item: NavItem): boolean {
 
 export function BottomNav() {
   const pathname = usePathname()
+  const { profile } = useAuth()
+
+  const enabledModules: string[] =
+    (profile?.enabled_modules as string[] | null) ?? DEFAULT_MODULES
+
+  const visibleItems = ALL_NAV_ITEMS.filter(
+    (item) => CORE_MODULES.has(item.moduleId) || enabledModules.includes(item.moduleId),
+  )
 
   return (
     <nav
@@ -44,7 +67,7 @@ export function BottomNav() {
       style={{ background: "color-mix(in srgb, var(--bg) 85%, transparent)" }}
       aria-label="Primary"
     >
-      {NAV_ITEMS.map((item) => {
+      {visibleItems.map((item) => {
         const Icon = item.icon
         const active = isActive(pathname, item)
         return (

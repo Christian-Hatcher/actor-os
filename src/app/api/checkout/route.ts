@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server"
 import { getStripe } from "@/lib/stripe-admin"
+import { createSupabaseServer } from "@/lib/supabase-server"
 
 export async function POST(request: Request) {
+  const supabase = await createSupabaseServer()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const stripe = getStripe()
   try {
-    const { plan, email, name } = await request.json()
+    const { plan } = await request.json()
+    const email = user.email!
+    const name = user.user_metadata?.full_name || email
 
-    if (!plan || !email) {
-      return NextResponse.json({ error: "Missing plan or email" }, { status: 400 })
+    if (!plan) {
+      return NextResponse.json({ error: "Missing plan" }, { status: 400 })
     }
 
     // Find or create customer
@@ -16,6 +25,7 @@ export async function POST(request: Request) {
 
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
+      client_reference_id: email, // fallback for webhook matching
       line_items: [
         {
           price:
@@ -30,7 +40,7 @@ export async function POST(request: Request) {
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout?plan=${plan}&canceled=true`,
       subscription_data: {
         trial_period_days: 14,
-        metadata: { plan },
+        metadata: { plan, email },
       },
       allow_promotion_codes: true,
     })

@@ -5,6 +5,12 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/hooks/use-auth"
 import type { Audition, Contact, Contract, Reminder, SelfTape } from "@/types"
 
+interface EmailConnection {
+  id: string
+  email_address: string
+  is_active: boolean
+}
+
 interface DashboardData {
   auditions: Audition[]
   reminders: Reminder[]
@@ -12,6 +18,7 @@ interface DashboardData {
   contacts: Contact[]
   contracts: Contract[]
   pendingApprovals: { id: string; needs_review: boolean }[]
+  emailConnections: EmailConnection[]
   loading: boolean
   refresh: () => Promise<void>
   addAudition: (audition: Omit<Audition, "id" | "user_id" | "created_at" | "updated_at">) => Promise<any>
@@ -28,6 +35,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [pendingApprovals, setPendingApprovals] = useState<{ id: string; needs_review: boolean }[]>([])
+  const [emailConnections, setEmailConnections] = useState<EmailConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [fetched, setFetched] = useState(false)
 
@@ -42,6 +50,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
       { data: cont },
       { data: contr },
       { data: parsed },
+      { data: emailConn },
     ] = await Promise.all([
       supabase.from("auditions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
       supabase.from("reminders").select("*").eq("user_id", user.id).order("due_date", { ascending: true }),
@@ -49,6 +58,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
       supabase.from("contacts").select("*").eq("user_id", user.id).order("priority", { ascending: true }),
       supabase.from("contracts").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
       supabase.from("parsed_auditions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("email_connections").select("id, email_address, is_active").eq("user_id", user.id),
     ])
 
     setAuditions((aud || []) as Audition[])
@@ -57,6 +67,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
     setContacts((cont || []) as Contact[])
     setContracts((contr || []) as Contract[])
     setPendingApprovals((parsed || []) as { id: string; needs_review: boolean }[])
+    setEmailConnections((emailConn || []) as EmailConnection[])
     setLoading(false)
     setFetched(true)
   }, [user?.id])
@@ -91,7 +102,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
   return (
     <DashboardDataContext.Provider
       value={{
-        auditions, reminders, selfTapes, contacts, contracts, pendingApprovals,
+        auditions, reminders, selfTapes, contacts, contracts, pendingApprovals, emailConnections,
         loading, refresh: fetchAll, addAudition, updateAudition,
       }}
     >

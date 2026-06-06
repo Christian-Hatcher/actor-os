@@ -26,6 +26,11 @@ import {
   EyeOff,
   Camera,
   Loader2,
+  LayoutGrid,
+  FileSearch,
+  Users,
+  Receipt,
+  BarChart3,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/theme-provider"
@@ -507,10 +512,10 @@ function SettingsContent() {
   const { settings: taxSettings, updateSettings: updateTaxSettings } = useTax()
 
   const subscription = {
-    tier: "monthly",
-    status: "active",
-    currentPeriodEnd: "2026-06-21",
-    price: "$5",
+    tier: profile?.subscription_tier || "free",
+    status: profile?.subscription_status || "inactive",
+    currentPeriodEnd: "—",
+    price: profile?.subscription_tier === "annual" ? "$90/yr" : "$10/mo",
   }
 
   return (
@@ -682,7 +687,7 @@ function SettingsContent() {
               <p className="text-xs text-muted-foreground">
                 Pick whichever AI service you already pay for, or stick with the free default.
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {[
                   { value: "gemini", label: "Google Gemini", desc: "Free tier included" },
                   { value: "openai", label: "OpenAI", desc: "Uses your ChatGPT key" },
@@ -1075,7 +1080,7 @@ function SettingsContent() {
             {/* Currency */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Currency</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {([
                   { code: "USD", label: "US Dollar", symbol: "$" },
                   { code: "JPY", label: "Japanese Yen", symbol: "¥" },
@@ -1130,7 +1135,7 @@ function SettingsContent() {
             {/* Jurisdiction */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Tax Jurisdiction</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {([
                   { value: "us", label: "United States", desc: "SE tax + federal brackets" },
                   { value: "jp", label: "Japan", desc: "Gensenchoushu withholding" },
@@ -1276,6 +1281,74 @@ function SettingsContent() {
                 />
               </button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Modules */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LayoutGrid className="h-5 w-5" /> Modules
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Enable or disable optional modules. Core modules (Today, Auditions, Tapes, Me) are always available.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {([
+              { id: "contract_reader", label: "Contract Reader", description: "AI-powered contract analysis and red-flag detection", icon: FileSearch },
+              { id: "outreach", label: "Outreach CRM", description: "Track industry contacts and follow-up reminders", icon: Users },
+              { id: "tax", label: "Tax Keeper", description: "Estimated tax withholding and quarterly reminders", icon: Receipt },
+              { id: "earnings", label: "Earnings", description: "Income tracking, goals, and financial overview", icon: BarChart3 },
+            ] as { id: string; label: string; description: string; icon: typeof FileSearch }[]).map((mod) => {
+              const enabledModules: string[] =
+                (profile?.enabled_modules as unknown as string[] | null) ?? ["dashboard", "casting", "emails", "self_tapes", "settings"]
+              const isEnabled = enabledModules.includes(mod.id)
+              const ModIcon = mod.icon
+
+              return (
+                <div
+                  key={mod.id}
+                  className="flex items-center justify-between rounded-lg border px-3 py-3"
+                >
+                  <div className="flex items-start gap-3">
+                    <ModIcon className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{mod.label}</p>
+                      <p className="text-xs text-muted-foreground">{mod.description}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isEnabled}
+                    onClick={async () => {
+                      if (!profile?.id) return
+                      const next = isEnabled
+                        ? enabledModules.filter((m) => m !== mod.id)
+                        : [...enabledModules, mod.id]
+                      await supabase
+                        .from("profiles")
+                        .update({
+                          enabled_modules: next as any,
+                          updated_at: new Date().toISOString(),
+                        })
+                        .eq("id", profile.id)
+                      refreshProfile()
+                    }}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                      isEnabled ? "bg-amber" : "bg-muted"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                        isEnabled ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              )
+            })}
           </CardContent>
         </Card>
 

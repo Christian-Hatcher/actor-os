@@ -544,31 +544,33 @@ export function AuditionsView() {
       </div>
 
       {/* Search + Sort */}
-      <div className="flex gap-2 px-[22px] pb-1 pt-3">
-        <label className="flex flex-1 items-center gap-2 rounded-[30px] border border-rule bg-white/[0.025] px-3.5 py-2.5">
-          <Search className="size-3.5 text-paper-faint" strokeWidth={1.8} />
+      <div className="flex flex-wrap gap-2 px-[22px] pb-1 pt-3">
+        <label className="flex flex-1 min-w-0 items-center gap-2 rounded-[30px] border border-rule bg-white/[0.025] px-3.5 py-2.5">
+          <Search className="size-3.5 flex-none text-paper-faint" strokeWidth={1.8} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search projects, roles, agencies"
-            className="font-sans flex-1 bg-transparent text-[13px] text-paper outline-none placeholder:text-paper-faint"
+            placeholder="Search projects, roles..."
+            className="font-sans flex-1 min-w-0 bg-transparent text-[13px] text-paper outline-none placeholder:text-paper-faint"
           />
         </label>
-        <SortDropdown value={sort} onChange={switchSort} />
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className={cn(
-            "font-mono flex-none rounded-[30px] border border-rule bg-white/[0.025] px-3 py-[5px] text-[10px] uppercase tracking-[0.1em] text-paper-dim",
-            syncing && "opacity-50",
-          )}
-        >
-          <RefreshCw className={cn("inline size-3 mr-1", syncing && "animate-spin")} />
-          Sync
-        </button>
-        <button className="font-mono flex-none rounded-[30px] bg-paper px-3.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-bg">
-          <Plus className="inline size-3" /> Add
-        </button>
+        <div className="flex gap-2">
+          <SortDropdown value={sort} onChange={switchSort} />
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className={cn(
+              "font-mono flex-none rounded-[30px] border border-rule bg-white/[0.025] px-3 py-[5px] text-[10px] uppercase tracking-[0.1em] text-paper-dim",
+              syncing && "opacity-50",
+            )}
+          >
+            <RefreshCw className={cn("inline size-3 mr-1", syncing && "animate-spin")} />
+            Sync
+          </button>
+          <button className="font-mono flex-none rounded-[30px] bg-paper px-3.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-bg">
+            <Plus className="inline size-3" /> Add
+          </button>
+        </div>
       </div>
       {syncMsg && (
         <div className="font-mono px-[22px] py-1.5 text-[11px] text-paper-dim">

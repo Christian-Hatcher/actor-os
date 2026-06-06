@@ -29,16 +29,38 @@ export async function POST(request: Request) {
       const userEmail = session.customer_email || session.metadata?.email
 
       if (userEmail) {
-        await supabaseAdmin
+        const updatePayload = {
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId,
+          subscription_status: "active",
+          subscription_tier: session.metadata?.plan || "monthly",
+          updated_at: new Date().toISOString(),
+        }
+
+        const { data: updateResult } = await supabaseAdmin
           .from("profiles")
-          .update({
-            stripe_customer_id: customerId,
-            stripe_subscription_id: subscriptionId,
-            subscription_status: "active",
-            subscription_tier: session.metadata?.plan || "monthly",
-            updated_at: new Date().toISOString(),
-          })
+          .update(updatePayload)
           .eq("email", userEmail)
+          .select("id")
+
+        if (!updateResult?.length) {
+          const clientRefId = session.client_reference_id
+          if (clientRefId && clientRefId !== userEmail) {
+            const { data: fallbackResult } = await supabaseAdmin
+              .from("profiles")
+              .update(updatePayload)
+              .eq("email", clientRefId)
+              .select("id")
+
+            if (!fallbackResult?.length) {
+              console.warn(`[WEBHOOK] checkout.session.completed: no profile found for email=${userEmail}, client_reference_id=${clientRefId}, customer=${customerId}`)
+            }
+          } else {
+            console.warn(`[WEBHOOK] checkout.session.completed: no profile found for email=${userEmail}, client_reference_id=${session.client_reference_id}, customer=${customerId}`)
+          }
+        }
+      } else {
+        console.warn(`[WEBHOOK] checkout.session.completed: no email available, customer=${customerId}, client_reference_id=${session.client_reference_id}`)
       }
       break
     }
@@ -53,13 +75,18 @@ export async function POST(request: Request) {
       else if (status === "past_due") ourStatus = "past_due"
       else if (["canceled", "unpaid"].includes(status)) ourStatus = "cancelled"
 
-      await supabaseAdmin
+      const { data: subUpdateResult } = await supabaseAdmin
         .from("profiles")
         .update({
           subscription_status: ourStatus,
           updated_at: new Date().toISOString(),
         })
         .eq("stripe_customer_id", customerId)
+        .select("id")
+
+      if (!subUpdateResult?.length) {
+        console.warn(`[WEBHOOK] customer.subscription.updated: no profile found for stripe_customer_id=${customerId}`)
+      }
       break
     }
 
@@ -67,7 +94,7 @@ export async function POST(request: Request) {
       const subscription = event.data.object as Stripe.Subscription
       const customerId = subscription.customer as string
 
-      await supabaseAdmin
+      const { data: delResult } = await supabaseAdmin
         .from("profiles")
         .update({
           subscription_status: "cancelled",
@@ -76,6 +103,11 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq("stripe_customer_id", customerId)
+        .select("id")
+
+      if (!delResult?.length) {
+        console.warn(`[WEBHOOK] customer.subscription.deleted: no profile found for stripe_customer_id=${customerId}`)
+      }
       break
     }
 
@@ -83,13 +115,18 @@ export async function POST(request: Request) {
       const invoice = event.data.object as Stripe.Invoice
       const customerId = invoice.customer as string
 
-      await supabaseAdmin
+      const { data: invoiceResult } = await supabaseAdmin
         .from("profiles")
         .update({
           subscription_status: "past_due",
           updated_at: new Date().toISOString(),
         })
         .eq("stripe_customer_id", customerId)
+        .select("id")
+
+      if (!invoiceResult?.length) {
+        console.warn(`[WEBHOOK] invoice.payment_failed: no profile found for stripe_customer_id=${customerId}`)
+      }
       break
     }
   }

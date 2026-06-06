@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Clapperboard, FileText, Users, Video, ArrowRight, Star } from "lucide-react"
+import { Check, Clapperboard, FileText, Users, Video, ArrowRight, Star, Mail, Calendar } from "lucide-react"
 
 export default function LandingPage() {
   const [annual, setAnnual] = useState(true)
@@ -14,7 +14,7 @@ export default function LandingPage() {
     <div className="flex flex-col min-h-screen">
       {/* Hero */}
       <header className="border-b">
-        <div className="container mx-auto flex h-16 items-center justify-between px-6">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2">
             <Clapperboard className="h-6 w-6" />
             <span className="text-xl font-bold">Actor OS</span>
@@ -24,11 +24,11 @@ export default function LandingPage() {
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground">Pricing</a>
             <a href="#universities" className="text-sm text-muted-foreground hover:text-foreground">Universities</a>
           </nav>
-          <div className="flex gap-3">
-            <Button variant="ghost" asChild>
+          <div className="flex gap-2 sm:gap-3">
+            <Button variant="ghost" size="sm" asChild>
               <Link href="/login">Log in</Link>
             </Button>
-            <Button asChild>
+            <Button size="sm" asChild>
               <Link href="/signup">Get Started</Link>
             </Button>
           </div>
@@ -37,19 +37,19 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="container mx-auto px-6 py-24 text-center">
+        <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-24 text-center">
           <Badge className="mb-4">Built by a working actor in Tokyo</Badge>
-          <h1 className="text-5xl font-bold tracking-tight mb-6">
-            Your Acting Career,
+          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight mb-6">
+            Auditions from your email,
             <br />
-            <span className="text-primary">Organized</span>
+            <span className="text-primary">automatically</span>
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Actor OS is the career command center for student and emerging actors.
-            Track auditions, manage self-tapes, read contracts with AI, and
-            never miss a callback.
+          <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+            Connect Gmail and Actor OS builds your audition pipeline for you.
+            Every casting email becomes a tracked audition with deadlines,
+            callbacks, and self-tape due dates. No more spreadsheets.
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <Button size="lg" asChild>
               <Link href="/signup">
                 Start Free Trial
@@ -66,26 +66,52 @@ export default function LandingPage() {
         </section>
 
         {/* Features */}
-        <section id="features" className="bg-muted py-24">
-          <div className="container mx-auto px-6">
+        <section id="features" className="bg-muted py-12 sm:py-24">
+          <div className="container mx-auto px-4 sm:px-6">
             <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold mb-4">Everything you need to book more roles</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold mb-4">The spreadsheet dies here</h2>
               <p className="text-muted-foreground max-w-xl mx-auto">
-                Stop juggling spreadsheets, emails, and sticky notes.
-                One dashboard for your entire career.
+                Actor OS does what spreadsheets can&apos;t: it fills itself in.
+                Connect your email and your pipeline builds automatically.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="border-primary">
+                <CardHeader>
+                  <Mail className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>Email Auto-Import</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Connect Gmail. Casting emails are automatically parsed
+                    into auditions with project name, role, deadline, and casting director.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary">
                 <CardHeader>
                   <Clapperboard className="h-8 w-8 text-primary mb-2" />
                   <CardTitle>Casting Pipeline</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Track every audition from submission to booking.
-                    Know your callback rate and conversion stats.
+                    Every audition tracked from received to booked.
+                    See your full pipeline at a glance. Never lose track of a callback.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary">
+                <CardHeader>
+                  <Calendar className="h-8 w-8 text-primary mb-2" />
+                  <CardTitle>Deadline Tracking</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Self-tape due dates, callback times, and shoot dates
+                    all in one place. Know what&apos;s coming up today, this week, this month.
                   </p>
                 </CardContent>
               </Card>
@@ -97,8 +123,8 @@ export default function LandingPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Never miss a deadline. Upload, organize, and get feedback
-                    on every self-tape in one place.
+                    Track takes, manage deadlines, and organize
+                    every self-tape submission in one place.
                   </p>
                 </CardContent>
               </Card>
@@ -106,12 +132,12 @@ export default function LandingPage() {
               <Card>
                 <CardHeader>
                   <FileText className="h-8 w-8 text-primary mb-2" />
-                  <CardTitle>Contract Reader</CardTitle>
+                  <CardTitle>AI Contract Reader</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    AI analyzes any contract in 60 seconds. Spot red flags,
-                    understand key clauses, know what to ask your agent.
+                    Paste any contract. AI spots red flags, explains key clauses,
+                    and tells you what to ask your agent. 60 seconds.
                   </p>
                 </CardContent>
               </Card>
@@ -123,8 +149,8 @@ export default function LandingPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Manage casting directors, agents, and collaborators.
-                    Log every touchpoint. Stay top of mind.
+                    Track casting directors, agents, and collaborators.
+                    Log every interaction. Stay top of mind.
                   </p>
                 </CardContent>
               </Card>
@@ -133,7 +159,7 @@ export default function LandingPage() {
         </section>
 
         {/* Pricing */}
-        <section id="pricing" className="container mx-auto px-6 py-24">
+        <section id="pricing" className="container mx-auto px-4 sm:px-6 py-12 sm:py-24">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Simple pricing</h2>
             <p className="text-muted-foreground">
@@ -168,11 +194,11 @@ export default function LandingPage() {
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl">Annual</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">$45</span>
+                  <span className="text-4xl font-bold">$90</span>
                   <span className="text-muted-foreground">/year</span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  ${(45 / 12).toFixed(2)}/month — save $15
+                  $7.50/month — save $30
                 </p>
               </CardHeader>
               <CardContent>
@@ -180,7 +206,7 @@ export default function LandingPage() {
                   {[
                     "Unlimited auditions",
                     "Self-tape deadline tracker",
-                    "AI contract analysis (10/month)",
+                    "Unlimited AI contract analysis",
                     "Outreach CRM",
                     "Priority support",
                   ].map((feature) => (
@@ -200,7 +226,7 @@ export default function LandingPage() {
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl">Monthly</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">$5</span>
+                  <span className="text-4xl font-bold">$10</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -212,7 +238,7 @@ export default function LandingPage() {
                   {[
                     "Unlimited auditions",
                     "Self-tape deadline tracker",
-                    "AI contract analysis (5/month)",
+                    "Unlimited AI contract analysis",
                     "Outreach CRM",
                     "Email support",
                   ].map((feature) => (
@@ -231,8 +257,8 @@ export default function LandingPage() {
         </section>
 
         {/* Universities */}
-        <section id="universities" className="bg-muted py-24">
-          <div className="container mx-auto px-6 text-center">
+        <section id="universities" className="bg-muted py-12 sm:py-24">
+          <div className="container mx-auto px-4 sm:px-6 text-center">
             <Badge className="mb-4">Phase 2 — Coming Fall 2026</Badge>
             <h2 className="text-3xl font-bold mb-4">University Licensing</h2>
             <p className="text-muted-foreground max-w-xl mx-auto mb-8">
@@ -283,14 +309,14 @@ export default function LandingPage() {
         </section>
 
         {/* Testimonial */}
-        <section className="container mx-auto px-6 py-24 text-center">
+        <section className="container mx-auto px-4 sm:px-6 py-12 sm:py-24 text-center">
           <div className="max-w-2xl mx-auto">
             <div className="flex justify-center mb-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
               ))}
             </div>
-            <blockquote className="text-xl italic mb-4">
+            <blockquote className="text-base sm:text-xl italic mb-4">
               "I went from missing callbacks to booking 4 jobs in 3 months.
               Actor OS keeps my entire career organized in one place."
             </blockquote>
@@ -302,7 +328,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t py-12">
-        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="container mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <Clapperboard className="h-5 w-5" />
             <span className="font-bold">Actor OS</span>
@@ -312,7 +338,8 @@ export default function LandingPage() {
           </p>
           <div className="flex gap-4">
             <a href="mailto:hatcher.actor@gmail.com" className="text-sm text-muted-foreground hover:text-foreground">Support</a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
+            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">Privacy</Link>
+            <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">Terms</Link>
           </div>
         </div>
       </footer>

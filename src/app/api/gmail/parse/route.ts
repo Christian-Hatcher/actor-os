@@ -53,16 +53,37 @@ async function parseEmail(
  * Called automatically after sync, or manually by user.
  */
 export async function POST(request: Request) {
+  // --- Dual auth: cron secret OR authenticated user session ---
+  const authHeader = request.headers.get("authorization")
+  const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
+  let authenticatedUserId: string | null = null
+
+  if (!isCron) {
+    const { createSupabaseServer } = await import("@/lib/supabase-server")
+    const supabase = await createSupabaseServer()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    authenticatedUserId = user.id
+  }
+
   const supabaseAdmin = getSupabaseAdmin()
   try {
     const body = await request.json().catch(() => ({}))
-    const {
+    let {
       user_id,
       connection_id,
       email_ids,
       auto_create = false,
       dry_run = false,
     } = body
+
+    // If user-triggered, override user_id with authenticated user's ID
+    if (authenticatedUserId) {
+      user_id = authenticatedUserId
+    }
 
     // Fetch pending emails (last 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -81,7 +102,7 @@ export async function POST(request: Request) {
     }
 
     // Small batches so the UI returns fast. Cron picks up the rest.
-    query = query.order("received_at", { ascending: false }).limit(5)
+    query = query.order("received_at", { ascending: false }).limit(3)
 
     const { data: emails, error: fetchError } = await query
 

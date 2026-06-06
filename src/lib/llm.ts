@@ -1,12 +1,12 @@
 /**
  * LLM Provider Abstraction Layer
  *
- * Three modes:
- *   1. User has their own API key (stored in profiles.llm_settings)
- *   2. App-level env var fallback (LLM_LOW_PROVIDER etc.)
- *   3. Google Gemini Flash free tier (no key needed for low volume)
+ * Priority chain:
+ *   1. User's own API key (stored in profiles.llm_settings)
+ *   2. App-level env vars (LLM_LOW_PROVIDER etc.)
+ *   3. Groq free tier (GROQ_API_KEY env var)
  *
- * Supports: gemini (default), openai, anthropic
+ * Supports: groq (default), gemini, openai, anthropic, ollama
  */
 
 export type LLMTier = "low" | "high"
@@ -82,7 +82,7 @@ function getConfig(tier: LLMTier, userSettings?: LLMSettings | null) {
     }
   }
 
-  // Priority 3: Groq free tier (generous: 30 req/min, Llama 3.3 70B)
+  // Priority 3: Groq free tier (default — generous: 30 req/min, Llama 3.3 70B)
   const groqKey = process.env.GROQ_API_KEY
   if (groqKey) {
     return {
@@ -93,19 +93,8 @@ function getConfig(tier: LLMTier, userSettings?: LLMSettings | null) {
     }
   }
 
-  // Priority 4: Gemini free tier
-  const geminiKey = process.env.GEMINI_API_KEY
-  if (geminiKey) {
-    return {
-      provider: "gemini" as LLMProvider,
-      model: DEFAULT_MODELS.gemini[tier],
-      apiKey: geminiKey,
-      baseUrl: undefined,
-    }
-  }
-
   throw new Error(
-    "No LLM provider configured. Set GROQ_API_KEY (free) or GEMINI_API_KEY env var, or add your own key in Settings > AI Provider."
+    "No LLM provider configured. Set GROQ_API_KEY env var, or add your own key in Settings > AI Provider."
   )
 }
 

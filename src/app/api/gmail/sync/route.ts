@@ -64,6 +64,114 @@ async function getValidAccessToken(connection: any): Promise<string | null> {
 }
 
 /**
+ * Fetch Gmail messages in batch using the Gmail batch API (multipart/mixed).
+ * Chunks into groups of 50 to stay well under Gmail's 100-per-batch limit.
+ */
+async function batchFetchMessages(
+  accessToken: string,
+  messageIds: string[]
+): Promise<any[]> {
+  const BATCH_SIZE = 50
+  const batchEndpoint = "https://www.googleapis.com/batch/gmail/v1"
+  const boundary = "batch_actor_os"
+  const allMessages: any[] = []
+
+  for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
+    const chunk = messageIds.slice(i, i + BATCH_SIZE)
+
+    // Build multipart/mixed body
+    const parts = chunk.map((msgId, idx) =>
+      [
+        `--${boundary}`,
+        "Content-Type: application/http",
+        `Content-ID: <item${idx + 1}>`,
+        "",
+        `GET /gmail/v1/users/me/messages/${msgId}?format=full`,
+        "",
+      ].join("\r\n")
+    )
+    const body = parts.join("\r\n") + `\r\n--${boundary}--`
+
+    try {
+      const res = await fetch(batchEndpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": `multipart/mixed; boundary=${boundary}`,
+        },
+        body,
+      })
+
+      if (!res.ok) {
+        console.error("Batch request failed:", res.status, await res.text())
+        continue
+      }
+
+      const responseText = await res.text()
+      const parsed = parseBatchResponse(responseText)
+      allMessages.push(...parsed)
+    } catch (err) {
+      console.error("Batch fetch error:", err)
+    }
+  }
+
+  return allMessages
+}
+
+/**
+ * Parse a multipart/mixed batch response into individual JSON objects.
+ * Each part contains an HTTP response with status line, headers, and JSON body.
+ */
+function parseBatchResponse(responseText: string): any[] {
+  const results: any[] = []
+
+  // Extract the boundary from the first line of the response
+  const firstLine = responseText.split("\r\n")[0] || responseText.split("\n")[0]
+  const responseBoundary = firstLine.trim()
+
+  if (!responseBoundary.startsWith("--")) {
+    console.error("Could not parse batch response boundary")
+    return results
+  }
+
+  // Split by boundary, ignoring first (empty) and last (closing) segments
+  const parts = responseText.split(responseBoundary).slice(1)
+
+  for (const part of parts) {
+    // Skip the closing boundary marker
+    if (part.trim() === "--" || part.trim() === "") continue
+
+    try {
+      // Find the JSON body: look for the first '{' that starts a line
+      const jsonStart = part.indexOf("\r\n{")
+      const jsonStartAlt = part.indexOf("\n{")
+      const start = jsonStart !== -1 ? jsonStart + 2 : jsonStartAlt !== -1 ? jsonStartAlt + 1 : -1
+
+      if (start === -1) continue
+
+      // Find the matching closing brace by extracting from the start to the last '}'
+      const lastBrace = part.lastIndexOf("}")
+      if (lastBrace === -1 || lastBrace < start) continue
+
+      const jsonStr = part.substring(start, lastBrace + 1)
+      const parsed = JSON.parse(jsonStr)
+
+      // Only include successful responses (those with an 'id' field)
+      if (parsed.id) {
+        results.push(parsed)
+      } else if (parsed.error) {
+        console.error("Batch part error:", parsed.error)
+      }
+    } catch (err) {
+      // Skip unparseable parts silently (same as current skip-on-error behavior)
+      console.error("Failed to parse batch response part:", err)
+    }
+  }
+
+  return results
+}
+
+/**
  * Fetch emails from Gmail matching casting agency patterns
  */
 async function fetchCastingEmails(
@@ -159,22 +267,11 @@ async function fetchCastingEmails(
     nextHistoryId = profile.historyId
   }
 
-  // Fetch full message details
-  const messages: any[] = []
-  for (const msgId of messageIds.slice(0, maxResults)) {
-    try {
-      const msgRes = await fetch(
-        `${baseUrl}/messages/${msgId}?format=full`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      )
-      const msgData = await msgRes.json()
-      messages.push(msgData)
-    } catch (err) {
-      console.error(`Failed to fetch message ${msgId}:`, err)
-    }
-  }
+  // Fetch full message details via batch API (replaces sequential N+1 loop)
+  const messages = await batchFetchMessages(
+    accessToken,
+    messageIds.slice(0, maxResults)
+  )
 
   return { messages, historyId: nextHistoryId }
 }
@@ -247,10 +344,31 @@ function matchesTrustedSource(
  * Triggered by user clicking "Sync Emails" or by cron job
  */
 export async function POST(request: Request) {
+  // --- Dual auth: cron secret OR authenticated user session ---
+  const authHeader = request.headers.get("authorization")
+  const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
+  let authenticatedUserId: string | null = null
+
+  if (!isCron) {
+    const { createSupabaseServer } = await import("@/lib/supabase-server")
+    const supabase = await createSupabaseServer()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    authenticatedUserId = user.id
+  }
+
   const supabaseAdmin = getSupabaseAdmin()
   try {
     const body = await request.json().catch(() => ({}))
-    const { user_id, connection_id, force_full = false } = body
+    let { user_id, connection_id, force_full = false } = body
+
+    // If user-triggered, override user_id with authenticated user's ID
+    if (authenticatedUserId) {
+      user_id = authenticatedUserId
+    }
 
     // Get the email connection
     let query = supabaseAdmin

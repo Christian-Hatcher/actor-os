@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Check, ArrowLeft, Loader2 } from "lucide-react"
@@ -10,6 +11,7 @@ import Link from "next/link"
 function CheckoutContent() {
   const searchParams = useSearchParams()
   const plan = (searchParams.get("plan") || "monthly") as "monthly" | "annual"
+  const { user, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -17,24 +19,24 @@ function CheckoutContent() {
   const planDetails = {
     monthly: {
       name: "Monthly",
-      price: "$5",
+      price: "$10",
       period: "/month",
       features: [
         "Unlimited auditions",
+        "Email auto-import from Gmail",
+        "Unlimited AI contract analysis",
         "Self-tape deadline tracker",
-        "AI contract analysis (5/month)",
         "Outreach CRM",
       ],
     },
     annual: {
       name: "Annual",
-      price: "$45",
+      price: "$90",
       period: "/year",
       features: [
         "Everything in Monthly",
-        "AI contract analysis (10/month)",
+        "Save $30/year ($7.50/mo)",
         "Priority support",
-        "Save $15/year",
       ],
     },
   }
@@ -51,8 +53,8 @@ function CheckoutContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           plan,
-          email: "demo@actor-os.com", // TODO: use auth user email
-          name: "Demo User",
+          email: user?.email || "",
+          name: user?.user_metadata?.full_name || user?.email || "",
         }),
       })
 
@@ -73,8 +75,31 @@ function CheckoutContent() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted px-4 sm:px-6">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center space-y-4">
+            <p className="text-muted-foreground">Please log in to continue to checkout.</p>
+            <Button asChild>
+              <Link href="/login">Log in</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted">
+    <div className="min-h-screen flex items-center justify-center bg-muted px-4 sm:px-6">
       <div className="w-full max-w-md">
         <Link
           href="/signup"

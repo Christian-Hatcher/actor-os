@@ -18,7 +18,10 @@ export async function GET(request: Request) {
     // Step 1: Sync all active connections (no user_id = all users)
     const syncRes = await fetch(`${baseUrl}/api/gmail/sync`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.CRON_SECRET}`,
+      },
       body: JSON.stringify({}),
     })
     const syncData = await syncRes.json()
@@ -26,7 +29,10 @@ export async function GET(request: Request) {
     // Step 2: Parse all pending emails with auto_create
     const parseRes = await fetch(`${baseUrl}/api/gmail/parse`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.CRON_SECRET}`,
+      },
       body: JSON.stringify({ auto_create: true }),
     })
     const parseData = await parseRes.json()

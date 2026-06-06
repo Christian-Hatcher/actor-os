@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
-
-function getUserIdFromHeader(request: NextRequest): string | null {
-  return request.headers.get("x-user-id")
-}
+import { createSupabaseServer } from "@/lib/supabase-server"
 
 export async function GET(request: NextRequest) {
-  const userId = getUserIdFromHeader(request)
-  if (!userId) {
+  const supabase = await createSupabaseServer()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  const userId = user.id
 
   const supabaseAdmin = getSupabaseAdmin()
   const { data, error } = await supabaseAdmin
@@ -22,18 +21,60 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data)
 }
 
+const FREE_TIER_AUDITION_LIMIT = 10
+
 export async function POST(request: NextRequest) {
-  const userId = getUserIdFromHeader(request)
-  if (!userId) {
+  const supabase = await createSupabaseServer()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  const userId = user.id
+
+  const supabaseAdmin = getSupabaseAdmin()
+
+  // Free tier enforcement: check subscription status and audition count
+  const [{ data: profile }, { count: auditionCount }] = await Promise.all([
+    supabaseAdmin.from("profiles").select("subscription_status").eq("id", userId).single(),
+    supabaseAdmin.from("auditions").select("*", { count: "exact", head: true }).eq("user_id", userId),
+  ])
+
+  const isFreeTier = !profile?.subscription_status || profile.subscription_status !== "active"
+  if (isFreeTier && (auditionCount ?? 0) >= FREE_TIER_AUDITION_LIMIT) {
+    return NextResponse.json(
+      { error: "Free tier limit reached", limit: FREE_TIER_AUDITION_LIMIT, current: auditionCount, upgrade: true },
+      { status: 403 }
+    )
   }
 
   const body = await request.json()
 
-  const supabaseAdmin = getSupabaseAdmin()
+  // Allowlist fields to prevent injection of id, user_id, created_at, etc.
+  const allowed = {
+    project_name: body.project_name,
+    role_name: body.role_name ?? null,
+    casting_director: body.casting_director ?? null,
+    agency: body.agency ?? null,
+    status: body.status ?? "received",
+    submitted_date: body.submitted_date ?? null,
+    callback_date: body.callback_date ?? null,
+    shoot_date: body.shoot_date ?? null,
+    location: body.location ?? null,
+    notes: body.notes ?? null,
+    self_tape_url: body.self_tape_url ?? null,
+    headshot_url: body.headshot_url ?? null,
+    resume_url: body.resume_url ?? null,
+    compensation: body.compensation ?? null,
+    contract_url: body.contract_url ?? null,
+    call_time: body.call_time ?? null,
+    est_wrap_time: body.est_wrap_time ?? null,
+    wrap_time: body.wrap_time ?? null,
+    ot_rate_multiplier: body.ot_rate_multiplier ?? null,
+  }
+
   const { data, error } = await supabaseAdmin
     .from("auditions")
-    .insert({ ...body, user_id: userId })
+    .insert({ ...allowed, user_id: userId })
     .select()
     .single()
 
@@ -42,10 +83,12 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const userId = getUserIdFromHeader(request)
-  if (!userId) {
+  const supabase = await createSupabaseServer()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  const userId = user.id
 
   const { id, ...updates } = await request.json()
 
@@ -63,10 +106,12 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const userId = getUserIdFromHeader(request)
-  if (!userId) {
+  const supabase = await createSupabaseServer()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  const userId = user.id
 
   const { id } = await request.json()
 

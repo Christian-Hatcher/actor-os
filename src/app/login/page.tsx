@@ -65,7 +65,7 @@ export default function LoginPage() {
               placeholder="actor@example.com"
               autoComplete="email"
               required
-              style={{ width: "100%", height: 40, padding: "0 12px", borderRadius: 6, border: "1px solid #d4d4d4", fontSize: 14, boxSizing: "border-box", marginBottom: 12 }}
+              style={{ width: "100%", height: 44, padding: "0 12px", borderRadius: 6, border: "1px solid #d4d4d4", fontSize: 16, boxSizing: "border-box", marginBottom: 12 }}
             />
 
             <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Password</label>
@@ -76,7 +76,7 @@ export default function LoginPage() {
               placeholder="Your password"
               autoComplete="current-password"
               required
-              style={{ width: "100%", height: 40, padding: "0 12px", borderRadius: 6, border: "1px solid #d4d4d4", fontSize: 14, boxSizing: "border-box", marginBottom: 16 }}
+              style={{ width: "100%", height: 44, padding: "0 12px", borderRadius: 6, border: "1px solid #d4d4d4", fontSize: 16, boxSizing: "border-box", marginBottom: 16 }}
             />
 
             {error && (
@@ -86,7 +86,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              style={{ width: "100%", height: 40, borderRadius: 6, border: "none", background: loading ? "#525252" : "#171717", color: "#fff", fontSize: 14, fontWeight: 500, cursor: loading ? "not-allowed" : "pointer" }}
+              style={{ width: "100%", height: 44, borderRadius: 6, border: "none", background: loading ? "#525252" : "#171717", color: "#fff", fontSize: 16, fontWeight: 500, cursor: loading ? "not-allowed" : "pointer" }}
             >
               {loading ? "Logging in..." : "Log In"}
             </button>
